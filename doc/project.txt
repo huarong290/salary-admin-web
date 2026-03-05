@@ -1,0 +1,34 @@
+salary-admin-web/
+├── .husky/                  # 🐶 Git 拦截钩子 (pre-commit, commit-msg)
+├── public/                  # 🌐 静态资源 (如图标 favicon.ico，不会被 Vite 编译)
+├── src/
+│   ├── api/                 # 📡 后端接口统一定义 (按业务模块划分)
+│   │   ├── login.ts         # 登录相关接口
+│   │   └── system/          # user.ts, role.ts, menu.ts
+│   ├── assets/              # 🎨 项目内的静态资源 (图片、全局 SCSS 样式)
+│   ├── components/          # 🧩 全局公共组件 (如：SvgIcon, 权限按钮包装器等)
+│   ├── layout/              # 🏗️ 整体布局 (Sidebar侧边栏, Navbar顶栏, AppMain主区域)
+│   ├── router/              # 🚦 路由配置与守卫
+│   │   ├── index.ts         # 静态路由表与全局路由守卫 (鉴权核心)
+│   │   └── dynamic.ts       # 动态路由解析与挂载算法
+│   ├── store/               # 📦 Pinia 状态管理
+│   │   ├── index.ts         # Pinia 实例导出
+│   │   └── modules/         # 状态模块
+│   │       ├── user.ts      # 用户状态 (Token、用户信息、角色权限集合)
+│   │       └── permission.ts# 菜单状态 (用于渲染左侧边栏)
+│   ├── utils/               # 🛠️ 全局工具类
+│   │   ├── request.ts       # Axios 深度封装 (上一回合已完成)
+│   │   └── auth.ts          # Token 本地存储工具
+│   ├── views/               # 🖥️ 页面级视图组件
+│   │   ├── login/           # 登录页面 (index.vue)
+│   │   ├── error/           # 404, 401 等异常页面
+│   │   └── system/          # 系统管理模块 (user, role, menu 文件夹)
+│   ├── App.vue              # 根组件
+│   └── main.ts              # 🚀 全局入口文件
+├── .eslintrc.cjs            # ESLint 规则配置
+├── .prettierrc.json         # Prettier 代码格式化配置
+├── commitlint.config.mjs    # 规范 Git 提交信息的配置 (新增)
+├── lint-staged.config.mjs   # 暂存区代码检查配置 (抽离)
+├── package.json             # 依赖管理
+├── tsconfig.json            # TypeScript 编译配置
+└── vite.config.ts           # Vite 构建配置
