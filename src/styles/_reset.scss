@@ -1,0 +1,57 @@
+// src/styles/_reset.scss
+
+// ==========================================
+// 🔄 CSS 重置样式（基于 normalize.css 理念）
+// 说明：统一浏览器默认样式，保证跨浏览器一致性
+// 🌍 终极融合版全局基础重置 (Base CSS)
+// ==========================================
+
+/* 1. 现代前端盒模型基石 (吸收对方精华) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 2. 基础页面包裹区与中文字体栈 (保留咱们的核心) */
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family:
+    'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑',
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: $bg-color-page; // 依然使用咱们优雅的 SCSS 全局变量
+  overflow-x: hidden; // 防止出现横向滚动条
+}
+
+/* 3. 基础排版标签清理 (吸收对方精华) */
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 4. 图片响应式与基线对齐 (吸收对方精华) */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: middle;
+}
+
+/* 5. 全局链接色彩交互 */
+a {
+  color: $primary-color;
+  text-decoration: none;
+
+  &:hover {
+    color: #66b1ff;
+  }
+}
