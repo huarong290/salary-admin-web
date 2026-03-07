@@ -16,7 +16,7 @@ export default defineConfig({
       scss: {
         // api: 'modern-compiler', // 如果控制台出现 sass 弃用警告，可以加上这一行
         // 让 Vite 在每个 .vue 文件的 <style lang="scss"> 前面自动加上这句 @use
-        additionalData: `@use "@/assets/styles/variables.scss" as *;`,
+        additionalData: `@use "@/styles/variables.scss" as *;`,
       },
     },
   },

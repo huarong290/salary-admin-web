@@ -1,5 +1,5 @@
 // src/styles/_reset.scss
-
+@use './variables' as *;
 // ==========================================
 // 🔄 CSS 重置样式（基于 normalize.css 理念）
 // 说明：统一浏览器默认样式，保证跨浏览器一致性
@@ -26,7 +26,9 @@ body,
     Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: $bg-color-page; // 依然使用咱们优雅的 SCSS 全局变量
+  // 🌟 直接使用 Element Plus 自带的 CSS 变量
+  // 这样既能解决 SCSS 变量找不到的问题，又能完美支持未来的暗黑模式切换！
+  background-color: var(--el-bg-color-page);
   overflow-x: hidden; // 防止出现横向滚动条
 }
 
@@ -48,10 +50,12 @@ img {
 
 /* 5. 全局链接色彩交互 */
 a {
-  color: $primary-color;
+  // 🌟 核心修复：直接使用 Element Plus 的原生主题色变量
+  color: var(--el-color-primary);
   text-decoration: none;
-
+  transition: color 0.3s;
   &:hover {
-    color: #66b1ff;
+    // 鼠标悬浮时，使用 Element Plus 提供的淡化混合色
+    color: var(--el-color-primary-light-3);
   }
 }

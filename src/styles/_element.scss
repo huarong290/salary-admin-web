@@ -3,7 +3,7 @@
 // 📦 Element Plus 第三方组件全局魔改
 // ==========================================
 
-/* NProgress 进度条完美跟随系统动态主题色 */
+/* 覆盖 nprogress 默认的蓝色 NProgress 进度条完美跟随系统动态主题色 */
 #nprogress .bar {
   background: var(--el-color-primary) !important;
 }
@@ -13,3 +13,7 @@
     0 0 10px var(--el-color-primary),
     0 0 5px var(--el-color-primary) !important;
 }
+// 示例：如果你觉得 Element Plus 默认的 Dialog 弹窗 header 太宽，可以在这里全局覆盖
+// .el-dialog__header {
+//   border-bottom: 1px solid #eee;
+// }
