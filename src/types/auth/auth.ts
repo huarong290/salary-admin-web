@@ -9,6 +9,8 @@
 
 /** 客户端环境信息 (嵌套在登录请求中) */
 export interface ClientInfoDTO {
+  deviceId: string;
+  clientType: string;
   os?: string;
   browser?: string;
   version?: string;
@@ -29,6 +31,7 @@ export interface TokenRefreshReqDTO {
   refreshToken: string;
   deviceId?: string;
 }
+
 /** 认证令牌响应对象 (对应 TokenResDTO) */
 export interface TokenResDTO {
   accessToken: string;
@@ -40,6 +43,7 @@ export interface TokenResDTO {
   ip?: string;
   refreshExpiresIn?: number;
 }
+
 /** 图形验证码响应对象 (对应 CaptchaResDTO) */
 export interface CaptchaResDTO {
   /** 验证码唯一标识 (对应后端的 Redis Key) */
