@@ -3,7 +3,7 @@ import { createApp } from 'vue';
 import './style.css';
 import App from './App.vue';
 import router from './router';
-import pinia from './store';
+import pinia from './stores';
 
 // 1. 引入 Element Plus 的全局样式 (如果你没有用自动按需导入的话)
 import ElementPlus from 'element-plus';
