@@ -3,7 +3,7 @@
 <template>
   <div class="navbar">
     <div class="left-menu">
-      <h3 style="margin: 0; color: #333">Salary Admin</h3>
+      <Breadcrumb />
     </div>
     <div class="right-menu">
       <el-dropdown trigger="click">
@@ -12,20 +12,36 @@
             :size="30"
             src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"
           />
-          <span class="name">管理员</span>
+          <span class="name">{{ userStore.userInfo?.nickname || '管理员' }}</span>
           <el-icon><CaretBottom /></el-icon>
         </span>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item>个人中心</el-dropdown-item>
-            <el-dropdown-item divided>退出登录</el-dropdown-item>
+            <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
     </div>
   </div>
 </template>
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import Breadcrumb from '@/components/layout/navbar/Breadcrumb.vue';
+import { useUserStore } from '@/stores/modules/user/user.ts';
+import { useAuthStore } from '@/stores/modules/auth';
+import { useRouter } from 'vue-router';
+import { CaretBottom } from '@element-plus/icons-vue';
+
+const userStore = useUserStore();
+const authStore = useAuthStore();
+const router = useRouter();
+// 提前把退出登录的坑位填上
+const handleLogout = async () => {
+  await authStore.logout();
+  userStore.clearUserInfo();
+  router.push('/login');
+};
+</script>
 
 <style scoped lang="scss">
 .navbar {
