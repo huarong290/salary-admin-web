@@ -13,6 +13,8 @@ import '@/styles/index.scss';
 
 // 3. 引入所有 Element Plus 图标 (如果之前没显示图标，顺便加上这个)
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+
+import './router/permission'; // 🌟 必须显式引入，否则守卫永远不会注册
 const app = createApp(App);
 
 // 注册所有图标

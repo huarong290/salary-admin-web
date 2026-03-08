@@ -3,34 +3,33 @@
   <div class="sidebar-container">
     <el-scrollbar wrap-class="scrollbar-wrapper">
       <el-menu
-        :default-active="route.path"
+        :default-active="activeMenu"
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF"
         :router="true"
         :unique-opened="true"
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><Odometer /></el-icon>
-          <template #title>控制台</template>
-        </el-menu-item>
-
-        <el-sub-menu index="/system">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/system/user">用户管理</el-menu-item>
-          <el-menu-item index="/system/role">角色管理</el-menu-item>
-          <el-menu-item index="/system/menu">菜单管理</el-menu-item>
-        </el-sub-menu>
+        <sidebar-item v-for="menu in menuList" :key="menu.id" :item="menu" />
       </el-menu>
     </el-scrollbar>
   </div>
 </template>
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useUserStore } from '@/stores/modules/user/user'; // 确保你已定义该 Store
+import SidebarItem from './SidebarItem.vue';
 const route = useRoute();
+
+const userStore = useUserStore();
+
+// 💡 从 Pinia 获取后端下发的动态菜单树
+const menuList = computed(() => userStore.menus);
+
+const activeMenu = computed(() => {
+  return route.path;
+});
 </script>
 <style scoped lang="scss">
 .sidebar-container {

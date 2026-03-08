@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <el-card class="login-box" shadow="hover">
-      <h2 class="title">Salary Admin 登录</h2>
+      <h2 class="title">Study Admin 登录</h2>
 
       <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" size="large">
         <el-form-item prop="username">
@@ -57,6 +57,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 // 1. 引入 Auth Store 和 验证码 API
 import { useAuthStore } from '@/stores/modules/auth';
 import { getCaptchaApi } from '@/api/auth';
+import { useUserStore } from '@/stores/modules/user/user.ts';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -122,7 +123,9 @@ const handleLogin = async () => {
 
         // 🌟 调用 Pinia 封装的登录 Action
         await authStore.login(loginData);
-
+        // 登录成功后清空用户信息，避免持久化的 menus 导致守卫不触发
+        const userStore = useUserStore();
+        userStore.clearUserInfo();
         ElMessage.success('登录成功');
         router.push('/'); // 跳转至首页
       } catch (error: any) {
