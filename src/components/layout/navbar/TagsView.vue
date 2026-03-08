@@ -10,6 +10,7 @@
           :to="{ path: tag.path, query: tag.query }"
           :class="isActive(tag) ? 'active' : ''"
           class="tags-view-item"
+          @contextmenu.prevent="openMenu(tag, $event)"
         >
           {{ tag.meta?.title || '未命名' }}
           <el-icon
@@ -22,11 +23,18 @@
         </router-link>
       </div>
     </el-scrollbar>
+    <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
+      <li v-if="selectedTag.path !== '/dashboard'" @click="closeSelectedTag(selectedTag)">
+        关闭当前
+      </li>
+      <li @click="closeOthersTags">关闭其他</li>
+      <li @click="closeAllTags">关闭所有</li>
+    </ul>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, ref } from 'vue';
 import { useRoute, useRouter, type RouteLocationNormalized } from 'vue-router';
 import { useTagsViewStore } from '@/stores/modules/tagsView';
 import { Close } from '@element-plus/icons-vue';
@@ -36,6 +44,11 @@ const router = useRouter();
 const tagsViewStore = useTagsViewStore();
 
 const visitedViews = computed(() => tagsViewStore.visitedViews);
+// 右键菜单相关状态
+const visible = ref(false);
+const top = ref(0);
+const left = ref(0);
+const selectedTag = ref<RouteLocationNormalized>({} as RouteLocationNormalized);
 
 const isActive = (tag: RouteLocationNormalized) => {
   return tag.path === route.path;
@@ -60,11 +73,36 @@ onMounted(() => {
   addTags();
 });
 
-// 关闭标签页的逻辑
+// 🌟 右键菜单控制引擎
+const openMenu = (tag: RouteLocationNormalized, e: MouseEvent) => {
+  const menuMinWidth = 105;
+  // 获取当前可视区域边缘，防止菜单超出屏幕边界
+  const maxLeft = window.innerWidth - menuMinWidth;
+  const currentLeft = e.clientX + 15; // 鼠标右侧偏移15px体验更好
+
+  left.value = currentLeft > maxLeft ? maxLeft : currentLeft;
+  top.value = e.clientY;
+
+  visible.value = true;
+  selectedTag.value = tag;
+};
+
+const closeMenu = () => {
+  visible.value = false;
+};
+
+// 监听菜单显示状态，点击屏幕任意其他位置则关闭菜单
+watch(visible, (value) => {
+  if (value) {
+    document.body.addEventListener('click', closeMenu);
+  } else {
+    document.body.removeEventListener('click', closeMenu);
+  }
+});
+
+// 🎯 操作：关闭选中标签
 const closeSelectedTag = async (view: RouteLocationNormalized) => {
   const { visitedViews } = await tagsViewStore.delView(view);
-
-  // 如果关闭的是当前正在看的标签，智能回退到上一个标签
   if (isActive(view)) {
     const latestView = visitedViews.slice(-1)[0];
     if (latestView) {
@@ -73,6 +111,22 @@ const closeSelectedTag = async (view: RouteLocationNormalized) => {
       router.push('/dashboard');
     }
   }
+};
+
+// 🎯 操作：关闭其他标签
+const closeOthersTags = async () => {
+  await tagsViewStore.delOthersViews(selectedTag.value);
+  // 如果当前路由不是右键选中的路由，自动跳转过去
+  if (selectedTag.value.path !== route.path) {
+    router.push(selectedTag.value.path);
+  }
+};
+
+// 🎯 操作：关闭所有标签
+const closeAllTags = async () => {
+  await tagsViewStore.delAllViews();
+  // 清空后直接回城
+  router.push('/dashboard');
 };
 </script>
 
@@ -139,6 +193,30 @@ const closeSelectedTag = async (view: RouteLocationNormalized) => {
       &:hover {
         background-color: #b4bccc;
         color: #fff;
+      }
+    }
+  }
+
+  /* 🌟 右键菜单悬浮样式 */
+  .contextmenu {
+    margin: 0;
+    background: #fff;
+    z-index: 3000;
+    position: fixed; /* 使用 fixed 脱离局部限制，跟随鼠标全局定位 */
+    list-style-type: none;
+    padding: 5px 0;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #333;
+    box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, 0.3);
+
+    li {
+      margin: 0;
+      padding: 7px 16px;
+      cursor: pointer;
+      &:hover {
+        background: #eee;
       }
     }
   }

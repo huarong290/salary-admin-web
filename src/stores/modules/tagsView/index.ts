@@ -57,5 +57,50 @@ export const useTagsViewStore = defineStore('tagsView', {
         this.cachedViews.splice(index, 1);
       }
     },
+    delOthersViews(view: RouteLocationNormalized) {
+      return new Promise<{ visitedViews: RouteLocationNormalized[]; cachedViews: string[] }>(
+        (resolve) => {
+          this.delOthersVisitedViews(view);
+          this.delOthersCachedViews(view);
+          resolve({
+            visitedViews: [...this.visitedViews],
+            cachedViews: [...this.cachedViews],
+          });
+        }
+      );
+    },
+    delOthersVisitedViews(view: RouteLocationNormalized) {
+      this.visitedViews = this.visitedViews.filter((v) => {
+        // 保留工作台和当前选中的标签
+        return v.path === '/dashboard' || v.path === view.path;
+      });
+    },
+    delOthersCachedViews(view: RouteLocationNormalized) {
+      const viewName = view.name as string;
+      this.cachedViews = this.cachedViews.filter((name) => {
+        return name === 'Dashboard' || name === viewName;
+      });
+    },
+
+    delAllViews() {
+      return new Promise<{ visitedViews: RouteLocationNormalized[]; cachedViews: string[] }>(
+        (resolve) => {
+          this.delAllVisitedViews();
+          this.delAllCachedViews();
+          resolve({
+            visitedViews: [...this.visitedViews],
+            cachedViews: [...this.cachedViews],
+          });
+        }
+      );
+    },
+    delAllVisitedViews() {
+      // 强行保留工作台
+      const affixTags = this.visitedViews.filter((tag) => tag.path === '/dashboard');
+      this.visitedViews = affixTags;
+    },
+    delAllCachedViews() {
+      this.cachedViews = [];
+    },
   },
 });
