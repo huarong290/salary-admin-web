@@ -67,6 +67,7 @@
             />
           </template>
         </el-table-column>
+        <el-table-column label="上次登录时间" align="center" prop="lastLoginTime" width="170" />
         <el-table-column label="创建时间" align="center" prop="createTime" width="170" />
 
         <el-table-column label="操作" align="center" width="240" fixed="right">
@@ -102,8 +103,22 @@
       :title="dialog.title"
       width="600px"
       append-to-body
+      draggable
+      :fullscreen="isFullscreen"
       @close="cancel"
     >
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="font-size: 18px; font-weight: bold">{{ dialog.title }}</span>
+          <el-button
+            link
+            style="margin-right: 15px; font-size: 16px; color: #909399"
+            @click="toggleFullscreen"
+          >
+            <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
+          </el-button>
+        </div>
+      </template>
       <el-form ref="userFormRef" :model="form" :rules="rules" label-width="80px">
         <el-row>
           <el-col :span="12">
@@ -188,6 +203,7 @@ import {
   resetUserPwdApi,
 } from '@/api/user';
 import type { UserQueryReqDTO, SysUserVO } from '@/types/user/user';
+import { FullScreen, Minus } from '@element-plus/icons-vue';
 
 // --- 状态与数据 ---
 const loading = ref(false);
@@ -226,7 +242,13 @@ const rules = reactive<FormRules>({
   nickname: [{ required: true, message: '用户昵称不能为空', trigger: 'blur' }],
   phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }],
 });
+// 在 script setup 区域的上方增加这个状态变量
+const isFullscreen = ref(false);
 
+// 切换全屏状态的方法
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
+};
 // --- 核心业务方法 ---
 
 /** 1. 获取用户列表 */
@@ -282,6 +304,7 @@ const handleAdd = () => {
   form.value = { status: 1, sex: 0 };
   dialog.title = '添加用户';
   dialog.visible = true;
+  isFullscreen.value = false; // 重置全屏状态
 };
 
 const handleUpdate = (row: SysUserVO) => {
@@ -294,6 +317,7 @@ const handleUpdate = (row: SysUserVO) => {
   form.value = { ...row };
   dialog.title = '修改用户';
   dialog.visible = true;
+  isFullscreen.value = false; // 重置全屏状态
 };
 
 const cancel = () => {
