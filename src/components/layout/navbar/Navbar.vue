@@ -29,6 +29,8 @@
 
 <style scoped lang="scss">
 .navbar {
+  /* 确保沾满 main-container */
+  width: 100%;
   height: 50px;
   overflow: hidden;
   position: relative;
