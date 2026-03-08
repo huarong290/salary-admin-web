@@ -1,4 +1,4 @@
-// src/types/user/user.ts
+// src/types/user/index.ts
 
 import type { MenuTreeVO } from '@/types/menu/menu.ts';
 

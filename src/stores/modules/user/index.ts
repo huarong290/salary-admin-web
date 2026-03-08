@@ -1,4 +1,4 @@
-// src/stores/modules/user/user.ts
+// src/stores/modules/user/index.ts
 
 import { defineStore } from 'pinia';
 import { ref } from 'vue';

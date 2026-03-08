@@ -4,7 +4,7 @@ salary-admin-web/
 ├── src/
 │   ├── api/                 # 📡 后端接口统一定义 (按业务模块划分)
 │   │   ├── login.ts         # 登录相关接口
-│   │   └── system/          # user.ts, role.ts, menu.ts
+│   │   └── system/          # index.ts, role.ts, menu.ts
 │   ├── assets/              # 🎨 项目内的静态资源 (图片、全局 SCSS 样式)
 │   ├── components/          # 🧩 全局公共组件 (如：SvgIcon, 权限按钮包装器等)
 │   ├── layout/              # 🏗️ 整体布局 (Sidebar侧边栏, Navbar顶栏, AppMain主区域)
@@ -14,7 +14,7 @@ salary-admin-web/
 │   ├── store/               # 📦 Pinia 状态管理
 │   │   ├── index.ts         # Pinia 实例导出
 │   │   └── modules/         # 状态模块
-│   │       ├── user.ts      # 用户状态 (Token、用户信息、角色权限集合)
+│   │       ├── index.ts      # 用户状态 (Token、用户信息、角色权限集合)
 │   │       └── permission.ts# 菜单状态 (用于渲染左侧边栏)
 │   ├── utils/               # 🛠️ 全局工具类
 │   │   ├── request.ts       # Axios 深度封装 (上一回合已完成)

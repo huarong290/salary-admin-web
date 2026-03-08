@@ -1,7 +1,7 @@
 // src/router/permission.ts
 import router from '@/router';
 import { useAuthStore } from '@/stores/modules/auth';
-import { useUserStore } from '@/stores/modules/user/user';
+import { useUserStore } from '@/stores/modules/user';
 import { filterDynamicRoutes } from '@/router/dynamic';
 import NProgress from 'nprogress';
 

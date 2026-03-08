@@ -57,7 +57,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 // 1. 引入 Auth Store 和 验证码 API
 import { useAuthStore } from '@/stores/modules/auth';
 import { getCaptchaApi } from '@/api/auth';
-import { useUserStore } from '@/stores/modules/user/user.ts';
+import { useUserStore } from '@/stores/modules/user';
 
 const router = useRouter();
 const authStore = useAuthStore();

@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useUserStore } from '@/stores/modules/user/user'; // 确保你已定义该 Store
+import { useUserStore } from '@/stores/modules/user'; // 确保你已定义该 Store
 import SidebarItem from './SidebarItem.vue';
 const route = useRoute();
 

@@ -5,6 +5,7 @@
 
     <div class="main-container">
       <Navbar />
+      <TagsView />
       <AppMain />
     </div>
   </div>
@@ -13,6 +14,7 @@
 import Sidebar from '@/components/layout/sidebar/Sidebar.vue';
 import Navbar from '@/components/layout/navbar/Navbar.vue';
 import AppMain from '@/components/layout/main/AppMain.vue';
+import TagsView from '@/components/layout/navbar/TagsView.vue';
 </script>
 
 <style scoped lang="scss">

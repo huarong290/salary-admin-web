@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/modules/user/user';
+import { useUserStore } from '@/stores/modules/user';
 
 const route = useRoute();
 const router = useRouter();

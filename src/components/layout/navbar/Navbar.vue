@@ -27,7 +27,7 @@
 </template>
 <script setup lang="ts">
 import Breadcrumb from '@/components/layout/navbar/Breadcrumb.vue';
-import { useUserStore } from '@/stores/modules/user/user.ts';
+import { useUserStore } from '@/stores/modules/user';
 import { useAuthStore } from '@/stores/modules/auth';
 import { useRouter } from 'vue-router';
 import { CaretBottom } from '@element-plus/icons-vue';
