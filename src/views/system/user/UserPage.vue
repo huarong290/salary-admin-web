@@ -72,6 +72,9 @@
 
         <el-table-column label="操作" align="center" width="240" fixed="right">
           <template #default="scope">
+            <el-button link type="success" icon="UserFilled" @click="handleAssignRole(scope.row)">
+              分配角色
+            </el-button>
             <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
               >修改</el-button
             >
@@ -186,6 +189,32 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="roleDialog.visible" title="分配角色" width="500px" append-to-body>
+      <el-form label-width="80px">
+        <el-form-item label="选择角色">
+          <el-select
+            v-model="roleDialog.roleIds"
+            multiple
+            placeholder="请选择角色"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in allRoles"
+              :key="item.id"
+              :label="item.roleName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitUserRole">确 定</el-button>
+          <el-button @click="roleDialog.visible = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -204,6 +233,8 @@ import {
 } from '@/api/user';
 import type { UserQueryReqDTO, SysUserVO } from '@/types/user/user';
 import { FullScreen, Minus } from '@element-plus/icons-vue';
+import { assignUserRoleApi, getUserRoleIdsApi } from '@/api/userrole';
+import { listAllNormalRolesApi } from '@/api/role';
 
 // --- 状态与数据 ---
 const loading = ref(false);
@@ -249,6 +280,14 @@ const isFullscreen = ref(false);
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value;
 };
+// --- 角色分配相关的响应式状态 ---
+const roleDialog = reactive({
+  visible: false,
+  userId: 0,
+  roleIds: [] as number[],
+});
+// 存放系统中所有的角色，供下拉框选择
+const allRoles = ref<any[]>([]);
 // --- 核心业务方法 ---
 
 /** 1. 获取用户列表 */
@@ -393,7 +432,40 @@ const handleBatchDelete = () => {
     })
     .catch(() => {});
 };
+// 打开分配角色弹窗
+const handleAssignRole = async (row: any) => {
+  roleDialog.userId = row.id;
+  roleDialog.roleIds = []; // 先清空上次的选择
+  roleDialog.visible = true;
 
+  try {
+    // 1. 懒加载所有可用角色 (如果已经加载过可以不重复请求)
+    if (allRoles.value.length === 0) {
+      // 这个接口你需要确保后端能返回 List<SysRoleVO>
+      allRoles.value = await listAllNormalRolesApi();
+    }
+
+    // 2. 调用后端回显接口，获取该用户已有的角色ID数组
+    const existingRoleIds = await getUserRoleIdsApi(row.id);
+    roleDialog.roleIds = existingRoleIds || [];
+  } catch (error) {
+    console.error('获取角色数据失败', error);
+  }
+};
+
+// 提交分配
+const submitUserRole = async () => {
+  try {
+    await assignUserRoleApi({
+      userId: roleDialog.userId,
+      roleIds: roleDialog.roleIds,
+    });
+    ElMessage.success('角色分配成功');
+    roleDialog.visible = false;
+  } catch (error) {
+    console.error('角色分配失败', error);
+  }
+};
 // --- 初始化 ---
 onMounted(() => {
   getList();
