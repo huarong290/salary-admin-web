@@ -72,6 +72,9 @@
         <el-table-column label="创建时间" align="center" prop="createTime" width="170" />
         <el-table-column label="操作" align="center" width="200" fixed="right">
           <template #default="scope">
+            <el-button link type="success" icon="Key" @click="handleAuth(scope.row)">
+              分配权限
+            </el-button>
             <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
               >修改</el-button
             >
@@ -167,12 +170,35 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="authDialog.visible" title="分配菜单权限" width="500px" append-to-body>
+      <el-form label-width="100px">
+        <el-form-item label="菜单权限">
+          <div class="tree-border">
+            <el-tree
+              ref="menuTreeRef"
+              :data="menuOptions"
+              show-checkbox
+              node-key="id"
+              empty-text="加载中，请稍候"
+              :props="{ label: 'menuName', children: 'children' }"
+            />
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitAuth">确 定</el-button>
+          <el-button @click="authDialog.visible = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ElMessage, ElMessageBox, ElTree } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { FullScreen, Minus } from '@element-plus/icons-vue';
 import {
@@ -183,6 +209,8 @@ import {
   batchDeleteRoleApi,
 } from '@/api/role';
 import type { RoleQueryReqDTO, SysRoleVO } from '@/types/role/role.ts';
+import { getMenuTreeApi } from '@/api/menu';
+import { assignRoleMenuApi, getRoleMenuIdsApi } from '@/api/rolemenu';
 
 // --- 状态与数据 ---
 const loading = ref(false);
@@ -207,7 +235,10 @@ const isFullscreen = ref(false);
 const form = ref<any>({});
 const roleFormRef = ref<FormInstance>();
 const queryFormRef = ref<FormInstance>();
-
+// 🌟 新增：权限分配相关状态
+const authDialog = reactive({ visible: false, roleId: 0 });
+const menuOptions = ref<any[]>([]);
+const menuTreeRef = ref<InstanceType<typeof ElTree>>();
 const rules = reactive<FormRules>({
   roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }],
   roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
@@ -334,7 +365,66 @@ const handleBatchDelete = () => {
     })
     .catch(() => {});
 };
+// ==========================================
+// 🌟 新增：权限分配与树形控件处理逻辑
+// ==========================================
 
+// 打开分配权限弹窗
+const handleAuth = async (row: SysRoleVO) => {
+  authDialog.roleId = row.id;
+  authDialog.visible = true;
+
+  // 懒加载完整的菜单树数据
+  if (menuOptions.value.length === 0) {
+    try {
+      menuOptions.value = (await getMenuTreeApi()) || [];
+    } catch (e) {
+      console.error('加载菜单树失败', e);
+    }
+  }
+
+  // 重置树的选中状态，防止数据残留污染
+  nextTick(() => {
+    menuTreeRef.value?.setCheckedKeys([]);
+  });
+
+  try {
+    // 获取当前角色拥有的菜单 ID 集合
+    const checkedKeys = await getRoleMenuIdsApi(row.id);
+
+    // 🌟 企业级防御：精准回显
+    nextTick(() => {
+      checkedKeys.forEach((key: number) => {
+        const node = menuTreeRef.value?.getNode(key);
+        // 只有当节点是叶子节点时，才去设置勾选，防止父节点全选连带 Bug
+        if (node && node.isLeaf) {
+          menuTreeRef.value?.setChecked(key, true, false);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('获取角色权限失败', error);
+  }
+};
+
+// 提交分配好的权限
+const submitAuth = async () => {
+  // 获取所有全选和半选的节点，防止父目录 ID 丢失
+  const checkedKeys = menuTreeRef.value?.getCheckedKeys() || [];
+  const halfCheckedKeys = menuTreeRef.value?.getHalfCheckedKeys() || [];
+  const finalMenuIds = [...checkedKeys, ...halfCheckedKeys] as number[];
+
+  try {
+    await assignRoleMenuApi({
+      roleId: authDialog.roleId,
+      menuIds: finalMenuIds,
+    });
+    ElMessage.success('分配权限成功');
+    authDialog.visible = false;
+  } catch (error) {
+    console.error('分配权限失败', error);
+  }
+};
 onMounted(() => {
   getList();
 });
@@ -365,5 +455,17 @@ onMounted(() => {
       justify-content: flex-end;
     }
   }
+}
+/*  新增：给权限树加个边框，UI更符合规范 */
+.tree-border {
+  margin-top: 5px;
+  border: 1px solid #dcdfe6;
+  background: #ffffff;
+  border-radius: 4px;
+  width: 100%;
+  height: 350px;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
 }
 </style>
