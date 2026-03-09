@@ -10,31 +10,60 @@ const ParentView = () => import('@/components/layout/ParentView.vue');
  * 第一步：根据后端数据构建完整的路由树，并计算绝对路径
  */
 function generateRouteTree(menus: MenuTreeVO[], parentPath = ''): RouteRecordRaw[] {
-  return menus.map((menu): RouteRecordRaw => {
-    // 智能拼接绝对路径
-    const currentPath = menu.menuPath.startsWith('/')
-      ? menu.menuPath
-      : `${parentPath}/${menu.menuPath}`.replace(/(?<!:)\/\/+/g, '/');
+  return (
+    menus
+      // 🌟 核心防御 1：绝对不要把“按钮 (menuType === 3)”生成为路由！
+      .filter((menu) => menu.menuType !== 3)
+      .map((menu): RouteRecordRaw => {
+        // 智能拼接绝对路径
+        const currentPath = menu.menuPath.startsWith('/')
+          ? menu.menuPath
+          : `${parentPath}/${menu.menuPath}`.replace(/(?<!:)\/\/+/g, '/');
 
-    const route: any = {
-      path: currentPath,
-      name: `Route-${menu.id}`,
-      meta: menu.meta,
-      component: null,
-    };
+        const route: any = {
+          path: currentPath,
+          name: `Route-${menu.id}`,
+          meta: menu.meta,
+          component: null,
+          // 🌟 核心防御 2：绑定重定向属性
+          redirect: menu.menuRedirect || undefined,
+        };
+        // 🌟 核心防御 3：顶级菜单自动包裹 Layout 骨架
+        // 如果是顶级菜单（如工作台），且后端配置的不是 Layout，我们自动帮它套一层外壳！
+        if (menu.menuParentId === 0 && menu.menuComponent && menu.menuComponent !== 'Layout') {
+          route.component = Layout;
+          const viewPath = `../views/${menu.menuComponent}.vue`;
+          // 将真实的页面作为子路由挂载，path 设置为空字符串
+          // 这样访问父级 /dashboard 时，会默认渲染这个子页面，并且带有左侧菜单栏
+          route.children = [
+            {
+              path: '',
+              name: menu.menuCode ? `${menu.menuCode}_Inner` : `RouteInner-${menu.id}`,
+              meta: menu.meta,
+              component: modules[viewPath] || (() => import('@/views/error/NotFoundPage.vue')),
+            },
+          ];
+        } else if (menu.menuComponent === 'Layout') {
+          // 正常的 Layout 目录
+          route.component = menu.menuParentId === 0 ? Layout : ParentView;
+        } else {
+          // 正常的内嵌子菜单
+          const viewPath = `../views/${menu.menuComponent}.vue`;
+          route.component = modules[viewPath] || (() => import('@/views/error/NotFoundPage.vue'));
+        }
 
-    if (menu.menuComponent === 'Layout') {
-      route.component = menu.menuParentId === 0 ? Layout : ParentView;
-    } else {
-      const viewPath = `../views/${menu.menuComponent}.vue`;
-      route.component = modules[viewPath] || (() => import('@/views/error/NotFoundPage.vue'));
-    }
-
-    if (menu.children && menu.children.length > 0) {
-      route.children = generateRouteTree(menu.children, currentPath);
-    }
-    return route;
-  });
+        // 递归处理子节点
+        if (menu.children && menu.children.length > 0) {
+          const childRoutes = generateRouteTree(menu.children, currentPath);
+          if (route.children) {
+            route.children.push(...childRoutes);
+          } else {
+            route.children = childRoutes;
+          }
+        }
+        return route;
+      })
+  );
 }
 
 /**

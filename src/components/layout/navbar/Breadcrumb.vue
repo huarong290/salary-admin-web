@@ -83,12 +83,35 @@ const getBreadcrumbs = () => {
 
   traverse(userStore.menus, currentPath);
 
-  // 3. 在所有链条头部插入一个“工作台”作为返回起点的锚点
-  breadcrumbs.value = [
-    { title: '工作台', path: '/dashboard', redirectable: true },
-    ...matchedChain,
-  ];
+  // 3. 组装初始链条：强制加入首页锚点 不再强行塞入“工作台”，直接使用真实匹配到的链条
+  //   const rawChain = [
+  //     { title: '工作台', path: '/dashboard', redirectable: true },
+  //     ...matchedChain,
+  //   ];
+  const rawChain = [...matchedChain];
   // breadcrumbs.value = matchedChain;
+  // 4. 🌟 核心去重与反套娃算法
+  breadcrumbs.value = rawChain.filter((item, index, arr) => {
+    if (index < arr.length - 1) {
+      const currentTitle = item.title;
+      // 🌟 核心修复：取出 nextNode，TypeScript 认为它可能是 undefined
+      const nextNode = arr[index + 1];
+      // ✅ 加上 ? 可选链，如果 nextNode 为空，nextTitle 就是 undefined，不会报错
+      const nextTitle = nextNode?.title;
+
+      // 规则 A：如果当前节点和下一个节点的 Path 完全一样，干掉当前的
+      // ✅ 加上 nextNode 的存在性校验
+      if (nextNode && item.path === nextNode.path) {
+        return false;
+      }
+
+      // 规则 B：如果子级的名字包含了父级的名字，隐藏父级保留子级
+      if (nextTitle && (nextTitle.includes(currentTitle) || currentTitle === nextTitle)) {
+        return false;
+      }
+    }
+    return true;
+  });
 };
 
 // 监听路由变化，动态重新计算面包屑

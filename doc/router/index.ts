@@ -28,7 +28,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard/Index.vue'), // 内部真实页面
+        component: () => import('@/views/dashboard/index.vue'), // 内部真实页面
         meta: { title: '控制台' },
       },
     ],
