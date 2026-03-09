@@ -101,19 +101,36 @@
           <el-col :span="24">
             <el-form-item label="菜单类型" prop="menuType">
               <el-radio-group v-model="form.menuType">
-                <el-radio :label="0">目录</el-radio>
-                <el-radio :label="1">菜单</el-radio>
-                <el-radio :label="2">按钮</el-radio>
+                <el-radio :label="1">目录</el-radio>
+                <el-radio :label="2">菜单</el-radio>
+                <el-radio :label="3">按钮</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
 
-          <el-col v-if="form.menuType !== 2" :span="24">
+          <el-col v-if="form.menuType !== 3" :span="24">
             <el-form-item label="菜单图标" prop="menuIcon">
-              <el-input
+              <el-select
                 v-model="form.menuIcon"
-                placeholder="请输入Element Plus图标名称 (如 User)"
-              />
+                placeholder="请点击选择图标 (支持拼写搜索，如 'user')"
+                clearable
+                filterable
+                style="width: 100%"
+              >
+                <template #prefix>
+                  <el-icon v-if="form.menuIcon" class="el-input__icon">
+                    <component :is="form.menuIcon" />
+                  </el-icon>
+                  <el-icon v-else class="el-input__icon"><Search /></el-icon>
+                </template>
+
+                <el-option v-for="icon in iconList" :key="icon" :label="icon" :value="icon">
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <el-icon><component :is="icon" /></el-icon>
+                    <span>{{ icon }}</span>
+                  </div>
+                </el-option>
+              </el-select>
             </el-form-item>
           </el-col>
 
@@ -140,7 +157,7 @@
             </el-form-item>
           </el-col>
 
-          <el-col v-if="form.menuType !== 2" :span="12">
+          <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="路由地址" prop="menuPath">
               <template #label>
                 <span>
@@ -157,7 +174,7 @@
             </el-form-item>
           </el-col>
 
-          <el-col v-if="form.menuType === 1" :span="12">
+          <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="组件路径" prop="menuComponent">
               <template #label>
                 <span>
@@ -174,7 +191,7 @@
             </el-form-item>
           </el-col>
 
-          <el-col v-if="form.menuType === 1 || form.menuType === 2" :span="12">
+          <el-col v-if="form.menuType !== 1" :span="12">
             <el-form-item label="权限字符" prop="menuPermission">
               <template #label>
                 <span>
@@ -192,7 +209,7 @@
             </el-form-item>
           </el-col>
 
-          <el-col v-if="form.menuType !== 2" :span="12">
+          <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="显示状态" prop="menuVisible">
               <template #label>
                 <span>
@@ -245,13 +262,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ref, reactive, onMounted, nextTick, shallowRef } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { FullScreen, Minus, QuestionFilled } from '@element-plus/icons-vue';
+import { FullScreen, Minus, QuestionFilled, Search } from '@element-plus/icons-vue';
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'; // 引入全量图标库
 import { addMenuApi, deleteMenuApi, editMenuApi, getMenuTreeApi } from '@/api/menu';
 import type { MenuTreeVO } from '@/types/menu/menu.ts';
-
+// 提取全量图标的英文名称，生成数组供下拉框循环渲染
+// 使用 shallowRef 是为了提升性能，因为包含几百个字符串的数组不需要被深层 Proxy 代理
+const iconList = shallowRef(Object.keys(ElementPlusIconsVue));
 // --- 状态与数据 ---
 const loading = ref(false);
 const refreshTable = ref(true);
@@ -318,6 +338,12 @@ const handleAdd = (row?: MenuTreeVO) => {
     menuVisible: 1,
     menuStatus: 1,
     menuSort: 0,
+    // 🌟 调整部分：显式置空其他字段，防止残留上一次表单数据
+    menuCode: undefined,
+    menuIcon: undefined,
+    menuPath: undefined,
+    menuComponent: undefined,
+    menuPermission: undefined,
   };
   dialog.title = '添加菜单';
   dialog.visible = true;
