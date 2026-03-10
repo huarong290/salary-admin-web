@@ -9,8 +9,9 @@ import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 // 2.  核心修复：引入咱们自己的全局基础样式与变量配置
 import '@/styles/index.scss';
-
-// 3. 引入所有 Element Plus 图标 (如果之前没显示图标，顺便加上这个)
+// 3. 引入 Element Plus 暗黑模式的核心 CSS 变量库
+import 'element-plus/theme-chalk/dark/css-vars.css';
+// 4. 引入所有 Element Plus 图标 (如果之前没显示图标，顺便加上这个)
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 //  必须显式引入，否则守卫永远不会注册
 import './router/permission';

@@ -134,11 +134,9 @@ const closeAllTags = async () => {
 .tags-view-container {
   height: 34px;
   width: 100%;
-  background: #fff;
-  border-bottom: 1px solid #d8dce5;
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.12),
-    0 0 3px 0 rgba(0, 0, 0, 0.04);
+  background: var(--el-bg-color-overlay);
+  border-bottom: 1px solid var(--el-border-color-light);
+  box-shadow: var(--el-box-shadow-light);
 
   .tags-wrapper {
     display: flex;
@@ -151,9 +149,10 @@ const closeAllTags = async () => {
     cursor: pointer;
     height: 26px;
     line-height: 26px;
-    border: 1px solid #d8dce5;
-    color: #495060;
-    background: #fff;
+    /* 🌟 1. 未激活标签的自适应颜色 */
+    border: 1px solid var(--el-border-color);
+    color: var(--el-text-color-regular);
+    background: var(--el-bg-color);
     padding: 0 8px;
     font-size: 12px;
     margin-right: 5px;
@@ -164,14 +163,14 @@ const closeAllTags = async () => {
       margin-left: 0;
     }
 
-    /* 激活态的 UI 打磨 */
+    /* 🌟 2. 激活态标签完美跟随自定义主题色与反色算法 */
     &.active {
-      background-color: #409eff;
-      color: #fff;
-      border-color: #409eff;
+      background-color: var(--el-color-primary);
+      border-color: var(--el-color-primary);
+      color: var(--theme-primary-text-color, #ffffff);
       &::before {
         content: '';
-        background: #fff;
+        background: var(--theme-primary-text-color, #ffffff);
         display: inline-block;
         width: 8px;
         height: 8px;
@@ -191,8 +190,9 @@ const closeAllTags = async () => {
       margin-left: 5px;
 
       &:hover {
-        background-color: #b4bccc;
-        color: #fff;
+        /* 关闭按钮的 hover 背景也改为动态变量 */
+        background-color: var(--el-text-color-placeholder);
+        color: var(--el-bg-color-overlay);
       }
     }
   }
@@ -200,23 +200,26 @@ const closeAllTags = async () => {
   /* 🌟 右键菜单悬浮样式 */
   .contextmenu {
     margin: 0;
-    background: #fff;
     z-index: 3000;
-    position: fixed; /* 使用 fixed 脱离局部限制，跟随鼠标全局定位 */
+    position: fixed;
     list-style-type: none;
     padding: 5px 0;
     border-radius: 4px;
     font-size: 12px;
     font-weight: 400;
-    color: #333;
-    box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, 0.3);
+
+    /* 替换写死的 #fff 和 #333 */
+    background: var(--el-bg-color-overlay);
+    color: var(--el-text-color-regular);
+    box-shadow: var(--el-box-shadow-light);
 
     li {
       margin: 0;
       padding: 7px 16px;
       cursor: pointer;
       &:hover {
-        background: #eee;
+        /* hover 状态的高亮背景 */
+        background: var(--el-fill-color-light);
       }
     }
   }

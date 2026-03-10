@@ -1,19 +1,64 @@
-//src/styles/_element.scss
+// src/styles/_element.scss (方案 B：大厂柔和版)
 // ==========================================
 // 📦 Element Plus 第三方组件全局魔改
 // ==========================================
 
-/* 覆盖 nprogress 默认的蓝色 NProgress 进度条完美跟随系统动态主题色 */
+/* 1. NProgress 进度条跟随系统动态主题色 */
 #nprogress .bar {
   background: var(--el-color-primary) !important;
 }
-
 #nprogress .peg {
   box-shadow:
     0 0 10px var(--el-color-primary),
     0 0 5px var(--el-color-primary) !important;
 }
-// 示例：如果你觉得 Element Plus 默认的 Dialog 弹窗 header 太宽，可以在这里全局覆盖
-// .el-dialog__header {
-//   border-bottom: 1px solid #eee;
-// }
+
+// ==========================================
+// 🌟 极客算法：动态计算主题色下文字的黑白反转
+// ==========================================
+.el-button--primary {
+  --el-button-text-color: var(--theme-primary-text-color, #ffffff) !important;
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+  color: var(--theme-primary-text-color, #ffffff) !important;
+}
+
+// ==========================================
+// 🌟 侧边栏 (Sidebar) 菜单 - 动态多风格适配
+// ==========================================
+
+.el-menu {
+  --el-menu-bg-color: var(--salary-sidebar-bg) !important;
+  --el-menu-text-color: var(--salary-sidebar-text) !important;
+  --el-menu-active-color: var(--salary-sidebar-active-text) !important;
+  --el-menu-hover-bg-color: rgba(0, 0, 0, 0.2) !important;
+  border-right: none !important;
+}
+
+/* --- 🚀 风格 A：实心高亮风 (Brilliant Style) --- */
+html[data-menu-style='brilliant'] {
+  li.el-menu-item.is-active {
+    background-color: var(--el-color-primary) !important;
+    color: var(--theme-primary-text-color, #ffffff) !important;
+
+    .el-icon {
+      color: var(--theme-primary-text-color, #ffffff) !important;
+    }
+  }
+}
+
+/* --- 🚀 风格 B：柔和呼吸风 (Breeze Style) --- */
+html[data-menu-style='breeze'] {
+  li.el-menu-item.is-active {
+    /* 智能利用 light-9 变量：白天浅，黑夜深 */
+    background-color: var(--el-color-primary-light-9) !important;
+    color: var(--el-color-primary) !important;
+    /* 内阴影指示线，防止裁剪 */
+    box-shadow: inset -4px 0 0 var(--el-color-primary) !important;
+
+    .el-icon {
+      color: var(--el-color-primary) !important;
+    }
+  }
+}

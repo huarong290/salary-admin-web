@@ -2,14 +2,7 @@
 <template>
   <div class="sidebar-container">
     <el-scrollbar wrap-class="scrollbar-wrapper">
-      <el-menu
-        :default-active="activeMenu"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        :router="true"
-        :unique-opened="true"
-      >
+      <el-menu :default-active="activeMenu" :router="true" :unique-opened="true">
         <sidebar-item v-for="menu in menuList" :key="menu.id" :item="menu" />
       </el-menu>
     </el-scrollbar>
