@@ -13,12 +13,18 @@ $info: var(--el-color-info);
 
 // 2. 自定义布局元素的 CSS 变量定义 (支持明暗切换)
 :root {
-  // ☀️ 亮色模式下的侧边栏与背景
-  --salary-sidebar-bg: #304156;
-  --salary-sidebar-text: #bfcbd9;
-  --salary-sidebar-active-text: var(--el-color-primary); // 激活态跟随系统主题色
-  --salary-bg-page: #f0f2f5;
+  // ☀️ 【亮色模式优化】 - 采用大厂流行的“极简白”风格
+  // 背景改为纯白，文字改为深灰，激活色保持主题色
+  --salary-sidebar-bg: #ffffff;
+  --salary-sidebar-text: #303133;
+  --salary-sidebar-active-text: var(--el-color-primary);
+
+  // 页面底色稍微深一点点（灰白），能更好地衬托出白色的卡片内容区
+  --salary-bg-page: #f5f7fa;
   --salary-header-bg: #ffffff;
+
+  // 🌟 新增：侧边栏边框，白底侧边栏必须要有这条线来区分菜单和主内容区
+  --salary-sidebar-border: 1px solid #e6e6e6;
 }
 
 // 🌙 暗黑模式下的变量重写 (当 html 标签加上 class="dark" 时自动生效)
@@ -27,6 +33,7 @@ html.dark {
   --salary-sidebar-text: #e5eaf3; // 偏灰的白字，防止刺眼
   --salary-bg-page: #000000; // 页面底色纯黑
   --salary-header-bg: #141414; // 顶栏变黑
+  --salary-sidebar-border: none; // 暗黑模式通常不需要边框，靠色差区分
 }
 
 // 3. SCSS 变量别名 (为了让你在 vue 文件里少敲几个字母)
@@ -35,7 +42,7 @@ $sidebar-text: var(--salary-sidebar-text);
 $sidebar-active-text: var(--salary-sidebar-active-text);
 $bg-page: var(--salary-bg-page);
 $header-bg: var(--salary-header-bg);
-
+$sidebar-border: var(--salary-sidebar-border); // 🌟 新增别名
 // 4. 尺寸类变量 (静态 SCSS 即可，通常不需要动态切换)
 $sidebar-width: 210px;
 $sidebar-hide-width: 54px;

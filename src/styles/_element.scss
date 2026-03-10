@@ -34,6 +34,8 @@
   --el-menu-active-color: var(--salary-sidebar-active-text) !important;
   --el-menu-hover-bg-color: rgba(0, 0, 0, 0.2) !important;
   border-right: none !important;
+  /* 🌟 核心：使用我们在 variables 里定义的变量，实现白天有线，晚上没线 */
+  border-right: var(--salary-sidebar-border) !important;
 }
 
 /* --- 🚀 风格 A：实心高亮风 (Brilliant Style) --- */
@@ -61,4 +63,9 @@ html[data-menu-style='breeze'] {
       color: var(--el-color-primary) !important;
     }
   }
+}
+/* 针对侧边栏容器的背景也需要同步 */
+.sidebar-container {
+  background-color: var(--salary-sidebar-bg);
+  border-right: var(--salary-sidebar-border);
 }
