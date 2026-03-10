@@ -40,8 +40,15 @@
 
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
-        <el-button type="primary" icon="Plus" @click="handleAdd">新增角色</el-button>
-        <el-button type="danger" icon="Delete" :disabled="multiple" @click="handleBatchDelete"
+        <el-button v-hasPerm="['sys:role:add']" type="primary" icon="Plus" @click="handleAdd"
+          >新增角色</el-button
+        >
+        <el-button
+          v-hasPerm="['sys:role:del']"
+          type="danger"
+          icon="Delete"
+          :disabled="multiple"
+          @click="handleBatchDelete"
           >批量删除</el-button
         >
       </div>
@@ -65,20 +72,40 @@
               v-model="scope.row.roleStatus"
               :active-value="1"
               :inactive-value="0"
+              :disabled="!checkPerm(['sys:role:edit'])"
               @change="handleStatusChange(scope.row)"
             />
+            <div v-if="checkPerm(['sys:role:add', 'sys:role:edit'])">
+              只有拥有新增或修改权限的人才能看到这行字
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="创建时间" align="center" prop="createTime" width="170" />
         <el-table-column label="操作" align="center" width="200" fixed="right">
           <template #default="scope">
-            <el-button link type="success" icon="Key" @click="handleAuth(scope.row)">
+            <el-button
+              v-hasPerm="['sys:role:assign']"
+              link
+              type="success"
+              icon="Key"
+              @click="handleAuth(scope.row)"
+            >
               分配权限
             </el-button>
-            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
+            <el-button
+              v-hasPerm="['sys:role:edit']"
+              link
+              type="primary"
+              icon="Edit"
+              @click="handleUpdate(scope.row)"
               >修改</el-button
             >
-            <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)"
+            <el-button
+              v-hasPerm="['sys:role:del']"
+              link
+              type="danger"
+              icon="Delete"
+              @click="handleDelete(scope.row)"
               >删除</el-button
             >
           </template>
@@ -211,7 +238,7 @@ import {
 import type { RoleQueryReqDTO, SysRoleVO } from '@/types/role/role.ts';
 import { getMenuTreeApi } from '@/api/menu';
 import { assignRoleMenuApi, getRoleMenuIdsApi } from '@/api/rolemenu';
-
+import { checkPerm } from '@/utils/permission';
 // --- 状态与数据 ---
 const loading = ref(false);
 const total = ref(0);
@@ -425,6 +452,7 @@ const submitAuth = async () => {
     console.error('分配权限失败', error);
   }
 };
+
 onMounted(() => {
   getList();
 });

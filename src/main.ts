@@ -12,8 +12,11 @@ import '@/styles/index.scss';
 
 // 3. 引入所有 Element Plus 图标 (如果之前没显示图标，顺便加上这个)
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+//  必须显式引入，否则守卫永远不会注册
+import './router/permission';
 
-import './router/permission'; // 🌟 必须显式引入，否则守卫永远不会注册
+//  引入刚刚写好的自定义指令注册函数
+import { setupDirectives } from '@/directive';
 const app = createApp(App);
 
 // 注册所有图标
@@ -24,5 +27,6 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.use(pinia);
 app.use(router);
 app.use(ElementPlus);
-
+// 挂载全局指令
+setupDirectives(app);
 app.mount('#app');

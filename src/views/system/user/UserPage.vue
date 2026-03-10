@@ -31,8 +31,15 @@
 
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
-        <el-button type="primary" icon="Plus" @click="handleAdd">新增用户</el-button>
-        <el-button type="danger" icon="Delete" :disabled="multiple" @click="handleBatchDelete"
+        <el-button v-hasPerm="['sys:user:add']" type="primary" icon="Plus" @click="handleAdd"
+          >新增用户</el-button
+        >
+        <el-button
+          v-hasPerm="['sys:user:del']"
+          type="danger"
+          icon="Delete"
+          :disabled="multiple"
+          @click="handleBatchDelete"
           >批量删除</el-button
         >
       </div>
@@ -72,16 +79,32 @@
 
         <el-table-column label="操作" align="center" width="240" fixed="right">
           <template #default="scope">
-            <el-button link type="success" icon="UserFilled" @click="handleAssignRole(scope.row)">
+            <el-button
+              v-hasPerm="['sys:user:assign']"
+              link
+              type="success"
+              icon="UserFilled"
+              @click="handleAssignRole(scope.row)"
+            >
               分配角色
             </el-button>
-            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
+            <el-button
+              v-hasPerm="['sys:user:edit']"
+              link
+              type="primary"
+              icon="Edit"
+              @click="handleUpdate(scope.row)"
               >修改</el-button
             >
             <el-button link type="warning" icon="Key" @click="handleResetPwd(scope.row)"
               >重置密码</el-button
             >
-            <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)"
+            <el-button
+              v-hasPerm="['sys:user:del']"
+              link
+              type="danger"
+              icon="Delete"
+              @click="handleDelete(scope.row)"
               >删除</el-button
             >
           </template>
