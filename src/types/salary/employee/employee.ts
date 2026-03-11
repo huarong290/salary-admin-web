@@ -14,11 +14,11 @@ export interface EmployeeVO {
   companyName?: string;
   /** 所属部门 */
   department?: string;
-  /** 在职状态 (0:离职, 1:在职) */
+  /** 在职状态: 0-离职, 1-在职 */
   employmentStatus?: number;
-  /** 是否已转正 (false:试用期, true:已转正) */
-  isTransferred?: boolean;
-  /** 住宿状态 (0:不住宿, 1:公司宿舍, 2:外租补贴) */
+  /** 是否转岗 (0:否, 1:是) */
+  isTransferred?: number;
+  /** 住宿状态 (0:不住宿, 1:公司宿舍, 2:外宿补贴) */
   accommodationStatus?: number;
   /** 创建时间 */
   createTime?: string;
@@ -34,7 +34,7 @@ export interface EmployeeQueryReqDTO extends PageQuery {
   keyword?: string;
   /** 所属部门 */
   department?: string;
-  /** 在职状态 (0:离职, 1:在职) */
+  /** 在职状态: 0-离职, 1-在职 */
   employmentStatus?: number;
 }
 
@@ -48,11 +48,11 @@ export interface EmployeeAddReqDTO {
   companyName?: string;
   /** 所属部门 */
   department?: string;
-  /** 在职状态 (0:离职, 1:在职)，默认 1 */
+  /** 在职状态: 0-离职, 1-在职 */
   employmentStatus?: number;
-  /** 是否已转正，默认 false */
-  isTransferred?: boolean;
-  /** 住宿状态 */
+  /** 是否转岗 (0:否, 1:是) */
+  isTransferred?: number;
+  /** 住宿状态 (0:不住宿, 1:公司宿舍, 2:外宿补贴) */
   accommodationStatus?: number;
 }
 

@@ -1,3 +1,4 @@
+<!--src/views/salary/employee/EmployeePage.vue-->
 <template>
   <div class="app-container">
     <el-card shadow="never" class="search-card">
@@ -30,17 +31,23 @@
 
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
-        <el-button v-hasPerm="['salary:employee:add']" type="primary" icon="Plus" @click="handleAdd"
-          >新增员工</el-button
+        <el-button
+          v-hasPerm="['salary:employee:add']"
+          type="primary"
+          icon="Plus"
+          @click="handleAdd"
         >
+          新增员工
+        </el-button>
         <el-button
           v-hasPerm="['salary:employee:del']"
           type="danger"
           icon="Delete"
           :disabled="multiple"
           @click="handleBatchDelete"
-          >批量删除</el-button
         >
+          批量删除
+        </el-button>
       </div>
 
       <el-table
@@ -49,34 +56,36 @@
         border
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" align="center" />
-        <el-table-column label="工号" align="center" prop="employeeCode" width="120" />
-        <el-table-column label="姓名" align="center" prop="employeeName" width="120" />
+        <el-table-column type="selection" width="50" />
+        <el-table-column label="工号" prop="employeeCode" width="120" />
+        <el-table-column label="姓名" prop="employeeName" width="120" />
         <el-table-column
           label="所属公司"
-          align="center"
           prop="companyName"
           min-width="150"
           show-overflow-tooltip
         />
-        <el-table-column label="部门" align="center" prop="department" width="120" />
-        <el-table-column label="状态" align="center" width="100">
+        <el-table-column label="部门" prop="department" width="120" />
+
+        <el-table-column label="状态" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.employmentStatus === 1 ? 'success' : 'info'">
               {{ scope.row.employmentStatus === 1 ? '在职' : '离职' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="转正情况" align="center" width="100">
+
+        <el-table-column label="转岗情况" width="100">
           <template #default="scope">
-            <el-tag :type="scope.row.isTransferred ? 'primary' : 'warning'">
-              {{ scope.row.isTransferred ? '已转正' : '试用期' }}
+            <el-tag :type="scope.row.isTransferred === 1 ? 'primary' : 'warning'">
+              {{ scope.row.isTransferred === 1 ? '已转岗' : '未转岗' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="入库时间" align="center" prop="createTime" width="170" />
 
-        <el-table-column label="操作" align="center" width="180" fixed="right">
+        <el-table-column label="入库时间" prop="createTime" width="170" />
+
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
             <el-button
               v-hasPerm="['salary:employee:edit']"
@@ -123,17 +132,14 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span style="font-size: 18px; font-weight: bold">{{ dialog.title }}</span>
-          <el-button
-            link
-            style="margin-right: 15px; font-size: 16px; color: #909399"
-            @click="toggleFullscreen"
-          >
+          <el-button link @click="toggleFullscreen">
             <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
       </template>
+
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="工号" prop="employeeCode">
               <el-input
@@ -145,26 +151,34 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="姓名" prop="employeeName">
-              <el-input v-model="form.employeeName" placeholder="请输入员工姓名" />
+              <el-input v-model="form.employeeName" placeholder="请输入姓名" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="所属公司" prop="companyName">
-              <el-input v-model="form.companyName" placeholder="如: 集团总部" />
+              <el-input v-model="form.companyName" placeholder="公司名称" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="部门" prop="department">
-              <el-input v-model="form.department" placeholder="如: 研发部" />
+              <el-input v-model="form.department" placeholder="部门名称" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="转正状态" prop="isTransferred">
-              <el-switch v-model="form.isTransferred" active-text="已转正" inactive-text="试用期" />
+            <el-form-item label="转岗状态" prop="isTransferred">
+              <el-switch
+                v-model="form.isTransferred"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="是"
+                inactive-text="否"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -176,22 +190,24 @@
             </el-form-item>
           </el-col>
         </el-row>
+
         <el-row>
           <el-col :span="24">
             <el-form-item label="住宿状态" prop="accommodationStatus">
               <el-select
                 v-model="form.accommodationStatus"
-                placeholder="请选择住宿安排"
+                placeholder="请选择"
                 style="width: 100%"
               >
                 <el-option label="不住宿" :value="0" />
                 <el-option label="公司宿舍" :value="1" />
-                <el-option label="外租补贴" :value="2" />
+                <el-option label="外宿补贴" :value="2" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="submitForm">确 定</el-button>
@@ -216,6 +232,7 @@ import {
 } from '@/api/salary/employee';
 import type { EmployeeQueryReqDTO, EmployeeVO } from '@/types/salary/employee/employee.ts';
 
+/** 响应式变量 */
 const loading = ref(false);
 const total = ref(0);
 const multiple = ref(true);
@@ -230,7 +247,6 @@ const queryParams = reactive<EmployeeQueryReqDTO>({
 });
 
 const dataList = ref<EmployeeVO[]>([]);
-
 const dialog = reactive({ visible: false, title: '' });
 const form = ref<any>({});
 const formRef = ref<FormInstance>();
@@ -241,18 +257,16 @@ const rules = reactive<FormRules>({
   employeeName: [{ required: true, message: '姓名不能为空', trigger: 'blur' }],
 });
 
-const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value;
-};
+/** 逻辑方法 */
+const toggleFullscreen = () => (isFullscreen.value = !isFullscreen.value);
 
+// 查询列表
 const getList = async () => {
   loading.value = true;
   try {
     const res = await getEmployeePageApi(queryParams);
     dataList.value = res.records || [];
     total.value = res.total || 0;
-  } catch (error) {
-    console.error(error);
   } finally {
     loading.value = false;
   }
@@ -262,24 +276,33 @@ const handleQuery = () => {
   queryParams.pageNum = 1;
   getList();
 };
+
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
 };
 
 const handleSelectionChange = (selection: EmployeeVO[]) => {
-  selectedIds.value = selection.map((item) => item.id);
+  selectedIds.value = selection.map((item) => item.id as unknown as number);
   multiple.value = !selection.length;
 };
 
+// 新增按钮
 const handleAdd = () => {
-  form.value = { employmentStatus: 1, isTransferred: false, accommodationStatus: 0 };
+  // ⭐ 初始化值全部使用数字，确保与后端 DTO 类型一致
+  form.value = {
+    employmentStatus: 1,
+    isTransferred: 0,
+    accommodationStatus: 0,
+  };
   dialog.title = '新增员工档案';
   dialog.visible = true;
   isFullscreen.value = false;
 };
 
+// 修改按钮
 const handleUpdate = (row: EmployeeVO) => {
+  // ⭐ 直接解构赋值，因为 VO 和 DTO 字段已经完全对应数字类型
   form.value = { ...row };
   dialog.title = '修改员工档案';
   dialog.visible = true;
@@ -291,57 +314,44 @@ const cancel = () => {
   formRef.value?.resetFields();
 };
 
+// 提交表单
 const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (valid) {
       if (form.value.id) {
-        await editEmployeeApi({
-          id: form.value.id,
-          employeeCode: form.value.employeeCode,
-          employeeName: form.value.employeeName,
-          companyName: form.value.companyName,
-          department: form.value.department,
-          employmentStatus: form.value.employmentStatus,
-          isTransferred: form.value.isTransferred,
-          accommodationStatus: form.value.accommodationStatus,
-        });
+        await editEmployeeApi(form.value);
         ElMessage.success('修改成功');
       } else {
         await addEmployeeApi(form.value);
         ElMessage.success('新增成功');
       }
       dialog.visible = false;
-      await getList();
+      getList();
     }
   });
 };
 
+// 删除单条
 const handleDelete = (row: EmployeeVO) => {
-  ElMessageBox.confirm(`确认删除员工 "${row.employeeName}" 的档案吗?`, '危险操作', {
+  ElMessageBox.confirm(`确认删除员工 "${row.employeeName}" 的档案吗?`, '警告', {
     type: 'warning',
-  })
-    .then(async () => {
-      await deleteEmployeeApi(row.id);
-      ElMessage.success('删除成功');
-      getList();
-    })
-    .catch(() => {});
+  }).then(async () => {
+    await deleteEmployeeApi(row.id);
+    ElMessage.success('删除成功');
+    getList();
+  });
 };
 
+// 批量删除
 const handleBatchDelete = () => {
-  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条数据?`, '危险操作', {
+  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条数据?`, '警告', {
     type: 'warning',
-  })
-    .then(async () => {
-      await batchDeleteEmployeeApi(selectedIds.value);
-      ElMessage.success('批量删除成功');
-      if (dataList.value.length === selectedIds.value.length && queryParams.pageNum > 1) {
-        queryParams.pageNum--;
-      }
-      await getList();
-    })
-    .catch(() => {});
+  }).then(async () => {
+    await batchDeleteEmployeeApi(selectedIds.value);
+    ElMessage.success('批量删除成功');
+    getList();
+  });
 };
 
 onMounted(() => {
@@ -351,20 +361,17 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .app-container {
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 15px;
   .search-card {
-    .el-form-item {
-      margin-bottom: 0;
-    }
+    margin-bottom: 10px;
   }
   .table-card {
     flex: 1;
     .toolbar {
       margin-bottom: 15px;
-      display: flex;
-      gap: 10px;
     }
     .pagination-container {
       margin-top: 20px;
@@ -372,5 +379,8 @@ onMounted(() => {
       justify-content: flex-end;
     }
   }
+}
+.dialog-footer {
+  padding-top: 10px;
 }
 </style>
