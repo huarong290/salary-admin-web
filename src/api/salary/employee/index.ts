@@ -4,6 +4,7 @@ import request from '@/utils/request';
 import type {
   EmployeeAddReqDTO,
   EmployeeEditReqDTO,
+  EmployeeOptionVO,
   EmployeeQueryReqDTO,
   EmployeeVO,
 } from '@/types/salary/employee/employee.ts';
@@ -61,5 +62,15 @@ export function batchDeleteEmployeeApi(ids: (number | string)[], logicalDelete: 
   return request.delete<boolean>(`/salary/employee/delete/batch`, {
     params: { logicalDelete },
     data: ids,
+  });
+}
+
+/**
+ * 获取在职员工简易列表(用于下拉选择)
+ * @param keyword 模糊搜索关键字(姓名/工号)
+ */
+export function listEmployeeOptionsApi(keyword?: string) {
+  return request.get<EmployeeOptionVO[]>(`/salary/employee/listOption`, {
+    params: { keyword },
   });
 }

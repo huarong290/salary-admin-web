@@ -10,6 +10,8 @@ export interface IncomeTypeVO {
   typeCode: string;
   /** 类型名称 (如: 基本工资, 加班费) */
   typeName: string;
+  /** 拼音缩写*/
+  pinyinCode?: string;
   /** 分类 (如: 固定工资, 补贴, 奖金) */
   category?: string;
   /** 收入项说明 */
@@ -36,6 +38,8 @@ export interface IncomeTypeAddReqDTO {
   typeCode: string;
   /** 类型名称 - 必填项 */
   typeName: string;
+  /** 拼音缩写*/
+  pinyinCode?: string;
   /** 分类 */
   category?: string;
   /** 收入项说明 */

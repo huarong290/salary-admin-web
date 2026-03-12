@@ -61,3 +61,13 @@ export interface EmployeeEditReqDTO extends EmployeeAddReqDTO {
   /** 员工ID - 必填项 */
   id: number | string;
 }
+
+/** 员工简易下拉选项对象 (用于 Select 远程搜索) */
+export interface EmployeeOptionVO {
+  /** 员工ID */
+  id: number;
+  /** 员工工号 */
+  employeeCode: string;
+  /** 员工姓名 */
+  employeeName: string;
+}

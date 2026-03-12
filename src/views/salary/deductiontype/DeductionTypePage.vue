@@ -1,3 +1,4 @@
+<!--src/views/salary/deductiontype/DeductionTypePage.vue-->
 <template>
   <div class="app-container">
     <el-card shadow="never" class="search-card">
@@ -5,7 +6,7 @@
         <el-form-item label="关键词" prop="keyword">
           <el-input
             v-model="queryParams.keyword"
-            placeholder="搜索类型编码或名称"
+            placeholder="搜索编码、名称或拼音"
             clearable
             @keyup.enter="handleQuery"
           />
@@ -43,14 +44,26 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
-        <el-table-column label="编码" align="center" prop="typeCode" width="150" />
-        <el-table-column label="扣款名称" align="center" prop="typeName" width="180" />
+        <el-table-column label="编码" align="center" prop="typeCode" width="130" />
+        <el-table-column label="扣款名称" align="center" prop="typeName" width="150" />
+        <el-table-column label="拼音" align="center" prop="pinyinCode" width="100">
+          <template #default="scope">
+            <span style="color: #909399; font-family: monospace">{{ scope.row.pinyinCode }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="分类" align="center" prop="category" width="120" />
+        <el-table-column label="固定扣款" align="center" prop="isFixed" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.isFixed === 1 ? 'success' : 'info'">
+              {{ scope.row.isFixed === 1 ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="排序值" align="center" prop="sortValue" width="80" />
         <el-table-column label="说明" align="center" prop="description" show-overflow-tooltip />
         <el-table-column label="创建时间" align="center" prop="createTime" width="170" />
 
-        <el-table-column label="操作" align="center" width="180" fixed="right">
+        <el-table-column label="操作" align="center" width="150" fixed="right">
           <template #default="scope">
             <el-button
               v-hasPerm="['salary:deductionType:edit']"
@@ -96,15 +109,45 @@
         <el-form-item label="类型编码" prop="typeCode">
           <el-input
             v-model="form.typeCode"
-            placeholder="如: TAX (全局唯一)"
+            placeholder="建议格式：DED_业务缩写 (如: DED_TAX)"
             :disabled="!!form.id"
           />
         </el-form-item>
         <el-form-item label="扣款名称" prop="typeName">
-          <el-input v-model="form.typeName" placeholder="如: 个人所得税" />
+          <el-input
+            v-model="form.typeName"
+            placeholder="如: 养老保险"
+            @input="handleTypeNameInput"
+          />
+        </el-form-item>
+        <el-form-item label="拼音缩写" prop="pinyinCode">
+          <el-input v-model="form.pinyinCode" placeholder="自动生成或手动修改" />
         </el-form-item>
         <el-form-item label="分类" prop="category">
-          <el-input v-model="form.category" placeholder="如: 法定扣款" />
+          <el-select
+            v-model="form.category"
+            placeholder="请选择分类"
+            style="width: 100%"
+            filterable
+            allow-create
+          >
+            <el-option label="五险一金" value="五险一金" />
+            <el-option label="考勤扣除" value="考勤扣除" />
+            <el-option label="行政罚款" value="行政罚款" />
+            <el-option label="个人所得税" value="个人所得税" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="固定扣款" prop="isFixed">
+          <el-switch
+            v-model="form.isFixed"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="是"
+            inactive-text="否"
+          />
+          <span style="color: #999; font-size: 12px; margin-left: 10px"
+            >(固定扣款将自动每月带入)</span
+          >
         </el-form-item>
         <el-form-item label="排序值" prop="sortValue">
           <el-input-number
@@ -133,6 +176,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
+import { pinyin } from 'pinyin-pro'; // 🌟 引入拼音库
 import type {
   DeductionTypeQueryReqDTO,
   DeductionTypeVO,
@@ -195,8 +239,28 @@ const handleSelectionChange = (selection: DeductionTypeVO[]) => {
   multiple.value = !selection.length;
 };
 
+// 🌟 自动生成拼音
+const handleTypeNameInput = (val: string) => {
+  // 仅在新增模式下自动填充
+  if (!form.value.id) {
+    // 1. 生成拼音缩写 (如: JCGZ)
+    const shortPinyin = pinyin(val, { pattern: 'first', toneType: 'none' })
+      .replace(/\s+/g, '')
+      .toUpperCase();
+    form.value.pinyinCode = shortPinyin;
+
+    // 2. 自动拼装业务编码
+    // 注意：这里判断一下，如果用户已经手动改了前缀后面的内容，就不覆盖了
+    form.value.typeCode = `DED_${shortPinyin}`;
+  }
+};
+
 const handleAdd = () => {
-  form.value = { sortValue: 99 };
+  form.value = {
+    typeCode: 'DED_', // 🌟 预设扣款项前缀
+    sortValue: 99999,
+    isFixed: 0, // 默认非固定
+  };
   dialog.title = '新增扣款类型';
   dialog.visible = true;
 };
@@ -216,18 +280,22 @@ const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      const submitData = {
+        id: form.value.id,
+        typeCode: form.value.typeCode,
+        typeName: form.value.typeName,
+        pinyinCode: form.value.pinyinCode, // 🌟 传参
+        category: form.value.category,
+        isFixed: form.value.isFixed, // 🌟 传参
+        sortValue: form.value.sortValue,
+        description: form.value.description,
+      };
+
       if (form.value.id) {
-        await editDeductionTypeApi({
-          id: form.value.id,
-          typeCode: form.value.typeCode,
-          typeName: form.value.typeName,
-          category: form.value.category,
-          sortValue: form.value.sortValue,
-          description: form.value.description,
-        });
+        await editDeductionTypeApi(submitData);
         ElMessage.success('修改成功');
       } else {
-        await addDeductionTypeApi(form.value);
+        await addDeductionTypeApi(submitData);
         ElMessage.success('新增成功');
       }
       dialog.visible = false;

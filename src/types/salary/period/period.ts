@@ -9,7 +9,7 @@ export interface PeriodVO {
   employeeId: number;
   /** 🌟 员工姓名 (动态关联填充，用于前端直观展示) */
   employeeName?: string;
-  /** 在岗月份 (如: 2026-03) */
+  /** 在岗月份  */
   workMonth?: string;
   /** 结算月份 (格式：YYYYMM) */
   settlementMonth: string;
@@ -49,7 +49,7 @@ export interface PeriodAddReqDTO {
   employeeId: number | string;
   /** 在岗月份 */
   workMonth?: string;
-  /** 结算月份 (格式：YYYYMM) - 必填项 */
+  /** 结算月份- 必填项 */
   settlementMonth: string;
   /** 周期开始日期 */
   startDate?: string;

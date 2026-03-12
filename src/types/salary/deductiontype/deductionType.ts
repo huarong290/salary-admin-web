@@ -10,8 +10,12 @@ export interface DeductionTypeVO {
   typeCode: string;
   /** 类型名称 (如: 个人所得税, 社保扣款) */
   typeName: string;
+  /** 拼音缩写*/
+  pinyinCode?: string;
   /** 扣款分类 */
   category?: string;
+  /** 是否固定扣款 */
+  isFixed: number;
   /** 扣款项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) */
@@ -36,8 +40,12 @@ export interface DeductionTypeAddReqDTO {
   typeCode: string;
   /** 类型名称 - 必填项 */
   typeName: string;
+  /** 拼音缩写*/
+  pinyinCode?: string;
   /** 扣款分类 */
   category?: string;
+  /** 是否固定扣款 */
+  isFixed: number;
   /** 扣款项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) - 必填项 */

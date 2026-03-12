@@ -1,3 +1,4 @@
+<!--src/views/salary/period/PeriodPage.vue-->
 <template>
   <div class="app-container">
     <el-card shadow="never" class="search-card">
@@ -29,7 +30,7 @@
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
         <el-button v-hasPerm="['salary:period:add']" type="primary" icon="Plus" @click="handleAdd"
-          >开启新周期</el-button
+          >新增薪资周期</el-button
         >
         <el-button
           v-hasPerm="['salary:period:del']"
@@ -54,7 +55,13 @@
             <el-tag type="success">{{ scope.row.settlementMonth }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="在岗月份" align="center" prop="workMonth" width="120" />
+        <el-table-column label="在岗月份" align="center" prop="workMonth" width="120">
+          <template #default="scope">
+            <el-tag :type="Number(scope.row.workMonth) >= 12 ? 'success' : 'info'" effect="plain">
+              {{ scope.row.workMonth || 0 }} 个月
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="开始日期" align="center" prop="startDate" width="120" />
         <el-table-column label="结束日期" align="center" prop="endDate" width="120" />
         <el-table-column label="自然天数" align="center" prop="monthDays" width="90" />
@@ -106,12 +113,29 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-row>
           <el-col :span="12">
-            <el-form-item label="员工ID" prop="employeeId">
-              <el-input
+            <el-form-item label="员工姓名" prop="employeeId">
+              <el-select
                 v-model="form.employeeId"
-                placeholder="请输入员工ID"
-                :disabled="!!form.id"
-              />
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入姓名或工号搜索"
+                :remote-method="remoteSearchEmployees"
+                :loading="searchLoading"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in employeeOptions"
+                  :key="item.id"
+                  :label="item.employeeName"
+                  :value="item.id"
+                >
+                  <div class="flex-justify-between">
+                    <span>{{ item.employeeName }}</span>
+                    <span style="color: #999; font-size: 12px">{{ item.employeeCode }}</span>
+                  </div>
+                </el-option>
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -122,6 +146,7 @@
                 placeholder="如: 202603"
                 value-format="YYYYMM"
                 style="width: 100%"
+                @change="handleMonthChange"
               />
             </el-form-item>
           </el-col>
@@ -129,13 +154,15 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="在岗月份" prop="workMonth">
-              <el-date-picker
+              <el-input-number
                 v-model="form.workMonth"
-                type="month"
-                placeholder="如: 2026-03"
-                value-format="YYYY-MM"
+                :min="0"
+                :precision="0"
+                placeholder="在岗月份"
+                controls-position="right"
                 style="width: 100%"
               />
+              <span style="margin-left: 8px; color: #909399">个月</span>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -158,8 +185,7 @@
             <el-form-item label="自然天数" prop="monthDays">
               <el-input-number
                 v-model="form.monthDays"
-                :min="0"
-                :max="31"
+                disabled
                 controls-position="right"
                 style="width: 100%"
               />
@@ -200,6 +226,8 @@ import {
   editPeriodApi,
   getPeriodPageApi,
 } from '@/api/salary/period/period.ts';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
+import { listEmployeeOptionsApi } from '@/api/salary/employee';
 
 const loading = ref(false);
 const total = ref(0);
@@ -214,10 +242,12 @@ const dialog = reactive({ visible: false, title: '' });
 const form = ref<any>({});
 const formRef = ref<FormInstance>();
 const queryFormRef = ref<FormInstance>();
-
+const searchLoading = ref(false);
+const employeeOptions = ref<EmployeeOptionVO[]>([]);
 const rules = reactive<FormRules>({
   employeeId: [{ required: true, message: '员工ID不能为空', trigger: 'blur' }],
   settlementMonth: [{ required: true, message: '结算月份不能为空', trigger: 'change' }],
+  workMonth: [{ required: true, message: '在岗月份不能为空', trigger: 'blur' }], // 必填校验
 });
 
 const getList = async () => {
@@ -246,26 +276,83 @@ const handleSelectionChange = (selection: PeriodVO[]) => {
   selectedIds.value = selection.map((item) => item.id);
   multiple.value = !selection.length;
 };
+import dayjs from 'dayjs';
 
-const handleDateRangeChange = (val: any) => {
+/** * 1. 周期范围改变时的联动逻辑 (核心计算器)
+ * 职责：负责根据 [start, end] 计算天数并更新表单
+ */
+const handleDateRangeChange = (val: [string, string] | null) => {
   if (val && val.length === 2) {
-    form.value.startDate = val[0];
-    form.value.endDate = val[1];
+    const [startStr, endStr] = val;
+    const start = dayjs(startStr);
+    const end = dayjs(endStr);
+
+    // 同步表单日期字段
+    form.value.startDate = startStr;
+    form.value.endDate = endStr;
+
+    // 计算自然天数 (结束 - 开始 + 1)
+    const days = end.diff(start, 'day') + 1;
+    form.value.monthDays = days > 0 ? days : 0;
+
+    // 预设出勤天数（用户可后续手动微调）
+    if (form.value.monthDays > 0) {
+      // 这里的逻辑可以根据公司规定微调，比如默认给 22 天或全满
+      form.value.attendanceDays = form.value.monthDays;
+    }
   } else {
+    // 清空逻辑
     form.value.startDate = undefined;
     form.value.endDate = undefined;
+    form.value.monthDays = 0;
+    form.value.attendanceDays = 0;
   }
 };
 
+/** * 2. 监听结算月份变化
+ * 职责：负责根据月份生成对应的日期范围，然后交给上面的计算器处理
+ */
+const handleMonthChange = (val: string) => {
+  if (!val) {
+    dateRange.value = [];
+    handleDateRangeChange(null);
+    return;
+  }
+
+  // 解析 YYYYMM 格式 (例如 202603)
+  const monthStr = val.substring(0, 4) + '-' + val.substring(4, 6);
+  const monthDate = dayjs(monthStr);
+
+  // 获取该月第一天和最后一天
+  const range: [string, string] = [
+    monthDate.startOf('month').format('YYYY-MM-DD'),
+    monthDate.endOf('month').format('YYYY-MM-DD'),
+  ];
+
+  // 更新 UI 上的日期范围选择器
+  dateRange.value = range;
+
+  // 🌟 核心点：复用日期范围改变的逻辑，触发天数计算
+  handleDateRangeChange(range);
+};
 const handleAdd = () => {
   form.value = {};
   dateRange.value = [];
   dialog.title = '开启薪资周期';
   dialog.visible = true;
 };
-
+/** 修改 handleUpdate 时需要回显姓名 */
 const handleUpdate = (row: PeriodVO) => {
   form.value = { ...row };
+  // 关键：修改时下拉框需要显示当前员工姓名，必须手动构造一个 option
+  employeeOptions.value = [
+    {
+      id: row.employeeId,
+      employeeName: row.employeeName,
+      employeeCode: '', // 如果没有可传空
+    } as EmployeeOptionVO,
+  ];
+  // 处理日期范围回显
   if (row.startDate && row.endDate) {
     dateRange.value = [row.startDate, row.endDate];
   } else {
@@ -285,24 +372,34 @@ const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      if (form.value.id) {
-        await editPeriodApi({
-          id: form.value.id,
-          employeeId: form.value.employeeId,
-          settlementMonth: form.value.settlementMonth,
-          workMonth: form.value.workMonth,
-          startDate: form.value.startDate,
-          endDate: form.value.endDate,
-          monthDays: form.value.monthDays,
-          attendanceDays: form.value.attendanceDays,
-        });
-        ElMessage.success('修改成功');
-      } else {
-        await addPeriodApi(form.value);
-        ElMessage.success('新增成功');
+      // 1. 核心修复：手动提取字段，剔除多余的 createTime, updateTime, employeeName 等
+      // 这能解决后端 "Unrecognized field" 的报错
+      const params: any = {
+        id: form.value.id,
+        employeeId: form.value.employeeId,
+        settlementMonth: form.value.settlementMonth,
+        // 确保 workMonth 是字符串格式的数字
+        workMonth: form.value.workMonth !== undefined ? String(form.value.workMonth) : '',
+        startDate: form.value.startDate,
+        endDate: form.value.endDate,
+        monthDays: form.value.monthDays,
+        attendanceDays: form.value.attendanceDays,
+      };
+
+      try {
+        if (params.id) {
+          await editPeriodApi(params);
+          ElMessage.success('修改成功');
+        } else {
+          await addPeriodApi(params);
+          ElMessage.success('新增成功');
+        }
+        dialog.visible = false;
+        await getList();
+      } catch (error) {
+        // 接口报错时，Element-Plus 的拦截器通常会处理，这里可以做额外逻辑
+        console.error('提交失败：', error);
       }
-      dialog.visible = false;
-      await getList();
     }
   });
 };
@@ -325,6 +422,24 @@ const handleBatchDelete = () => {
       getList();
     })
     .catch(() => {});
+};
+/** 远程搜索员工 */
+const remoteSearchEmployees = async (query: string) => {
+  if (query) {
+    searchLoading.value = true;
+    try {
+      const res = await listEmployeeOptionsApi(query);
+      // 注意：根据你的 ApiResult 封装，这里可能需要 res.data 或直接 res
+      employeeOptions.value = res as unknown as EmployeeOptionVO[];
+    } catch (error) {
+      employeeOptions.value = [];
+      console.error('获取周期列表失败:', error);
+    } finally {
+      searchLoading.value = false;
+    }
+  } else {
+    employeeOptions.value = [];
+  }
 };
 
 onMounted(() => {
