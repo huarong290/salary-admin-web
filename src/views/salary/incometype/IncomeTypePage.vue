@@ -20,14 +20,14 @@
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
         <el-button
-          v-hasPerm="['salary:incomeType:add']"
+          v-hasPerm="['salary:income_type:add']"
           type="primary"
           icon="Plus"
           @click="handleAdd"
           >新增类型</el-button
         >
         <el-button
-          v-hasPerm="['salary:incomeType:del']"
+          v-hasPerm="['salary:income_type:del']"
           type="danger"
           icon="Delete"
           :disabled="multiple"
@@ -60,7 +60,7 @@
         <el-table-column label="操作" align="center" width="180" fixed="right">
           <template #default="scope">
             <el-button
-              v-hasPerm="['salary:incomeType:edit']"
+              v-hasPerm="['salary:income_type:edit']"
               link
               type="primary"
               icon="Edit"
@@ -68,7 +68,7 @@
               >修改</el-button
             >
             <el-button
-              v-hasPerm="['salary:incomeType:del']"
+              v-hasPerm="['salary:income_type:del']"
               link
               type="danger"
               icon="Delete"
