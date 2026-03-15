@@ -693,6 +693,7 @@ const handleDetail = async (row: SalaryArchiveVO) => {
     const res = await getArchiveDetailApi(row.id);
     detailDrawer.data = res;
   } catch (error) {
+    console.error('获取档案详情失败:', error); // 只要用了这个变量，警告就会消失
     // request.ts 里的 ElMessage 会自动弹错，这里只需关闭抽屉
     detailDrawer.visible = false;
   } finally {
