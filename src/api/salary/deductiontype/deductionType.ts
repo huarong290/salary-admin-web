@@ -4,6 +4,7 @@ import request from '@/utils/request';
 import type {
   DeductionTypeAddReqDTO,
   DeductionTypeEditReqDTO,
+  DeductionTypeOptionVO,
   DeductionTypeQueryReqDTO,
   DeductionTypeVO,
 } from '@/types/salary/deductiontype/deductionType.ts';
@@ -39,4 +40,8 @@ export function batchDeleteDeductionTypeApi(
     params: { logicalDelete },
     data: ids,
   });
+}
+/** 获取扣款类型下拉列表 (新增) */
+export function getDeductionTypeOptionsApi() {
+  return request.get<DeductionTypeOptionVO[]>(`/salary/deduction-type/listOptions`);
 }

@@ -4,6 +4,7 @@ import request from '@/utils/request';
 import type {
   IncomeTypeAddReqDTO,
   IncomeTypeEditReqDTO,
+  IncomeTypeOptionVO,
   IncomeTypeQueryReqDTO,
   IncomeTypeVO,
 } from '@/types/salary/incometype/incomeType.ts';
@@ -36,4 +37,9 @@ export function batchDeleteIncomeTypeApi(ids: (number | string)[], logicalDelete
     params: { logicalDelete },
     data: ids,
   });
+}
+
+/** 获取收入类型下拉列表 (新增) */
+export function getIncomeTypeOptionsApi() {
+  return request.get<IncomeTypeOptionVO[]>(`/salary/income-type/listOptions`);
 }

@@ -9,7 +9,7 @@ export interface ArchiveItemDTO {
   /** 项目类型: 1-收入项, 2-扣款项 */
   itemType: number;
   /** 对应字典项ID (收入类型或扣款类型ID) */
-  typeId: number;
+  typeId?: number;
   /** 🌟 项目名称 (如：全勤奖、社保扣款) */
   typeName?: string;
   /** 项目编码 (如：ATTENDANCE_BONUS) */

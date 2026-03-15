@@ -45,9 +45,12 @@
             <el-tag type="info">V{{ scope.row.version }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="基本工资" align="center" prop="baseSalary" width="120">
+        <el-table-column label="基本工资" align="center" prop="baseSalary" width="150">
           <template #default="scope">
             <span style="color: #f56c6c; font-weight: bold">{{ scope.row.baseSalary }}</span>
+            <span style="margin-left: 4px; font-size: 12px; color: #909399">
+              {{ scope.row.currency || 'CNY' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="生效日期" align="center" prop="effectiveDate" width="120" />
@@ -70,8 +73,18 @@
           prop="changeReason"
           show-overflow-tooltip
         />
-        <el-table-column label="操作" align="center" width="220" fixed="right">
+        <el-table-column label="操作" align="center" width="260" fixed="right">
           <template #default="scope">
+            <el-button
+              v-if="scope.row.isLatest === 1 && scope.row.auditStatus === 0"
+              v-hasPerm="['salary:archive:audit']"
+              link
+              type="warning"
+              icon="Stamp"
+              @click="handleAudit(scope.row)"
+              >审核</el-button
+            >
+
             <el-button
               v-if="scope.row.isLatest === 1"
               v-hasPerm="['salary:archive:edit']"
@@ -81,9 +94,11 @@
               @click="handleAdjust(scope.row)"
               >调薪</el-button
             >
+
             <el-button link type="info" icon="View" @click="handleDetail(scope.row)"
               >详情</el-button
             >
+
             <el-button
               v-if="scope.row.isLatest === 1 && scope.row.auditStatus === 0"
               v-hasPerm="['salary:archive:revoke']"
@@ -162,12 +177,21 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="基本工资" prop="baseSalary">
-              <el-input-number
-                v-model="form.baseSalary"
-                :min="0"
-                :precision="2"
-                style="width: 100%"
-              />
+              <div class="flex-align-center" style="width: 100%">
+                <el-input-number
+                  v-model="form.baseSalary"
+                  :min="0"
+                  :precision="form.currency === 'USDT' ? 4 : 2"
+                  :controls="false"
+                  style="flex: 1"
+                  placeholder="请输入基本工资"
+                />
+                <el-select v-model="form.currency" style="width: 90px; margin-left: 5px">
+                  <el-option label="CNY" value="CNY" />
+                  <el-option label="USDT" value="USDT" />
+                  <el-option label="USD" value="USD" />
+                </el-select>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -246,12 +270,14 @@
                 <el-input-number
                   v-model="scope.row.amount"
                   :min="0"
-                  :precision="2"
+                  :precision="form.currency === 'USDT' ? 4 : 2"
                   :controls="false"
                   size="small"
                   style="width: 100%"
                 />
-                <span style="margin-left: 5px">元</span>
+                <span style="margin-left: 5px; font-size: 12px; color: #909399">{{
+                  form.currency || 'CNY'
+                }}</span>
               </div>
               <div v-else class="flex-align-center">
                 <el-input-number
@@ -263,7 +289,7 @@
                   size="small"
                   style="width: 100%"
                 />
-                <span style="margin-left: 5px">(如0.08)</span>
+                <span style="margin-left: 5px; font-size: 12px; color: #909399">(如0.08)</span>
               </div>
             </template>
           </el-table-column>
@@ -286,6 +312,39 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="auditDialog.visible" title="薪资档案审核" width="500px" append-to-body>
+      <el-form :model="auditForm" label-width="100px">
+        <el-form-item label="审核结果">
+          <el-radio-group v-model="auditForm.auditStatus">
+            <el-radio :label="1">通过 (生效)</el-radio>
+            <el-radio :label="2">驳回</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item
+          label="审核备注"
+          :prop="auditForm.auditStatus === 2 ? 'remark' : ''"
+          :rules="
+            auditForm.auditStatus === 2
+              ? { required: true, message: '驳回时必须填写原因', trigger: 'blur' }
+              : []
+          "
+        >
+          <el-input
+            v-model="auditForm.remark"
+            type="textarea"
+            placeholder="请输入审核意见或驳回原因"
+            :rows="3"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitAudit">确 定</el-button>
+          <el-button @click="auditDialog.visible = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -300,17 +359,17 @@ import type {
   ArchiveAddReqDTO,
   ArchiveQueryReqDTO,
   SalaryArchiveVO,
+  ArchiveAuditDTO, // 🌟 修改点：引入审核类型定义
 } from '@/types/salary/archive/archive.ts';
 import {
   getArchivePageApi,
   getCurrentArchiveApi,
   revokeLatestVersionApi,
   saveOrAdjustArchiveApi,
+  auditArchiveApi, // 🌟 修改点：引入审核接口
 } from '@/api/salary/archive/archive.ts';
-import {
-  getDeductionTypeListApi,
-  getIncomeTypeListApi,
-} from '@/api/salary/archiveitem/archiveItem.ts';
+import { getIncomeTypeOptionsApi } from '@/api/salary/incometype/incomeType.ts';
+import { getDeductionTypeOptionsApi } from '@/api/salary/deductiontype/deductionType.ts';
 
 const loading = ref(false);
 const total = ref(0);
@@ -320,12 +379,21 @@ const dataList = ref<SalaryArchiveVO[]>([]);
 // 表单与弹窗
 const dialog = reactive({ visible: false, title: '' });
 const formRef = ref<FormInstance>();
-const isAdjusting = ref(false); // 标识是"调薪"(true) 还是 "新员工定薪"(false)
+const isAdjusting = ref(false);
 const queryFormRef = ref<FormInstance>();
-// 数据模型声明时，确保 items 至少是个空数组
-const form = ref<ArchiveAddReqDTO>({
+
+// 🌟 修改点：定义审核相关的响应式数据
+const auditDialog = reactive({ visible: false });
+const auditForm = reactive<ArchiveAuditDTO>({
+  id: '',
+  auditStatus: 1, // 默认通过
+  remark: '',
+});
+
+const form = ref<ArchiveAddReqDTO & { currency?: string }>({
   employeeId: '',
   baseSalary: 0,
+  currency: 'CNY',
   effectiveDate: '',
   items: [],
 });
@@ -333,7 +401,6 @@ const form = ref<ArchiveAddReqDTO>({
 const searchLoading = ref(false);
 const employeeOptions = ref<EmployeeOptionVO[]>([]);
 
-// 字典数据存储
 const incomeOptions = ref<any[]>([]);
 const deductionOptions = ref<any[]>([]);
 
@@ -344,14 +411,22 @@ const rules = reactive<FormRules>({
 });
 
 // ================== 数据加载 ==================
+// 1. 确保 getList 调用时参数是干净的
 const getList = async () => {
   loading.value = true;
   try {
-    const res = await getArchivePageApi(queryParams);
+    // 明确传递参数，避免 queryParams 中包含多余的 undefined 字段
+    const res = await getArchivePageApi({
+      pageNum: queryParams.pageNum,
+      pageSize: queryParams.pageSize,
+      keyword: queryParams.keyword || '',
+      isLatest: queryParams.isLatest,
+    });
     dataList.value = res.records || [];
     total.value = res.total || 0;
   } catch (error) {
-    console.error(error);
+    // 这样如果报错了，你能直接在控制台看到是哪个接口挂了
+    console.error('加载列表异常:', error);
   } finally {
     loading.value = false;
   }
@@ -367,18 +442,15 @@ const resetQuery = () => {
   handleQuery();
 };
 
-/** 加载字典数据 */
 const loadDicts = async () => {
   try {
-    // 假设后端返回的数据格式包含 id 和 typeName
-    incomeOptions.value = (await getIncomeTypeListApi()) || [];
-    deductionOptions.value = (await getDeductionTypeListApi()) || [];
+    incomeOptions.value = (await getIncomeTypeOptionsApi()) || [];
+    deductionOptions.value = (await getDeductionTypeOptionsApi()) || [];
   } catch (error) {
     console.warn('未获取到字典数据，请检查接口配置error', error);
   }
 };
 
-/** 远程搜索员工 */
 const remoteSearchEmployees = async (query: string) => {
   if (query) {
     searchLoading.value = true;
@@ -393,14 +465,44 @@ const remoteSearchEmployees = async (query: string) => {
   }
 };
 
-// ================== 表单操作交互 ==================
+// ================== 审核逻辑 (🌟 新增部分) ==================
 
-/** 1. 新入职员工定薪 */
+/** 处理审核点击 */
+const handleAudit = (row: SalaryArchiveVO) => {
+  auditForm.id = row.id;
+  auditForm.auditStatus = 1; // 默认通过
+  auditForm.remark = '';
+  auditDialog.visible = true;
+};
+
+/** 提交审核结果 */
+const submitAudit = async () => {
+  if (!auditForm.id) return;
+
+  // 驳回时强制检查备注
+  if (auditForm.auditStatus === 2 && !auditForm.remark) {
+    ElMessage.warning('驳回时必须填写审核备注');
+    return;
+  }
+
+  try {
+    await auditArchiveApi(auditForm);
+    ElMessage.success('审核处理成功');
+    auditDialog.visible = false;
+    getList(); // 刷新列表，看到最新的已生效/已驳回状态
+  } catch (error) {
+    console.error('审核失败', error);
+  }
+};
+
+// ================== 定薪/调薪操作交互 ==================
+
 const handleAdd = () => {
   isAdjusting.value = false;
   form.value = {
     employeeId: '',
     baseSalary: 0,
+    currency: 'CNY',
     effectiveDate: '',
     changeReason: '入职定薪',
     items: [],
@@ -409,26 +511,22 @@ const handleAdd = () => {
   dialog.visible = true;
 };
 
-/** 2. 老员工调薪 (核心回显逻辑) */
 const handleAdjust = async (row: SalaryArchiveVO) => {
   isAdjusting.value = true;
   dialog.title = '员工调薪';
 
-  // 构造员工下拉框以便回显
   employeeOptions.value = [
     { id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode },
   ];
 
   try {
-    // 拉取该员工当前的明细
     const currentData = await getCurrentArchiveApi(row.employeeId);
-
-    // 将老版本数据填充到表单 (由于是新版本，不要带id，生效日期置空让用户重选)
     form.value = {
       employeeId: currentData.employeeId,
       baseSalary: currentData.baseSalary,
+      currency: currentData.currency || 'CNY',
       probationBaseSalary: currentData.probationBaseSalary,
-      effectiveDate: '', // 调薪必须选未来的新日期
+      effectiveDate: '',
       changeReason: '年度调薪',
       items: currentData.items
         ? currentData.items.map((item) => ({
@@ -442,23 +540,24 @@ const handleAdjust = async (row: SalaryArchiveVO) => {
     };
     dialog.visible = true;
   } catch (error) {
-    ElMessage.error('获取当前薪资档案失败error', error);
+    const msg = error instanceof Error ? error.message : String(error);
+    ElMessage.error('获取当前薪资档案失败: ' + msg);
+    console.error(error);
   }
 };
 
-/** 动态表格：添加明细行 */
 const addItem = (itemType: number) => {
   if (!form.value.items) form.value.items = [];
+  // 显式定义新增项的结构
   form.value.items.push({
-    itemType: itemType, // 1或2
+    itemType: itemType,
     typeId: undefined,
-    calcType: 1, // 默认固定金额
+    calcType: 1,
     amount: 0,
     ratio: 0,
   });
 };
 
-/** 动态表格：移除明细行 */
 const removeItem = (index: number) => {
   form.value.items.splice(index, 1);
 };
@@ -468,12 +567,10 @@ const cancel = () => {
   formRef.value?.resetFields();
 };
 
-/** 提交表单 (新增或调薪都是调同一个接口) */
 const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      // 在这里可以做一下 items 的校验，例如 typeId 不能为空
       const invalidItem = form.value.items.find((i) => !i.typeId);
       if (invalidItem) {
         ElMessage.warning('明细项目中存在未选择类型的记录，请检查');
@@ -494,11 +591,9 @@ const submitForm = async () => {
 
 // ================== 列表操作 ==================
 const handleDetail = (row: SalaryArchiveVO) => {
-  // 此处可结合路由跳转或侧边栏抽屉展示完整详情，暂用提醒代替
   ElMessage.info(`查看详情：可调用 getArchiveDetailApi(${row.id}) 并展示在抽屉中`);
 };
 
-/** 撤销未生效的最新调薪 */
 const handleRevoke = (row: SalaryArchiveVO) => {
   ElMessageBox.confirm(`由于此调薪记录尚未审核生效，是否确认将其撤销回滚至上一版本?`, '风险警告', {
     type: 'warning',
@@ -515,11 +610,12 @@ const handleRevoke = (row: SalaryArchiveVO) => {
 
 onMounted(() => {
   getList();
-  loadDicts(); // 页面初始化加载字典数据
+  loadDicts();
 });
 </script>
 
 <style scoped lang="scss">
+/* 保持原有样式不变 */
 .app-container {
   display: flex;
   flex-direction: column;

@@ -57,3 +57,12 @@ export interface DeductionTypeEditReqDTO extends DeductionTypeAddReqDTO {
   /** 主键ID - 必填项 */
   id: number | string;
 }
+/** 扣款类型下拉选项返回对象 (用于表单下拉选择) */
+export interface DeductionTypeOptionVO {
+  /** 主键ID */
+  id: number;
+  /** 类型名称 (如: 个人所得税) */
+  typeName: string;
+  /** 类型编码 (如: TAX) */
+  typeCode: string;
+}

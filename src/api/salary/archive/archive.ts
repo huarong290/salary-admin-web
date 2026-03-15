@@ -2,6 +2,7 @@
 
 import type {
   ArchiveAddReqDTO,
+  ArchiveAuditDTO,
   ArchiveQueryReqDTO,
   SalaryArchiveVO,
 } from '@/types/salary/archive/archive.ts';
@@ -46,4 +47,11 @@ export function getArchiveDetailApi(archiveId: number | string) {
  */
 export function revokeLatestVersionApi(employeeId: number | string) {
   return request.delete<boolean>(`/salary/archive/revoke/${employeeId}`);
+}
+/**
+ * 审核薪资档案
+ * (由具有权限的人员对待审核版本进行通过或驳回操作)
+ */
+export function auditArchiveApi(data: ArchiveAuditDTO) {
+  return request.post<boolean>(`/salary/archive/audit`, data);
 }

@@ -54,3 +54,13 @@ export interface IncomeTypeEditReqDTO extends IncomeTypeAddReqDTO {
   id: number | string;
   /** 💡 注意：修改时同样会校验 typeCode 的全局唯一性 */
 }
+
+/** 收入类型下拉选项返回对象 (用于表单下拉选择) */
+export interface IncomeTypeOptionVO {
+  /** 主键ID */
+  id: number;
+  /** 类型名称 (如: 基本工资) */
+  typeName: string;
+  /** 类型编码 (如: BASE) */
+  typeCode: string;
+}

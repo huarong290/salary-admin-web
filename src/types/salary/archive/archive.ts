@@ -70,3 +70,13 @@ export interface ArchiveAddReqDTO {
   /** 🌟 薪资项明细列表 - 包含新增的收入与扣款配置 */
   items: ArchiveItemDTO[];
 }
+
+/** 🌟 薪资档案审核请求参数 (处理版本生效/驳回) */
+export interface ArchiveAuditDTO {
+  /** 薪资档案主键ID - 必填项 */
+  id: number | string;
+  /** 审核状态结果: 1-审核通过(生效), 2-审核驳回 - 必填项 */
+  auditStatus: number;
+  /** 审核意见或驳回原因 (驳回时建议必填) */
+  remark?: string;
+}
