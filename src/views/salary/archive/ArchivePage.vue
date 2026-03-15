@@ -345,6 +345,84 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-drawer
+      v-model="detailDrawer.visible"
+      title="薪资档案版本详情"
+      size="650px"
+      destroy-on-close
+    >
+      <div v-loading="detailDrawer.loading" style="padding: 0 10px">
+        <el-descriptions title="基础薪资配置" :column="2" border>
+          <el-descriptions-item label="员工姓名">{{
+            detailDrawer.data.employeeName
+          }}</el-descriptions-item>
+          <el-descriptions-item label="员工工号">{{
+            detailDrawer.data.employeeCode
+          }}</el-descriptions-item>
+          <el-descriptions-item label="版本号">
+            <el-tag size="small" effect="dark">V{{ detailDrawer.data.version }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="生效日期">{{
+            detailDrawer.data.effectiveDate
+          }}</el-descriptions-item>
+          <el-descriptions-item label="基本工资">
+            <span style="font-weight: bold; color: #f56c6c">
+              {{ detailDrawer.data.baseSalary }} {{ detailDrawer.data.currency }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="detailDrawer.data.auditStatus === 1 ? 'success' : 'warning'">
+              {{ detailDrawer.data.auditStatus === 1 ? '已生效' : '待审核' }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <h4 style="margin: 20px 0 10px 0; border-left: 4px solid #409eff; padding-left: 10px">
+          薪资构成明细
+        </h4>
+        <el-table :data="detailDrawer.data.items" border stripe size="small">
+          <el-table-column label="明细项目" prop="itemName" />
+          <el-table-column label="类型" align="center" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.itemType === 1 ? 'success' : 'danger'">
+                {{ scope.row.itemType === 1 ? '收入' : '扣款' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="金额/比例" align="right">
+            <template #default="scope">
+              <span
+                v-if="scope.row.calcType === 1"
+                :style="{ color: scope.row.itemType === 1 ? '#67c23a' : '#f56c6c' }"
+              >
+                {{ scope.row.amount }}
+              </span>
+              <span v-else style="color: #409eff"
+                >{{ (scope.row.ratio * 100).toFixed(2) }}% (按基数)</span
+              >
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px">
+          <p><strong>调薪原因：</strong>{{ detailDrawer.data.changeReason || '无' }}</p>
+          <p style="margin-top: 10px">
+            <strong>档案备注：</strong>{{ detailDrawer.data.remark || '无' }}
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDrawer.visible = false">关闭</el-button>
+        <el-button
+          v-if="detailDrawer.data.auditStatus === 0"
+          v-hasPerm="['salary:archive:audit']"
+          type="primary"
+          @click="handleAudit(detailDrawer.data)"
+          >去审核</el-button
+        >
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -366,7 +444,8 @@ import {
   getCurrentArchiveApi,
   revokeLatestVersionApi,
   saveOrAdjustArchiveApi,
-  auditArchiveApi, // 🌟 修改点：引入审核接口
+  auditArchiveApi,
+  getArchiveDetailApi, // 🌟 修改点：引入审核接口
 } from '@/api/salary/archive/archive.ts';
 import { getIncomeTypeOptionsApi } from '@/api/salary/incometype/incomeType.ts';
 import { getDeductionTypeOptionsApi } from '@/api/salary/deductiontype/deductionType.ts';
@@ -397,7 +476,11 @@ const form = ref<ArchiveAddReqDTO & { currency?: string }>({
   effectiveDate: '',
   items: [],
 });
-
+const detailDrawer = reactive({
+  visible: false,
+  loading: false,
+  data: {} as SalaryArchiveVO, // 建议根据接口返回定义具体的 DTO 类型
+});
 const searchLoading = ref(false);
 const employeeOptions = ref<EmployeeOptionVO[]>([]);
 
@@ -598,8 +681,23 @@ const submitForm = async () => {
 };
 
 // ================== 列表操作 ==================
-const handleDetail = (row: SalaryArchiveVO) => {
-  ElMessage.info(`查看详情：可调用 getArchiveDetailApi(${row.id}) 并展示在抽屉中`);
+/**
+ * 查看详情
+ * 完善后的逻辑：开启抽屉 -> 请求聚合接口 -> 渲染主表+明细
+ */
+const handleDetail = async (row: SalaryArchiveVO) => {
+  detailDrawer.visible = true;
+  detailDrawer.loading = true;
+  try {
+    // 这里的 res 直接就是 SalaryArchiveVO 类型，因为 request.ts 拦截器处理了 res.data
+    const res = await getArchiveDetailApi(row.id);
+    detailDrawer.data = res;
+  } catch (error) {
+    // request.ts 里的 ElMessage 会自动弹错，这里只需关闭抽屉
+    detailDrawer.visible = false;
+  } finally {
+    detailDrawer.loading = false;
+  }
 };
 
 const handleRevoke = (row: SalaryArchiveVO) => {
@@ -659,5 +757,26 @@ onMounted(() => {
 .flex-align-center {
   display: flex;
   align-items: center;
+}
+
+.detail-container {
+  padding: 10px;
+  .salary-amount {
+    font-weight: bold;
+    color: #409eff;
+  }
+  .section-title {
+    margin: 25px 0 15px 0;
+    padding-left: 10px;
+    border-left: 4px solid #409eff;
+  }
+  .footer-info {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
 }
 </style>
