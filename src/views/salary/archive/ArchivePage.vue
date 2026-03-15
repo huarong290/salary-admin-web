@@ -512,15 +512,24 @@ const handleAdd = () => {
 };
 
 const handleAdjust = async (row: SalaryArchiveVO) => {
+  // 1. 安全校验：确保 row 存在且有员工 ID
+  if (!row || !row.employeeId) {
+    ElMessage.warning('无法获取员工信息，请重试');
+    return;
+  }
   isAdjusting.value = true;
   dialog.title = '员工调薪';
-
+  // 回显下拉框选项
   employeeOptions.value = [
     { id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode },
   ];
 
   try {
     const currentData = await getCurrentArchiveApi(row.employeeId);
+    // 🚩 核心调整：判断 res 是否为空（后端可能返回 null 或 data 为空）
+    if (!currentData) {
+      throw new Error('未找到该员工的生效薪资档案');
+    }
     form.value = {
       employeeId: currentData.employeeId,
       baseSalary: currentData.baseSalary,
@@ -528,15 +537,14 @@ const handleAdjust = async (row: SalaryArchiveVO) => {
       probationBaseSalary: currentData.probationBaseSalary,
       effectiveDate: '',
       changeReason: '年度调薪',
-      items: currentData.items
-        ? currentData.items.map((item) => ({
-            itemType: item.itemType,
-            typeId: item.typeId,
-            calcType: item.calcType,
-            amount: item.amount,
-            ratio: item.ratio,
-          }))
-        : [],
+      // 🚩 处理 items 列表，增加空数组容错
+      items: (currentData.items || []).map((item) => ({
+        itemType: item.itemType,
+        typeId: item.typeId,
+        calcType: item.calcType,
+        amount: item.amount,
+        ratio: item.ratio,
+      })),
     };
     dialog.visible = true;
   } catch (error) {
