@@ -65,6 +65,8 @@ export interface ArchiveAddReqDTO {
   currency?: string;
   /** 调薪原因 */
   changeReason?: string;
+  /** 档案版本 */
+  version: number;
   /** 档案备注 */
   remark?: string;
   /** 🌟 薪资项明细列表 - 包含新增的收入与扣款配置 */

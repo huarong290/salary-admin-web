@@ -205,7 +205,18 @@
             </el-form-item>
           </el-col>
         </el-row>
-
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="版本号" prop="version">
+              <el-input v-model="form.version" placeholder="如: 版本号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="档案备注" prop="remark">
+              <el-input v-model="form.remark" placeholder="如: 档案备注" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <div class="section-title flex-justify-between">
           <span>薪资明细项</span>
           <div>
@@ -371,6 +382,9 @@
           <el-descriptions-item label="生效日期">{{
             detailDrawer.data.effectiveDate
           }}</el-descriptions-item>
+          <el-descriptions-item label="失效日期">{{
+            detailDrawer.data.expiryDate
+          }}</el-descriptions-item>
           <el-descriptions-item label="基本工资">
             <span style="font-weight: bold; color: #f56c6c">
               {{ detailDrawer.data.baseSalary }} {{ detailDrawer.data.currency }}
@@ -387,7 +401,7 @@
           薪资构成明细
         </h4>
         <el-table :data="detailDrawer.data.items" border stripe size="small">
-          <el-table-column label="明细项目" prop="itemName" />
+          <el-table-column label="明细项目" prop="typeName" />
           <el-table-column label="类型" align="center" width="100">
             <template #default="scope">
               <el-tag :type="scope.row.itemType === 1 ? 'success' : 'danger'">
