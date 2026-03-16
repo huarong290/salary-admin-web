@@ -56,8 +56,11 @@
         <el-table-column label="生效日期" align="center" prop="effectiveDate" width="120" />
         <el-table-column label="审核状态" align="center" prop="auditStatus" width="100">
           <template #default="{ row }">
-            <el-tag :type="ARCHIVE_STATUS[row.auditStatus]?.tagType">
-              {{ ARCHIVE_STATUS[row.auditStatus]?.text }}
+            <el-tag
+              :type="getArchiveStatus(row.auditStatus).tagType"
+              :effect="getVersionStatus(row.auditStatus).effect"
+            >
+              {{ getArchiveStatus(row.auditStatus).text }}
             </el-tag>
           </template>
         </el-table-column>
@@ -65,10 +68,10 @@
         <el-table-column label="是否最新" align="center" prop="isLatest" width="100">
           <template #default="{ row }">
             <el-tag
-              :type="VERSION_STATUS[row.isLatest]?.type"
-              :effect="VERSION_STATUS[row.isLatest]?.effect"
+              :type="getVersionStatus(row.isLatest).type"
+              :effect="getVersionStatus(row.isLatest).effect"
             >
-              {{ VERSION_STATUS[row.isLatest]?.text }}
+              {{ getVersionStatus(row.isLatest).text }}
             </el-tag>
           </template>
         </el-table-column>
@@ -493,6 +496,8 @@ const form = ref<ArchiveAddReqDTO & { currency?: string }>({
   baseSalary: 0,
   currency: 'CNY',
   effectiveDate: '',
+  version: 0,
+  remark: '',
   items: [],
 });
 const detailDrawer = reactive({
@@ -511,17 +516,33 @@ const rules = reactive<FormRules>({
   effectiveDate: [{ required: true, message: '生效日期不能为空', trigger: 'change' }],
   baseSalary: [{ required: true, message: '基本工资不能为空', trigger: 'blur' }],
 });
-// 1. 统一薪资档案状态配置，并显式指定键类型为 [key: number]
+// ================== 字典状态配置与防雷转换 ==================
+
+// 1. 统一薪资档案状态配置，显式指定类型
 const ARCHIVE_STATUS: Record<number, { text: string; tagType: string }> = {
   0: { text: '待审核', tagType: 'warning' },
   1: { text: '已生效', tagType: 'success' },
   2: { text: '已驳回', tagType: 'danger' },
 };
 
-// 统一版本状态配置
-const VERSION_STATUS = {
+// 2. 统一版本状态配置，参考 ARCHIVE_STATUS 显式指定类型
+// 注意：Element Plus 的 effect 属性有严格的字面量类型，这里我们写标准一点
+const VERSION_STATUS: Record<
+  number,
+  { text: string; type: string; effect: 'dark' | 'light' | 'plain' }
+> = {
   1: { text: '最新', type: 'success', effect: 'dark' },
   0: { text: '历史', type: 'info', effect: 'plain' },
+};
+
+// 3. 封装 Getter 函数供 template 安全调用，彻底消除 TS 索引报错并提供兜底
+const getArchiveStatus = (status: any) => {
+  // 转为 Number 进行安全匹配，匹配不到则返回灰色兜底状态
+  return ARCHIVE_STATUS[Number(status)] || { text: '未知状态', tagType: 'info' };
+};
+
+const getVersionStatus = (isLatest: any) => {
+  return VERSION_STATUS[Number(isLatest)] || { text: '未知', type: 'info', effect: 'plain' };
 };
 // ================== 数据加载 ==================
 // 1. 确保 getList 调用时参数是干净的
@@ -621,6 +642,8 @@ const handleAdd = () => {
     baseSalary: 0,
     currency: 'CNY',
     effectiveDate: '',
+    version: 0,
+    remark: '',
     changeReason: '入职定薪',
     items: [],
   };
@@ -654,6 +677,8 @@ const handleAdjust = async (row: SalaryArchiveVO) => {
       probationBaseSalary: currentData.probationBaseSalary,
       effectiveDate: '',
       changeReason: '年度调薪',
+      version: currentData.version,
+      remark: currentData.remark,
       // 🚩 处理 items 列表，增加空数组容错
       items: (currentData.items || []).map((item) => ({
         itemType: item.itemType,
