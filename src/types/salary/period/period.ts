@@ -66,3 +66,22 @@ export interface PeriodEditReqDTO extends PeriodAddReqDTO {
   /** 周期ID - 必填项 */
   id: number | string;
 }
+
+/** 薪资周期简易下拉选项对象 */
+export interface PeriodOptionVO {
+  /** 周期ID (备用) */
+  id?: number | string;
+  /** 展示文本 (如：2026-03) */
+  label: string;
+  /** 实际值 (如：202603) */
+  value: string;
+}
+/** 批量初始化薪资周期请求参数 */
+export interface PeriodBatchInitReqDTO {
+  /** 结算月份 (格式：YYYYMM，必填) */
+  settlementMonth: string;
+  /** 在岗月份 (格式：YYYY-MM，可选) */
+  workMonth?: string;
+  /** 备注 */
+  remark?: string;
+}

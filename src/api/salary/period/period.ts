@@ -2,7 +2,9 @@
 import request from '@/utils/request';
 import type {
   PeriodAddReqDTO,
+  PeriodBatchInitReqDTO,
   PeriodEditReqDTO,
+  PeriodOptionVO,
   PeriodQueryReqDTO,
   PeriodVO,
 } from '@/types/salary/period/period.ts';
@@ -53,4 +55,19 @@ export function batchDeletePeriodApi(ids: (number | string)[], logicalDelete: bo
     params: { logicalDelete },
     data: ids,
   });
+}
+
+/**
+ * 获取去重后的结算月份列表 (下拉框使用)
+ */
+export function getPeriodOptionsApi() {
+  return request.get<PeriodOptionVO[]>(`/salary/period/listOption`);
+}
+
+/**
+ * 批量初始化薪资周期
+ * (根据在职员工名单，一键生成指定月份的薪资周期及汇总记录)
+ */
+export function batchInitPeriodApi(data: PeriodBatchInitReqDTO) {
+  return request.post<boolean>(`/salary/period/batch-init`, data);
 }
