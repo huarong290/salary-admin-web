@@ -37,7 +37,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="dataList" border>
+      <el-table v-loading="loading" :data="dataList" border height="100%">
         <el-table-column label="工号" align="center" prop="employeeCode" width="120" />
         <el-table-column label="姓名" align="center" prop="employeeName" width="120" />
         <el-table-column label="版本号" align="center" prop="version" width="80">
@@ -55,16 +55,21 @@
         </el-table-column>
         <el-table-column label="生效日期" align="center" prop="effectiveDate" width="120" />
         <el-table-column label="审核状态" align="center" prop="auditStatus" width="100">
-          <template #default="scope">
-            <el-tag v-if="scope.row.auditStatus === 0" type="warning">待审核</el-tag>
-            <el-tag v-else-if="scope.row.auditStatus === 1" type="success">已生效</el-tag>
-            <el-tag v-else type="danger">已驳回</el-tag>
+          <template #default="{ row }">
+            <el-tag :type="ARCHIVE_STATUS[row.auditStatus]?.tagType">
+              {{ ARCHIVE_STATUS[row.auditStatus]?.text }}
+            </el-tag>
           </template>
         </el-table-column>
+
         <el-table-column label="是否最新" align="center" prop="isLatest" width="100">
-          <template #default="scope">
-            <el-tag v-if="scope.row.isLatest === 1" type="success" effect="dark">最新</el-tag>
-            <el-tag v-else type="info" effect="plain">历史</el-tag>
+          <template #default="{ row }">
+            <el-tag
+              :type="VERSION_STATUS[row.isLatest]?.type"
+              :effect="VERSION_STATUS[row.isLatest]?.effect"
+            >
+              {{ VERSION_STATUS[row.isLatest]?.text }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column
@@ -372,8 +377,8 @@
             </span>
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="detailDrawer.data.auditStatus === 1 ? 'success' : 'warning'">
-              {{ detailDrawer.data.auditStatus === 1 ? '已生效' : '待审核' }}
+            <el-tag :type="ARCHIVE_STATUS[detailDrawer.data.auditStatus]?.tagType">
+              {{ ARCHIVE_STATUS[detailDrawer.data.auditStatus]?.text }}
             </el-tag>
           </el-descriptions-item>
         </el-descriptions>
@@ -464,7 +469,7 @@ const queryFormRef = ref<FormInstance>();
 // 🌟 修改点：定义审核相关的响应式数据
 const auditDialog = reactive({ visible: false });
 const auditForm = reactive<ArchiveAuditDTO>({
-  id: '',
+  id: 0,
   auditStatus: 1, // 默认通过
   remark: '',
 });
@@ -492,7 +497,18 @@ const rules = reactive<FormRules>({
   effectiveDate: [{ required: true, message: '生效日期不能为空', trigger: 'change' }],
   baseSalary: [{ required: true, message: '基本工资不能为空', trigger: 'blur' }],
 });
+// 1. 统一薪资档案状态配置，并显式指定键类型为 [key: number]
+const ARCHIVE_STATUS: Record<number, { text: string; tagType: string }> = {
+  0: { text: '待审核', tagType: 'warning' },
+  1: { text: '已生效', tagType: 'success' },
+  2: { text: '已驳回', tagType: 'danger' },
+};
 
+// 统一版本状态配置
+const VERSION_STATUS = {
+  1: { text: '最新', type: 'success', effect: 'dark' },
+  0: { text: '历史', type: 'info', effect: 'plain' },
+};
 // ================== 数据加载 ==================
 // 1. 确保 getList 调用时参数是干净的
 const getList = async () => {
@@ -572,7 +588,11 @@ const submitAudit = async () => {
     await auditArchiveApi(auditForm);
     ElMessage.success('审核处理成功');
     auditDialog.visible = false;
-    getList(); // 刷新列表，看到最新的已生效/已驳回状态
+    await getList();
+    // 🌟 完美同步：不仅刷新列表，如果详情开着，同步刷新详情内容
+    if (detailDrawer.visible && detailDrawer.data.id === auditForm.id) {
+      handleDetail({ id: auditForm.id });
+    }
   } catch (error) {
     console.error('审核失败', error);
   }
@@ -683,18 +703,20 @@ const submitForm = async () => {
 // ================== 列表操作 ==================
 /**
  * 查看详情
- * 完善后的逻辑：开启抽屉 -> 请求聚合接口 -> 渲染主表+明细
+ * 完美兼容：开启抽屉 -> 请求聚合接口 -> 渲染主表+明细 支持传入整行 row 对象，也支持单独传入 id 数字
  */
-const handleDetail = async (row: SalaryArchiveVO) => {
+const handleDetail = async (data: SalaryArchiveVO | { id: number } | number) => {
   detailDrawer.visible = true;
   detailDrawer.loading = true;
   try {
-    // 这里的 res 直接就是 SalaryArchiveVO 类型，因为 request.ts 拦截器处理了 res.data
-    const res = await getArchiveDetailApi(row.id);
+    // 🌟 修正点：提取 ID 的逻辑
+    const archiveId = typeof data === 'number' ? data : data.id;
+
+    // 调用接口
+    const res = await getArchiveDetailApi(archiveId);
     detailDrawer.data = res;
   } catch (error) {
-    console.error('获取档案详情失败:', error); // 只要用了这个变量，警告就会消失
-    // request.ts 里的 ElMessage 会自动弹错，这里只需关闭抽屉
+    console.error('获取档案详情失败:', error);
     detailDrawer.visible = false;
   } finally {
     detailDrawer.loading = false;
@@ -722,26 +744,13 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-/* 保持原有样式不变 */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+/* 布局样式已由全局接管 */
+:deep(.el-tag) {
+  min-width: 65px;
+  text-align: center;
 }
-.search-card .el-form-item {
-  margin-bottom: 0;
-}
-.table-card {
-  flex: 1;
-  .toolbar {
-    margin-bottom: 15px;
-  }
-  .pagination-container {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
-}
+/* ================= 页面专属业务样式 ================= */
+
 .section-title {
   font-size: 15px;
   font-weight: bold;

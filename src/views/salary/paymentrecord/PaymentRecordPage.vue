@@ -27,7 +27,7 @@
     </el-card>
 
     <el-card shadow="never" class="table-card">
-      <el-table v-loading="loading" :data="recordList" border>
+      <el-table v-loading="loading" :data="recordList" border height="100%">
         <el-table-column label="员工姓名" align="center" prop="employeeName" width="120" />
         <el-table-column label="底薪" align="center" prop="baseSalary" width="120" />
         <el-table-column label="应发合计" align="center" prop="incomeTotal" width="110">
@@ -195,7 +195,9 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* 布局样式已由全局接管 */
+/* 保留你原有的文字颜色类 */
 .text-success {
   color: #67c23a;
   font-weight: bold;
@@ -203,8 +205,5 @@ onMounted(() => {
 .text-danger {
   color: #f56c6c;
   font-weight: bold;
-}
-.search-card {
-  margin-bottom: 15px;
 }
 </style>

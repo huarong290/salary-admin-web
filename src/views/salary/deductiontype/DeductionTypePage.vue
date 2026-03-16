@@ -335,24 +335,48 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+/* 1. 最外层容器：限制总高度，填满屏幕 */
 .app-container {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  /* 🌟 核心：100vh 是屏幕高度，84px 是顶部导航栏+标签页的预估高度。
+     如果保存后发现页面最外侧还有一点点滚动条，把 84px 改大一点（如 100px、120px）即可 */
+  height: calc(100vh - 84px);
+  box-sizing: border-box;
 }
+/* 2. 搜索卡片：高度由内容撑开，不允许被挤压 */
 .search-card {
+  flex-shrink: 0;
   .el-form-item {
     margin-bottom: 0;
   }
 }
+/* 3. 表格卡片：占据剩下的所有空间 */
 .table-card {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 防止内部元素过大撑破卡片 */
+  /* 🌟 核心技巧：穿透修改 el-card 的内部包裹层，让其也成为 flex 容器 */
+  :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* 修复 element-plus 默认 padding 导致的高度计算微小偏差 */
+    box-sizing: border-box;
+  }
+  /* 操作按钮区域：固定高度，不被压缩 */
   .toolbar {
-    margin-bottom: 15px;
+    flex-shrink: 0;
+    margin-bottom: 20px;
     display: flex;
     gap: 10px;
   }
+  /* 4. 分页器区域：固定在最底部，不被压缩 */
   .pagination-container {
+    flex-shrink: 0;
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;

@@ -10,6 +10,10 @@ export interface SummaryVO {
   periodId: number;
 
   /* ================== 🌟 扩展显示字段 ================== */
+  /** 员工Id (动态关联查询填充) */
+  employeeId?: number;
+  /** 员工code (动态关联查询填充) */
+  employeeCode?: string;
   /** 员工姓名 (动态关联查询填充) */
   employeeName?: string;
   /** 结算月份 (如: 202603，动态关联查询填充) */
@@ -50,17 +54,19 @@ export interface SummaryVO {
 /** 分页查询薪资汇总单请求参数 */
 export interface SummaryQueryReqDTO extends PageQuery {
   /** 指定查询的薪资周期ID */
-  periodId?: number | string;
+  periodId?: number;
   /** 结算月份 (如: 202603) */
   settlementMonth?: string;
   /** 员工ID (用于查询某员工的历史工资单) */
-  employeeId?: number | string;
+  employeeId?: number;
 }
 
 /** 🚨 触发薪资计算请求参数 (核心计算引擎入口) */
 export interface SummaryCalcReqDTO {
   /** 需要进行结算的薪资周期ID - 必填项 */
-  periodId: number | string;
+  periodId: number;
+  /** 结算月份 (如: 202603) */
+  settlementMonth?: string;
   /** 手工备注 (如: 2026年3月特殊结算) */
   remark?: string;
 }

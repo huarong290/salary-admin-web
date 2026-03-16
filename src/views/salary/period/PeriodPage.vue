@@ -447,29 +447,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.search-card {
-  .el-form-item {
-    margin-bottom: 0;
-  }
-}
-.table-card {
-  flex: 1;
-  .toolbar {
-    margin-bottom: 15px;
-    display: flex;
-    gap: 10px;
-  }
-  .pagination-container {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
-}
+/* 布局样式已由全局接管 */
+
 .flex-justify-between {
   display: flex;
   justify-content: space-between;

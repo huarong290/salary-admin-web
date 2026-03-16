@@ -7,6 +7,8 @@ export interface PeriodVO {
   id: number;
   /** 员工ID (关联 salary_employee) */
   employeeId: number;
+  /** 🌟 员工code (动态关联填充，用于前端直观展示) */
+  employeeCode?: string;
   /** 🌟 员工姓名 (动态关联填充，用于前端直观展示) */
   employeeName?: string;
   /** 在岗月份  */
@@ -69,13 +71,18 @@ export interface PeriodEditReqDTO extends PeriodAddReqDTO {
 
 /** 薪资周期简易下拉选项对象 */
 export interface PeriodOptionVO {
-  /** 周期ID (备用) */
+  /** 周期ID */
   id?: number | string;
-  /** 展示文本 (如：2026-03) */
-  label: string;
-  /** 实际值 (如：202603) */
-  value: string;
+  /** 在岗月份 (展示文本，如：2026-03) */
+  workMonth: string;
+  /** 结算月份 (实际存入值，如：202603) */
+  settlementMonth: string;
+  /** 周期开始日期 (可选展示) */
+  startDate?: string;
+  /** 周期结束日期 (可选展示) */
+  endDate?: string;
 }
+
 /** 批量初始化薪资周期请求参数 */
 export interface PeriodBatchInitReqDTO {
   /** 结算月份 (格式：YYYYMM，必填) */

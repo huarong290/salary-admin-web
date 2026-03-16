@@ -40,6 +40,7 @@
         v-loading="loading"
         :data="dataList"
         border
+        height="100%"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -311,28 +312,5 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-/* 样式与 Employee 完全一致，保持极简复用 */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.search-card {
-  .el-form-item {
-    margin-bottom: 0;
-  }
-}
-.table-card {
-  flex: 1;
-  .toolbar {
-    margin-bottom: 15px;
-    display: flex;
-    gap: 10px;
-  }
-  .pagination-container {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
-}
+/* 布局样式已由 src/styles/_layout.scss 全局接管 */
 </style>

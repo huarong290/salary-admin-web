@@ -12,3 +12,6 @@
 
 // 3. 第三方组件覆盖
 @use './element.scss';
+
+// 4. 全局页面布局规范 (🌟 新增)
+@use './layout.scss';

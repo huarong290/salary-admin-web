@@ -54,6 +54,7 @@
         v-loading="loading"
         :data="dataList"
         border
+        height="100%"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" />
@@ -93,16 +94,16 @@
               type="primary"
               icon="Edit"
               @click="handleUpdate(scope.row)"
-              >修改</el-button
-            >
+              >修改
+            </el-button>
             <el-button
               v-hasPerm="['salary:employee:del']"
               link
               type="danger"
               icon="Delete"
               @click="handleDelete(scope.row)"
-              >删除</el-button
-            >
+              >删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -133,7 +134,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span style="font-size: 18px; font-weight: bold">{{ dialog.title }}</span>
           <el-button link @click="toggleFullscreen">
-            <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
+            <el-icon>
+              <FullScreen v-if="!isFullscreen" />
+              <Minus v-else />
+            </el-icon>
           </el-button>
         </div>
       </template>
@@ -360,26 +364,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  .search-card {
-    margin-bottom: 10px;
-  }
-  .table-card {
-    flex: 1;
-    .toolbar {
-      margin-bottom: 15px;
-    }
-    .pagination-container {
-      margin-top: 20px;
-      display: flex;
-      justify-content: flex-end;
-    }
-  }
-}
+/* 布局样式已由全局接管 */
+
 .dialog-footer {
   padding-top: 10px;
 }

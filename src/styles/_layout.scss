@@ -1,0 +1,61 @@
+// src/styles/_layout.scss
+// ==========================================
+// 📐 全局企业级 Flex 布局 (高度自适应表格页)
+// 说明：适用于“顶部搜索 + 中间表格 + 底部分页”的标准页面
+// ==========================================
+
+.app-container {
+  padding: 20px; /* 统一全局内边距 */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  /* 统一计算页面高度，若个别页面有差异可在单页面覆盖 */
+  height: calc(100vh - 84px);
+
+  /* --- 1. 搜索条件区 --- */
+  .search-card {
+    flex-shrink: 0;
+    .el-form-item {
+      margin-bottom: 0;
+    }
+  }
+
+  /* --- 2. 主体表格区 --- */
+  .table-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    /* 全局生效：让卡片 body 也变成 flex 容器 */
+    .el-card__body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* 顶部操作栏 */
+    .toolbar {
+      flex-shrink: 0;
+      margin-bottom: 15px;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* 核心：让表格填满剩余空间 */
+    .el-table {
+      flex: 1;
+    }
+
+    /* 底部分页器 */
+    .pagination-container {
+      flex-shrink: 0;
+      margin-top: 15px;
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
