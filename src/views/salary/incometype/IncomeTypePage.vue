@@ -47,10 +47,10 @@
         <el-table-column label="编码" align="center" prop="typeCode" width="150" />
         <el-table-column label="收入名称" align="center" prop="typeName" width="180" />
         <el-table-column label="拼音缩写" align="center" prop="pinyinCode" width="180" />
-        <el-table-column label="分类" align="center" prop="category" width="120">
+        <el-table-column label="分类" align="center" prop="categoryName" width="120">
           <template #default="scope">
             <el-tag :type="scope.row.category === '固定工资' ? '' : 'warning'">
-              {{ scope.row.category }}
+              {{ scope.row.categoryName }}
             </el-tag>
           </template>
         </el-table-column>
@@ -120,7 +120,7 @@
         </el-form-item>
         <el-form-item label="分类" prop="category">
           <el-select
-            v-model="form.category"
+            v-model="form.categoryName"
             placeholder="请选择分类"
             style="width: 100%"
             filterable

@@ -13,7 +13,7 @@ export interface IncomeTypeVO {
   /** 拼音缩写*/
   pinyinCode?: string;
   /** 分类 (如: 固定工资, 补贴, 奖金) */
-  category?: string;
+  categoryName?: string;
   /** 收入项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) */
@@ -41,7 +41,7 @@ export interface IncomeTypeAddReqDTO {
   /** 拼音缩写*/
   pinyinCode?: string;
   /** 分类 */
-  category?: string;
+  categoryName?: string;
   /** 收入项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) - 必填项 */

@@ -43,7 +43,7 @@ export interface DeductionTypeAddReqDTO {
   /** 拼音缩写*/
   pinyinCode?: string;
   /** 扣款分类 */
-  category?: string;
+  categoryName?: string;
   /** 是否固定扣款 */
   isFixed: number;
   /** 扣款项说明 */

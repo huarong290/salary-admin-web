@@ -51,7 +51,7 @@
             <span style="color: #909399; font-family: monospace">{{ scope.row.pinyinCode }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="分类" align="center" prop="category" width="120" />
+        <el-table-column label="分类" align="center" prop="categoryName" width="120" />
         <el-table-column label="固定扣款" align="center" prop="isFixed" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.isFixed === 1 ? 'success' : 'info'">
@@ -123,9 +123,9 @@
         <el-form-item label="拼音缩写" prop="pinyinCode">
           <el-input v-model="form.pinyinCode" placeholder="自动生成或手动修改" />
         </el-form-item>
-        <el-form-item label="分类" prop="category">
+        <el-form-item label="分类" prop="categoryName">
           <el-select
-            v-model="form.category"
+            v-model="form.categoryName"
             placeholder="请选择分类"
             style="width: 100%"
             filterable
@@ -285,7 +285,7 @@ const submitForm = async () => {
         typeCode: form.value.typeCode,
         typeName: form.value.typeName,
         pinyinCode: form.value.pinyinCode, // 🌟 传参
-        category: form.value.category,
+        categoryName: form.value.categoryName,
         isFixed: form.value.isFixed, // 🌟 传参
         sortValue: form.value.sortValue,
         description: form.value.description,
