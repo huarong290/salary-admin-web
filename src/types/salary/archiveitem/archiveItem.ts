@@ -12,6 +12,8 @@ export interface ArchiveItemDTO {
   typeId?: number;
   /** 🌟 项目名称 (如：全勤奖、社保扣款) */
   typeName?: string;
+  /** 🌟业务分类名称 */
+  categoryName?: string;
   /** 项目编码 (如：ATTENDANCE_BONUS) */
   typeCode?: string;
   /** 计算方式: 1-固定金额, 2-按基数比例 */

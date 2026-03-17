@@ -102,27 +102,40 @@
         </el-table-column>
         <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100" />
         <el-table-column label="应发总计(本币)" align="center" prop="salarySubtotal" width="130">
-          <template #default="scope">
-            <span style="color: #67c23a; font-weight: bold">{{ scope.row.salarySubtotal }}</span>
+          <template #default="{ row }">
+            <span class="text-success">
+              {{ Number(row.salarySubtotal) === 0 ? '0' : '+' + row.salarySubtotal }}
+            </span>
           </template>
         </el-table-column>
+
         <el-table-column
           label="应扣总计(本币)"
           align="center"
           prop="salaryDeductionTotal"
           width="130"
         >
-          <template #default="scope">
-            <span style="color: #f56c6c; font-weight: bold">{{
-              scope.row.salaryDeductionTotal
-            }}</span>
+          <template #default="{ row }">
+            <span class="text-danger">
+              {{ Number(row.salaryDeductionTotal) === 0 ? '0' : '-' + row.salaryDeductionTotal }}
+            </span>
           </template>
         </el-table-column>
+
         <el-table-column label="本币实发金额" align="center" prop="salaryTotal" width="130">
-          <template #default="scope">
-            <span style="color: #409eff; font-weight: bold">{{ scope.row.salaryTotal }}</span>
+          <template #default="{ row }">
+            <span style="color: #409eff; font-weight: bold">{{ row.salaryTotal }}</span>
           </template>
         </el-table-column>
+
+        <el-table-column label="支付状态" align="center" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-tag :type="getPayStatus(row.paymentStatus).type">
+              {{ getPayStatus(row.paymentStatus).text }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
         <el-table-column label="结算币种" align="center" prop="currency" width="90" />
         <el-table-column label="折合人民币" align="center" prop="salaryRmb" width="120" />
         <el-table-column label="折合 USDT" align="center" prop="salaryUsdt" width="120" />
@@ -268,7 +281,20 @@ const calcFormRef = ref<FormInstance>();
 const calcRules = reactive<FormRules>({
   settlementMonth: [{ required: true, message: '请选择要核算的结算月份', trigger: 'change' }],
 });
+// ================== 状态字典与防雷转换 ==================
 
+// 1. 统一支付状态字典配置
+const PAY_STATUS: Record<number, { text: string; type: string }> = {
+  0: { text: '未支付', type: 'info' },
+  1: { text: '已支付', type: 'success' },
+  2: { text: '支付失败', type: 'danger' },
+  3: { text: '账户锁定', type: 'warning' },
+};
+
+// 2. 封装 Getter 函数供 template 安全调用
+const getPayStatus = (status: any) => {
+  return PAY_STATUS[Number(status)] || { text: '未知状态', type: 'info' };
+};
 // ================== 数据加载 ==================
 
 const getList = async () => {

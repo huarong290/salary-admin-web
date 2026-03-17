@@ -1,4 +1,3 @@
-<!--src/views/salary/paymentrecord/PaymentRecordPage.vue-->
 <template>
   <div class="app-container">
     <el-card shadow="never" class="search-card">
@@ -19,6 +18,16 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="结算月份">
+          <el-date-picker
+            v-model="queryParams.settlementMonth"
+            type="month"
+            placeholder="选择月份"
+            value-format="YYYY-MM"
+            clearable
+            @change="handleQuery"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -28,18 +37,32 @@
 
     <el-card shadow="never" class="table-card">
       <el-table v-loading="loading" :data="recordList" border height="100%">
-        <el-table-column label="员工姓名" align="center" prop="employeeName" width="120" />
+        <el-table-column
+          label="员工姓名"
+          align="center"
+          prop="employeeName"
+          width="120"
+          fixed="left"
+        />
+        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100" />
         <el-table-column label="底薪" align="center" prop="baseSalary" width="120" />
+
         <el-table-column label="应发合计" align="center" prop="incomeTotal" width="110">
           <template #default="scope">
-            <span class="text-success">+{{ scope.row.incomeTotal }}</span>
+            <span class="text-success">
+              {{ Number(scope.row.incomeTotal) === 0 ? '0' : '+' + scope.row.incomeTotal }}
+            </span>
           </template>
         </el-table-column>
+
         <el-table-column label="应扣合计" align="center" prop="deductionTotal" width="110">
           <template #default="scope">
-            <span class="text-danger">-{{ scope.row.deductionTotal }}</span>
+            <span class="text-danger">
+              {{ Number(scope.row.deductionTotal) === 0 ? '0' : '-' + scope.row.deductionTotal }}
+            </span>
           </template>
         </el-table-column>
+
         <el-table-column label="实发金额" align="center" prop="finalSalary" width="130">
           <template #default="scope">
             <b style="color: #409eff">{{ scope.row.finalSalary }}</b>
@@ -80,21 +103,85 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="snapshotDialog.visible" title="核算详情快照 (不可篡改依据)" width="550px">
-      <el-descriptions border :column="1">
-        <el-descriptions-item label="底薪金额">{{ currentRecord.baseSalary }}</el-descriptions-item>
+    <el-dialog
+      v-model="snapshotDialog.visible"
+      :title="`薪资核算凭证快照 - ${currentRecord.employeeName}`"
+      width="850px"
+    >
+      <el-descriptions border :column="3" size="small" style="margin-bottom: 15px">
+        <el-descriptions-item label="员工姓名">
+          <b style="color: #303133">{{ currentRecord.employeeName }}</b>
+        </el-descriptions-item>
+        <el-descriptions-item label="结算月份">
+          <el-tag size="small" type="primary" effect="light">
+            {{ currentRecord.settlementMonth || '当期' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="汇总批次ID">
+          <span style="color: #909399">{{ currentRecord.summaryId }}</span>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="档案标准底薪">
+          <span style="font-weight: bold; color: #409eff">{{
+            snapshotData.baseSalary || '0.00'
+          }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="当月计薪天数">
+          {{ snapshotData.monthDays || '0' }} 天
+        </el-descriptions-item>
+        <el-descriptions-item label="实际出勤天数">
+          <span
+            :style="{
+              color:
+                Number(snapshotData.attendanceDays) < Number(snapshotData.monthDays)
+                  ? '#f56c6c'
+                  : '#67c23a',
+              fontWeight: 'bold',
+            }"
+          >
+            {{ snapshotData.attendanceDays || '0' }} 天
+          </span>
+        </el-descriptions-item>
       </el-descriptions>
-      <el-table :data="snapshotItems" border style="margin-top: 15px">
-        <el-table-column prop="itemName" label="项目名称" />
-        <el-table-column label="类型" width="80">
+
+      <el-table :data="snapshotItems" border stripe max-height="450">
+        <el-table-column prop="itemName" label="明细项目" width="140" show-overflow-tooltip />
+        <el-table-column prop="category" label="分类" width="100" align="center">
           <template #default="scope">
-            {{ scope.row.itemType === 1 ? '收入' : '扣款' }}
+            <el-tag size="small" type="info">{{ scope.row.category || '未分类' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额">
+        <el-table-column label="收支" width="70" align="center">
+          <template #default="scope">
+            <el-tag
+              :type="scope.row.itemType === 1 ? 'success' : 'danger'"
+              effect="dark"
+              size="small"
+            >
+              {{ scope.row.itemType === 1 ? '收入' : '扣款' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="amount" label="核算金额" width="110" align="right">
           <template #default="scope">
             <span :class="scope.row.itemType === 1 ? 'text-success' : 'text-danger'">
-              {{ scope.row.itemType === 1 ? '+' : '-' }}{{ scope.row.amount }}
+              {{
+                Number(scope.row.amount) === 0
+                  ? '0'
+                  : (scope.row.itemType === 1 ? '+' : '-') + scope.row.amount
+              }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="formula"
+          label="计算依据 (公式 / 来源说明)"
+          min-width="260"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <span style="color: #606266; font-family: monospace; font-size: 13px">
+              {{ scope.row.formula }}
             </span>
           </template>
         </el-table-column>
@@ -144,7 +231,8 @@ const queryParams = reactive<any>({
 
 // 快照弹窗控制
 const snapshotDialog = reactive({ visible: false });
-const snapshotItems = ref([]);
+const snapshotData = ref<any>({}); // 🌟 新增：存放顶部的出勤与底薪对象
+const snapshotItems = ref<any[]>([]); // 存放明细数组
 const currentRecord = ref<any>({});
 
 // 调整弹窗控制
@@ -172,9 +260,39 @@ const resetQuery = () => {
 
 const handleViewSnapshot = (row: any) => {
   currentRecord.value = row;
-  if (row.detailJson) {
-    snapshotItems.value = JSON.parse(row.detailJson);
+
+  // 🌟 后端已经帮我们解析好了，直接用 parsedSnapshot！
+  if (row.parsedSnapshot) {
+    snapshotData.value = row.parsedSnapshot;
+    snapshotItems.value = row.parsedSnapshot.items || [];
   }
+  // 兼容逻辑：如果后端因为某种原因没传 parsedSnapshot，前端自己 parse 一下 detailJson
+  else if (row.detailJson) {
+    try {
+      const parsedJson =
+        typeof row.detailJson === 'string' ? JSON.parse(row.detailJson) : row.detailJson;
+      snapshotData.value = parsedJson || {};
+      snapshotItems.value = parsedJson.items || [];
+    } catch (error) {
+      // 1. 本地开发调试兜底
+      console.error('【薪资快照解析异常】汇总单数据结构损坏, rowId:', row.id, error);
+
+      // 2. 企业级扩展：如果是生产环境，这里通常会调用全局监控上报工具
+      // 比如：Sentry.captureException(error, { extra: { rowId: row.id, json: row.detailJson } });
+      // 或者：appMonitor.error('SalarySnapshotParseError', error);
+
+      // 3. 优雅降级：保证页面不崩溃，给出安全默认值
+      snapshotData.value = {};
+      snapshotItems.value = [];
+
+      // 4. (可选) 给用户一个友好的轻提示，防止财务对着空白发呆
+      ElMessage.warning('该条明细历史快照数据格式存在异常，部分信息可能无法展示');
+    }
+  } else {
+    snapshotData.value = {};
+    snapshotItems.value = [];
+  }
+
   snapshotDialog.visible = true;
 };
 
