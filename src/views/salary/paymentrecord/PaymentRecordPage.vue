@@ -23,7 +23,7 @@
             v-model="queryParams.settlementMonth"
             type="month"
             placeholder="选择月份"
-            value-format="YYYY-MM"
+            value-format="YYYYMM"
             clearable
             @change="handleQuery"
           />
