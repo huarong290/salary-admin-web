@@ -25,6 +25,8 @@ export interface SalaryArchiveVO {
   auditStatus: number;
   /** 基本工资/转正底薪 */
   baseSalary: number;
+  /** 全勤奖 */
+  fullAttendanceBonus: number;
   /** 试用期底薪 (选填) */
   probationBaseSalary?: number;
   /** 默认结算币种 (如: CNY, USD) */
@@ -57,6 +59,8 @@ export interface ArchiveAddReqDTO {
   employeeId: number | string;
   /** 基本工资/转正底薪 - 必填项 */
   baseSalary: number;
+  /** 全勤奖 */
+  fullAttendanceBonus: number;
   /** 试用期底薪 */
   probationBaseSalary?: number;
   /** 生效起始日期 - 必填项 (YYYY-MM-DD) */

@@ -71,3 +71,12 @@ export function getPeriodOptionsApi() {
 export function batchInitPeriodApi(data: PeriodBatchInitReqDTO) {
   return request.post<boolean>(`/salary/period/batch-init`, data);
 }
+/**
+ * 获取指定员工的结算月份列表 (无分页，级联下拉框专用)
+ * @param employeeId 员工ID
+ */
+export function listPeriodOptionsByEmployeeApi(employeeId: number | string) {
+  return request.get<PeriodOptionVO[]>(`/salary/period/listOptionByEmployee`, {
+    params: { employeeId },
+  });
+}

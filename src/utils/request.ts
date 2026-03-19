@@ -51,9 +51,10 @@ service.interceptors.request.use(
       customConfig.headers['Authorization'] = `${userStore.tokenType} ${userStore.accessToken}`;
     }
 
-    // 上传文件时修改 Content-Type
     if (customConfig.isUpload) {
-      customConfig.headers['Content-Type'] = 'multipart/form-data';
+      // 绝对不能手动写死 'multipart/form-data'
+      // 必须删掉默认的 Content-Type，让浏览器检测到 FormData 后自己生成带 boundary 的完整请求头
+      delete customConfig.headers['Content-Type'];
     }
 
     return config;
@@ -143,6 +144,7 @@ const request = {
   put<T>(url: string, data?: unknown, config?: CustomRequestConfig): Promise<T> {
     return service.put<ApiResult<T>>(url, data, config) as unknown as Promise<T>;
   },
+  // 这里的 config 会完美接收 api.ts 中传来的 { data: ids, params: {...} }
   delete<T>(url: string, config?: CustomRequestConfig): Promise<T> {
     return service.delete<ApiResult<T>>(url, config) as unknown as Promise<T>;
   },

@@ -23,6 +23,8 @@ export interface PeriodVO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 是否满勤 (1:是, 0:否) */
+  fullAttendanceFlag?: number;
   /** 创建时间 */
   createTime?: string;
   /** 更新时间 */
@@ -61,6 +63,8 @@ export interface PeriodAddReqDTO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 是否满勤 (1:是, 0:否) */
+  fullAttendanceFlag?: number;
 }
 
 /** 修改薪资周期请求参数 */

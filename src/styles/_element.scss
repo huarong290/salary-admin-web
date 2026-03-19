@@ -69,3 +69,100 @@ html[data-menu-style='breeze'] {
   background-color: var(--salary-sidebar-bg);
   border-right: var(--salary-sidebar-border);
 }
+
+// ==========================================================================
+// 🎨 全局企业级表格 (el-table) 视觉增强规范
+// 设计理念：严谨、专业、高可读性。通过 CSS 变量深度适配明亮/暗黑主题。
+// ==========================================================================
+
+.el-table {
+  /* 1. 基础排版优化：金融级等宽数字展示 */
+  // 🌟 核心：让所有数字字符宽度一致，方便 HR 在对齐查账时一眼看出金额差异
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+
+  /* 2. 表头 (Header) 深度定制 */
+  :deep(thead th.el-table__cell) {
+    // 使用 Element Plus 官方填充色变量，自动适配 Dark Mode
+    background-color: var(--el-fill-color-light) !important;
+    color: var(--el-text-color-primary);
+    font-weight: 600;
+    height: 48px; // 统一高度，消除因表头文字换行导致的视觉错位
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  /* 3. 布局与边框微调 (配合 _layout.scss 的 Flex 布局) */
+  .el-table__inner-wrapper {
+    height: 100%;
+    // 🌟 细节：移除表格底部冗余的 1px 伪类边框，避免与外层 el-card 边框重叠
+    &::before {
+      display: none;
+    }
+  }
+
+  /* 4. 单元格 (Cell) 呼吸感调整 */
+  .el-table__cell {
+    padding: 8px 0; // 紧凑布局：在有限的高度内展示更多数据行
+  }
+
+  /* 5. 交互与状态反馈优化 */
+  // 🌟 鼠标悬浮行背景色：比普通行稍亮，但不过分抢夺注意力
+  &:not(.el-table--striped) {
+    .el-table__row:hover > td.el-table__cell {
+      background-color: var(--el-fill-color-lighter) !important;
+      transition: background-color 0.25s ease;
+    }
+  }
+
+  // 斑马纹 (Striped) 视觉补强
+  &.el-table--striped {
+    .el-table__row--striped td.el-table__cell {
+      background-color: var(--el-fill-color-lighter);
+    }
+  }
+
+  /* 6. 🌈 菜单风格联动逻辑 (Theme Styles Adaption) */
+
+  // 🚀 场景 A：【柔和呼吸风 (Breeze)】 - 进一步弱化边框，增加空气感
+  html[data-menu-style='breeze'] & {
+    --el-table-border-color: var(--el-border-color-extra-light);
+    // 呼吸风模式下，表头可以稍微调得更淡一些
+    thead th.el-table__cell {
+      background-color: var(--el-fill-color-lighter) !important;
+    }
+  }
+
+  // 🚀 场景 B：【实心高亮风 (Brilliant)】 - 保持标准边界感
+  html[data-menu-style='brilliant'] & {
+    --el-table-border-color: var(--el-border-color-lighter);
+  }
+
+  /* 7. 🌟 适配明暗主题的全局变量覆盖 (兜底保障) */
+  --el-table-header-bg-color: var(--el-fill-color-light);
+  --el-table-row-hover-bg-color: var(--el-fill-color-lighter);
+
+  /* 🔴 异常/危险状态行 (如：非满勤、异常考勤、冻结账户) */
+  .row-theme-danger {
+    --el-table-tr-bg-color: var(--el-color-danger-light-9);
+    // 鼠标悬浮时颜色稍微加深一点点，保持交互感
+    &:hover > td.el-table__cell {
+      background-color: var(--el-color-danger-light-8) !important;
+    }
+  }
+
+  /* 🟠 警告/待办状态行 (如：待审核、临近过期) */
+  .row-theme-warning {
+    --el-table-tr-bg-color: var(--el-color-warning-light-9);
+    &:hover > td.el-table__cell {
+      background-color: var(--el-color-warning-light-8) !important;
+    }
+  }
+
+  /* 🟢 成功/高亮状态行 (如：新入职、今日打卡) */
+  .row-theme-success {
+    --el-table-tr-bg-color: var(--el-color-success-light-9);
+    &:hover > td.el-table__cell {
+      background-color: var(--el-color-success-light-8) !important;
+    }
+  }
+}
