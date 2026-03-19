@@ -192,6 +192,9 @@
 
         <el-table-column label="操作" align="center" width="90" fixed="right">
           <template #default="scope">
+            <el-button link type="primary" icon="Document" @click="handleGoToRecord(scope.row)"
+              >对账明细</el-button
+            >
             <el-button
               v-hasPerm="['salary:summary:del']"
               link
@@ -296,7 +299,8 @@ import type {
   SummaryQueryReqDTO,
   SummaryVO,
 } from '@/types/salary/summary/summary.ts';
-
+import { useRouter } from 'vue-router';
+const router = useRouter();
 /**
  * --------------------------------------------------------------------
  * 📦 一、响应式状态区 (State Management)
@@ -382,7 +386,15 @@ const handleQuickFilter = (row: SummaryVO) => {
   ];
   handleQuery();
 };
-
+/** 🌟 核心打通：跳转到明细页对账 */
+const handleGoToRecord = (row: SummaryVO) => {
+  // 注意：确认你的明细路由路径，通常为 '/salary/record' 或类似路径
+  router.push({
+    // 如果该菜单是子菜单，通常需要带上父级路径，例如 /salary/paymentrecord
+    path: '/salary/paymentrecord',
+    query: { summaryId: row.id }, // 把当前批次ID带过去，那边会自动填充搜索
+  });
+};
 /** 打开核算控制台面板 */
 const handleOpenCalc = () => {
   calcForm.value = { settlementMonth: '', remark: '' };

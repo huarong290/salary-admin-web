@@ -279,7 +279,7 @@
  */
 
 // 1. Vue 与核心依赖
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 // 2. Element Plus 与图标
@@ -348,6 +348,19 @@ const resetQuery = () => {
   handleQuery();
 };
 
+/** 🌟 [新增：路由参数实时监听]
+ * 当 HR 从汇总页面点击不同的批次跳转过来时，确保页面能感知到 summaryId 的变化并自动刷新列表
+ */
+watch(
+  () => route.query.summaryId,
+  (newSummaryId) => {
+    // 只有当路径中确实带有 summaryId 时才触发强制同步
+    if (newSummaryId !== undefined) {
+      queryParams.summaryId = newSummaryId;
+      handleQuery(); // 立即触发后端查询
+    }
+  }
+);
 /**
  * --------------------------------------------------------------------
  * 🧠 三、核心业务与 API 交互区 (Business & API Logic)

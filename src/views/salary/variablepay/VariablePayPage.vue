@@ -8,6 +8,17 @@
 
     <el-card shadow="never" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
+        <el-form-item label="结算月份" prop="settlementMonth">
+          <el-date-picker
+            v-model="queryParams.settlementMonth"
+            type="month"
+            placeholder="选择发薪月份"
+            value-format="YYYYMM"
+            clearable
+            style="width: 140px"
+            @change="handleQuery"
+          />
+        </el-form-item>
         <el-form-item label="员工姓名" prop="employeeId">
           <el-select
             v-model="queryParams.employeeId"
@@ -119,6 +130,13 @@
           </template>
         </el-table-column>
 
+        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100">
+          <template #default="{ row }">
+            <el-tag type="primary" effect="plain" class="amount-font">{{
+              row.settlementMonth || '--'
+            }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="业务分类" align="center" prop="categoryName" width="120">
           <template #default="{ row }">
             <el-tag type="info" effect="plain">{{ row.categoryName || '未分类' }}</el-tag>
