@@ -496,10 +496,16 @@ const submitForm = async () => {
     if (valid) {
       // 抹平前后端差异：确保 workMonth 以字符串形式提交防后端反序列化报错
       const params: any = {
-        ...form.value,
+        id: form.value.id,
+        employeeId: form.value.employeeId,
+        settlementMonth: form.value.settlementMonth,
         workMonth: form.value.workMonth !== undefined ? String(form.value.workMonth) : '0',
+        startDate: form.value.startDate,
+        endDate: form.value.endDate,
+        monthDays: form.value.monthDays,
+        attendanceDays: form.value.attendanceDays,
+        fullAttendanceFlag: form.value.fullAttendanceFlag,
       };
-
       try {
         if (params.id) {
           await editPeriodApi(params);
@@ -508,7 +514,7 @@ const submitForm = async () => {
         }
         ElMessage.success(params.id ? '修改成功' : '新增成功');
         dialog.visible = false;
-        getList();
+        await getList();
       } catch (error) {
         /* 错误已在拦截器处理 */
         console.error('提交周期数据失败:', error);
