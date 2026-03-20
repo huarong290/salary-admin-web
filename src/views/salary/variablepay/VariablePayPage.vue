@@ -155,14 +155,14 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="金额明细 (本币核算)" align="right" width="180">
+        <el-table-column :label="`金额明细 (${baseCurrency}核算)`" align="right" width="180">
           <template #default="{ row }">
             <div :class="activeTab === 'income' ? 'text-success' : 'text-danger'">
               <div class="amount-font" style="font-size: 15px">
-                {{ activeTab === 'income' ? '+' : '-' }}{{ row.amount }} CNY
+                {{ activeTab === 'income' ? '+' : '-' }}{{ row.amount }} {{ baseCurrency }}
               </div>
-              <div v-if="row.currency && row.currency !== 'CNY'" class="currency-hint">
-                (原币: {{ row.originalAmount }} {{ row.currency }})
+              <div v-if="row.currency && row.currency !== baseCurrency" class="currency-hint">
+                (原币: {{ row.originalAmount }} {{ getDictLabel(currencyOptions, row.currency) }})
               </div>
             </div>
           </template>
@@ -316,10 +316,12 @@
           <el-col :span="12">
             <el-form-item label="变动币种" prop="currency">
               <el-select v-model="form.currency" style="width: 100%" @change="handleCurrencyChange">
-                <el-option label="人民币 (CNY)" value="CNY" />
-                <el-option label="菲律宾比索 (PHP)" value="PHP" />
-                <el-option label="泰达币 (USDT)" value="USDT" />
-                <el-option label="美元 (USD)" value="USD" />
+                <el-option
+                  v-for="item in currencyOptions"
+                  :key="item.dictItemValue"
+                  :label="item.dictItemLabel"
+                  :value="item.dictItemValue"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -331,7 +333,7 @@
                 :precision="4"
                 :step="0.01"
                 style="width: 100%"
-                :disabled="form.currency === 'CNY'"
+                :disabled="form.currency === baseCurrency"
               />
             </el-form-item>
           </el-col>
@@ -351,7 +353,7 @@
             折合本币核算金额：<span class="amount-font" style="font-size: 14px">{{
               ((form.originalAmount || 0) * (form.exchangeRate || 1)).toFixed(2)
             }}</span>
-            CNY
+            {{ baseCurrency }}
           </div>
         </el-form-item>
 
@@ -410,6 +412,8 @@ import {
   deleteDeductionDetailApi,
   batchDeleteDeductionDetailApi,
 } from '@/api/salary/deductiondetail/deductionDetail.ts';
+import { getConfigValueApi } from '@/api/salary/config/config.ts';
+import { getItemsByTypeApi } from '@/api/dictitem/dictItem.ts';
 
 /**
  * --------------------------------------------------------------------
@@ -436,7 +440,7 @@ const dataList = ref<any[]>([]);
 const employeeOptions = ref<any[]>([]);
 const incomeTypeOptions = ref<any[]>([]);
 const deductionTypeOptions = ref<any[]>([]);
-
+const currencyOptions = ref<any[]>([]); // 🌟 2. 新增：币种字典数据池
 // [表单专有级联字典]
 const searchLoadingForm = ref(false);
 const employeeOptionsForm = ref<any[]>([]);
@@ -466,6 +470,8 @@ const rules = reactive<FormRules>({
   exchangeRate: [{ required: true, message: '汇率不能为空', trigger: 'blur' }],
 });
 
+// [全局本位币状态]
+const baseCurrency = ref('CNY'); // 默认人民币
 /**
  * --------------------------------------------------------------------
  * 🖱️ 二、UI 交互事件区 (UI Interactions)
@@ -504,7 +510,7 @@ const resetForm = () => {
     periodId: undefined,
     originalAmount: 0,
     exchangeRate: 1.0,
-    currency: 'CNY',
+    currency: baseCurrency.value,
     remark: '',
   };
   if (activeTab.value === 'income') form.value.incomeTypeId = undefined;
@@ -529,6 +535,13 @@ const cancel = () => {
 const loadDicts = async () => {
   incomeTypeOptions.value = (await getIncomeTypeOptionsApi()) || [];
   deductionTypeOptions.value = (await getDeductionTypeOptionsApi()) || [];
+  try {
+    // 传入字典类型编码获取对应数据
+    const currencyRes = await getItemsByTypeApi('currency_type');
+    currencyOptions.value = currencyRes || [];
+  } catch (error) {
+    console.error('加载币种字典失败', error);
+  }
 };
 
 /** 查询列表：底层动态路由 */
@@ -592,12 +605,48 @@ const handleEmployeeChange = async (employeeId: number) => {
   }
 };
 
-/** 自动带出多币种汇率 */
+/** 自动带出多币种汇率 (适配 CNY 和 USD 双轨本位币) */
 const handleCurrencyChange = (val: string) => {
-  const rateMap: Record<string, number> = { CNY: 1.0, PHP: 0.125, USDT: 7.25, USD: 7.23 };
-  form.value.exchangeRate = rateMap[val] || 1.0;
-};
+  // 如果选中的币种就是系统设置的本位币，汇率强制为 1.0 且禁用
+  if (val === baseCurrency.value) {
+    form.value.exchangeRate = 1.0;
+  } else {
+    // 🌟 动态判断本位币，赋予正确的反向汇率
+    if (baseCurrency.value === 'USD') {
+      // 当系统以【美元】结算时：其他币种折合美元的汇率
+      const rateMapToUSD: Record<string, number> = {
+        CNY: 0.138, // 1 CNY ≈ 0.138 USD
+        PHP: 0.017, // 1 PHP ≈ 0.017 USD
+        USDT: 1.0, // 1 USDT ≈ 1 USD
+      };
+      form.value.exchangeRate = rateMapToUSD[val] || 1.0;
+    } else {
+      // 当系统以【人民币】结算时 (兼容老逻辑)
+      const rateMapToCNY: Record<string, number> = {
+        USD: 7.23, // 1 USD ≈ 7.23 CNY
+        PHP: 0.125, // 1 PHP ≈ 0.125 CNY
+        USDT: 7.25, // 1 USDT ≈ 7.25 CNY
+      };
+      form.value.exchangeRate = rateMapToCNY[val] || 1.0;
+    }
+  }
 
+  // 切换币种后主动消除一下汇率的校验红框
+  if (formRef.value) {
+    formRef.value.validateField('exchangeRate');
+  }
+};
+/** 🌟 新增：字典翻译辅助函数 (将存库的 value 翻译成展示的 label) */
+const getDictLabel = (
+  dictList: any[],
+  value: string | number,
+  valueKey = 'dictItemValue',
+  labelKey = 'dictItemLabel'
+) => {
+  if (!dictList || !dictList.length) return value;
+  const item = dictList.find((d) => d[valueKey] === value);
+  return item ? item[labelKey] : value;
+};
 const handleAdd = () => {
   resetForm();
   dialog.title = activeTab.value === 'income' ? '新增额外收入' : '新增临时扣款';
@@ -619,7 +668,7 @@ const handleEdit = async (row: any) => {
     id: row.id,
     periodId: row.periodId,
     employeeId: row.employeeId,
-    currency: row.currency || 'CNY',
+    currency: row.currency || baseCurrency.value,
     originalAmount: row.originalAmount || row.amount,
     exchangeRate: row.exchangeRate || 1.0,
     amount: row.amount,
@@ -702,9 +751,18 @@ const handleImport = () => {
  * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
-onMounted(() => {
-  loadDicts();
-  getList();
+onMounted(async () => {
+  await loadDicts();
+  await getList();
+  // 【新增】：获取全局结算币种配置
+  try {
+    const configValue = await getConfigValueApi('SETTLEMENT_CURRENCY');
+    if (configValue) {
+      baseCurrency.value = configValue;
+    }
+  } catch (e) {
+    console.error('获取结算币种配置失败', e);
+  }
 });
 </script>
 
