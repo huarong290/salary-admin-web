@@ -64,9 +64,16 @@ export interface SummaryQueryReqDTO extends PageQuery {
 /** 🚨 触发薪资计算请求参数 (核心计算引擎入口) */
 export interface SummaryCalcReqDTO {
   /** 需要进行结算的薪资周期ID - 必填项 */
-  periodId: number;
+  periodId?: number;
   /** 结算月份 (如: 202603) */
   settlementMonth?: string;
   /** 手工备注 (如: 2026年3月特殊结算) */
+  remark?: string;
+}
+/** 🚨 触发指定周期薪资计算请求参数 (单人/局部批量核算) */
+export interface SummaryCalcByPeriodReqDTO {
+  /** 需要核算的周期ID集合 - 必填项 */
+  periodIds: number[];
+  /** 手工备注 (如: 单人异常数据修正重算) */
   remark?: string;
 }

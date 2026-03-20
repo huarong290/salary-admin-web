@@ -70,13 +70,13 @@ export interface PeriodAddReqDTO {
 /** 修改薪资周期请求参数 */
 export interface PeriodEditReqDTO extends PeriodAddReqDTO {
   /** 周期ID - 必填项 */
-  id: number | string;
+  id: number;
 }
 
 /** 薪资周期简易下拉选项对象 */
 export interface PeriodOptionVO {
   /** 周期ID */
-  id?: number | string;
+  id?: number;
   /** 在岗月份 (展示文本，如：2026-03) */
   workMonth: string;
   /** 结算月份 (实际存入值，如：202603) */

@@ -183,10 +183,11 @@
                 <el-select
                   v-model="form.currency"
                   style="width: 90px; margin-left: 5px"
-                  :disabled="isAdjusting"
+                  @change="handleCurrencyChange"
                 >
                   <el-option label="CNY" value="CNY" />
                   <el-option label="USDT" value="USDT" />
+                  <el-option label="USD" value="USD" />
                 </el-select>
               </div>
             </el-form-item>
@@ -359,7 +360,9 @@
             <span class="text-success amount-font" style="font-weight: bold">{{
               detailDrawer.data.fullAttendanceBonus || 0
             }}</span>
-            <span class="currency-label">{{ detailDrawer.data.currency }}</span>
+            <el-tag size="small" type="warning" effect="plain" style="margin-left: 5px">
+              {{ detailDrawer.data.currency }}
+            </el-tag>
           </el-descriptions-item>
         </el-descriptions>
 
@@ -561,7 +564,25 @@ const handleAdd = () => {
   dialog.visible = true;
   isFullscreen.value = false;
 };
-
+/** * 处理币种变更：若在调薪期间变更币种，需进行高能风险提示
+ */
+const handleCurrencyChange = (val: string) => {
+  if (isAdjusting.value) {
+    ElMessageBox.confirm(
+      `检测到您正在变更该员工的结算基准币种为 [${val}]。
+      注意：系统不会自动按汇率折算底薪数值，请务必手动将“月薪底薪”修改为 [${val}] 对应的金额（如：7000 CNY -> 1000 USD），否则将导致严重的算薪错误。`,
+      '币种变更关键提醒',
+      {
+        confirmButtonText: '已知晓，确认变更',
+        cancelButtonText: '点错了',
+        type: 'warning',
+      }
+    ).catch(() => {
+      // 若取消，则还原为旧版本中的原始币种，防止误操作
+      form.value.currency = detailDrawer.data.currency || 'CNY';
+    });
+  }
+};
 /** 🌟 核心引擎数据对接：发起调薪，彻底清洗旧版本数据防污染 */
 const handleAdjust = async (row: any) => {
   isAdjusting.value = true;

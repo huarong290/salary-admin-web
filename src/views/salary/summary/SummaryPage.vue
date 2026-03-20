@@ -192,6 +192,9 @@
 
         <el-table-column label="操作" align="center" width="90" fixed="right">
           <template #default="scope">
+            <el-button link type="success" icon="Refresh" @click="handleSingleCalc(scope.row)"
+              >重新核算</el-button
+            >
             <el-button link type="primary" icon="Document" @click="handleGoToRecord(scope.row)"
               >对账明细</el-button
             >
@@ -266,6 +269,50 @@
         </el-button>
       </template>
     </el-dialog>
+    <el-dialog
+      v-model="previewDialog.visible"
+      title="算薪引擎：单人核算预览"
+      width="550px"
+      append-to-body
+    >
+      <div v-loading="previewDialog.loading">
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="员工姓名">{{
+            previewDialog.data.employeeName
+          }}</el-descriptions-item>
+          <el-descriptions-item label="核算月份">{{
+            previewDialog.data.settlementMonth
+          }}</el-descriptions-item>
+          <el-descriptions-item label="计薪基准 (实发)">
+            <span class="amount-font">{{ previewDialog.data.salarySubtotal }}</span>
+            {{ previewDialog.data.currency }}
+          </el-descriptions-item>
+          <el-descriptions-item label="应扣合计 (实扣)">
+            <span class="amount-font text-danger"
+              >-{{ previewDialog.data.salaryDeductionTotal }}</span
+            >
+          </el-descriptions-item>
+          <el-descriptions-item label="预计实发净额">
+            <b class="amount-font real-pay-amount" style="font-size: 20px">{{
+              previewDialog.data.salaryTotal
+            }}</b>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-alert
+          title="预览数据基于当前档案及考勤实时计算。点击'确认存盘'将覆写该员工本月已存在的结算单。"
+          type="warning"
+          show-icon
+          :closable="false"
+          style="margin-top: 15px"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="previewDialog.visible = false">取 消</el-button>
+        <el-button type="success" :loading="previewDialog.submitting" @click="confirmSingleCalc"
+          >确认存盘并更新账单</el-button
+        >
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -292,9 +339,12 @@ import {
   calculateSummaryApi,
   deleteSummaryApi,
   batchDeleteSummaryApi,
+  calculateSummaryByPeriodsApi,
+  previewSummaryCalculateApi,
 } from '@/api/salary/summary/summary.ts';
 import type { PeriodOptionVO } from '@/types/salary/period/period';
 import type {
+  SummaryCalcByPeriodReqDTO,
   SummaryCalcReqDTO,
   SummaryQueryReqDTO,
   SummaryVO,
@@ -340,7 +390,13 @@ const calcForm = ref<any>({ settlementMonth: '', remark: '' });
 const calcRules = reactive<FormRules>({
   settlementMonth: [{ required: true, message: '必须指定要执行核算的结算月份', trigger: 'change' }],
 });
-
+// [ 新增：核算预览对话框状态]
+const previewDialog = reactive({
+  visible: false,
+  loading: false,
+  submitting: false,
+  data: {} as any,
+});
 /**
  * --------------------------------------------------------------------
  * 🖱️ 二、UI 交互与视图工具区 (UI Interactions & Utils)
@@ -450,6 +506,12 @@ const submitCalculate = async () => {
           settlementMonth: calcForm.value.settlementMonth,
           remark: calcForm.value.remark,
         };
+        const selectedPeriod = periodOptions.value.find(
+          (p) => p.settlementMonth === calcForm.value.settlementMonth
+        );
+        if (selectedPeriod) {
+          params.periodId = selectedPeriod.id;
+        }
         await calculateSummaryApi(params);
         ElMessage.success('核算引擎执行完毕！全员账单已生成。');
         calcDialog.visible = false;
@@ -491,6 +553,58 @@ const handleBatchDelete = () => {
     .catch(() => {});
 };
 
+/** 🌟 触发单人即时核算预览 */
+const handleSingleCalc = async (row: SummaryVO) => {
+  // 1. 初始化弹窗与加载状态
+  previewDialog.visible = true;
+  previewDialog.loading = true;
+  // 先把当前行的基础数据放进去占位，保证弹窗能立刻看到人名和月份
+  previewDialog.data = { ...row, currency: row.currency || 'CNY' };
+
+  try {
+    // 🌟 2. 调用真实的后端预览接口，获取引擎实时算出的金额
+    const res = await previewSummaryCalculateApi(row.periodId);
+
+    // 3. 将后端返回的精确计算结果合并到弹窗数据中展示
+    // 此时弹窗里的 salaryTotal、salarySubtotal 就会瞬间跳动更新为计算后的值
+    previewDialog.data = {
+      ...previewDialog.data,
+      salarySubtotal: res.salarySubtotal,
+      salaryDeductionTotal: res.salaryDeductionTotal,
+      salaryTotal: res.salaryTotal,
+      currency: res.currency || previewDialog.data.currency,
+    };
+  } catch (error) {
+    console.error('引擎预览计算异常:', error);
+    ElMessage.error('引擎预览失败，请检查员工档案配置');
+    previewDialog.visible = false;
+  } finally {
+    previewDialog.loading = false;
+  }
+};
+
+/** 🌟 确认预览结果，正式存盘 */
+const confirmSingleCalc = async () => {
+  previewDialog.submitting = true;
+  try {
+    // 🌟 使用新的 DTO 构造参数，传入目标周期 ID 数组
+    const params: SummaryCalcByPeriodReqDTO = {
+      periodIds: [previewDialog.data.periodId],
+      remark: `单人重新核算: ${previewDialog.data.employeeName}`,
+    };
+
+    // 🌟 调用后端新增的精准核算接口
+    await calculateSummaryByPeriodsApi(params);
+
+    ElMessage.success(`${previewDialog.data.employeeName} 的薪资记录已成功更新`);
+    previewDialog.visible = false;
+    handleQuery(); // 刷新表格金额，拉取最新的实发金额
+  } catch (error) {
+    console.error('单人核算存盘失败:', error);
+  } finally {
+    previewDialog.submitting = false;
+  }
+};
 /**
  * --------------------------------------------------------------------
  * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
