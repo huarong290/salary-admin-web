@@ -1,12 +1,12 @@
 // src/api/dicttype/dictType.ts
 
 import request from '@/utils/request';
+import type { PageResult } from '@/types/common.ts';
 import type {
   DictTypeAddReqDTO,
   DictTypeQueryReqDTO,
   DictTypeVO,
-} from '@/types/dictitem/dictitem.ts';
-import type { PageResult } from '@/types/common.ts';
+} from '@/types/dicttype/dicttype.ts';
 
 /**
  * 分页查询字典类型列表

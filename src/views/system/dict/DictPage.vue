@@ -124,7 +124,7 @@
                 :disabled="!currentType.dictTypeCode"
                 @click="handleAddItem"
               >
-                新增数据项
+                新增字典项
               </el-button>
             </div>
           </div>
@@ -138,16 +138,16 @@
             height="100%"
             empty-text="点击左侧分类查看明细，或当前分类下暂无数据"
           >
-            <el-table-column label="数据标签 (Label)" prop="dictItemLabel" min-width="140">
-              <template #default="{ row }">
-                <span style="font-weight: bold">{{ row.dictItemLabel }}</span>
-              </template>
-            </el-table-column>
             <el-table-column label="键值 (Value)" prop="dictItemValue" min-width="120">
               <template #default="{ row }">
                 <el-tag type="info" effect="plain" class="amount-font">{{
                   row.dictItemValue
                 }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="数据标签 (Label)" prop="dictItemLabel" min-width="140">
+              <template #default="{ row }">
+                <span style="font-weight: bold">{{ row.dictItemLabel }}</span>
               </template>
             </el-table-column>
             <el-table-column label="排序" prop="sort" width="80" align="center">
@@ -267,13 +267,13 @@
         <div class="section-title">明细键值配置</div>
         <el-row :gutter="20">
           <el-col :span="24">
-            <el-form-item label="数据标签" prop="dictItemLabel">
-              <el-input v-model="itemForm.dictItemLabel" placeholder="展示用，如：美元 (USD)" />
+            <el-form-item label="数据键值" prop="dictItemValue">
+              <el-input v-model="itemForm.dictItemValue" placeholder="存库用，如：USD" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="数据键值" prop="dictItemValue">
-              <el-input v-model="itemForm.dictItemValue" placeholder="存库用，如：USD" />
+            <el-form-item label="数据标签" prop="dictItemLabel">
+              <el-input v-model="itemForm.dictItemLabel" placeholder="展示用，如：美元 (USD)" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -448,14 +448,14 @@ const getTypeList = async () => {
 
 const handleAddType = () => {
   typeForm.value = { status: 1 };
-  typeDialog.title = '新增字典分类';
+  typeDialog.title = '新增字典类型';
   typeDialog.visible = true;
   isTypeFullscreen.value = false;
 };
 
 const handleUpdateType = (row: DictTypeVO) => {
   typeForm.value = { ...row };
-  typeDialog.title = '修改字典分类';
+  typeDialog.title = '修改字典类型';
   typeDialog.visible = true;
   isTypeFullscreen.value = false;
 };
@@ -466,10 +466,10 @@ const submitTypeForm = async () => {
     if (valid) {
       if (typeForm.value.id) {
         await updateDictTypeApi(typeForm.value);
-        ElMessage.success('分类修改成功');
+        ElMessage.success('字典类型修改成功');
       } else {
         await addDictTypeApi(typeForm.value);
-        ElMessage.success('分类新增成功');
+        ElMessage.success('字典类型新增成功');
       }
       dialogCloseAndRefreshType();
     }
@@ -477,7 +477,7 @@ const submitTypeForm = async () => {
 };
 
 const handleDeleteType = (row: DictTypeVO) => {
-  ElMessageBox.confirm(`确认永久删除字典分类 "${row.dictTypeName}" 吗?`, '高危操作提示', {
+  ElMessageBox.confirm(`确认永久删除字典类型 "${row.dictTypeName}" 吗?`, '高危操作提示', {
     type: 'warning',
   })
     .then(async () => {
@@ -518,14 +518,14 @@ const handleAddItem = () => {
     sort: 0,
     status: 1,
   };
-  itemDialog.title = '新增数据项';
+  itemDialog.title = '新增字典项';
   itemDialog.visible = true;
   isItemFullscreen.value = false;
 };
 
 const handleUpdateItem = (row: DictItemVO) => {
   itemForm.value = { ...row };
-  itemDialog.title = '修改数据项';
+  itemDialog.title = '修改字典项';
   itemDialog.visible = true;
   isItemFullscreen.value = false;
 };
@@ -536,10 +536,10 @@ const submitItemForm = async () => {
     if (valid) {
       if (itemForm.value.id) {
         await updateDictItemApi(itemForm.value);
-        ElMessage.success('数据项修改成功');
+        ElMessage.success('字典项修改成功');
       } else {
         await addDictItemApi(itemForm.value);
-        ElMessage.success('数据项新增成功');
+        ElMessage.success('字典项新增成功');
       }
       itemDialog.visible = false;
       getItemList(); // 刷新右侧列表
@@ -548,12 +548,12 @@ const submitItemForm = async () => {
 };
 
 const handleDeleteItem = (row: DictItemVO) => {
-  ElMessageBox.confirm(`确认删除数据项 "${row.dictItemLabel}" 吗?`, '高危操作提示', {
+  ElMessageBox.confirm(`确认删除字典项 "${row.dictItemLabel}" 吗?`, '高危操作提示', {
     type: 'warning',
   })
     .then(async () => {
       await deleteDictItemApi(row.id);
-      ElMessage.success('数据项已删除');
+      ElMessage.success('字典项已删除');
       getItemList();
     })
     .catch(() => {});

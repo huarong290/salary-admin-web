@@ -3,3 +3,272 @@
 加班考勤 (Overtime)：加班费、全勤奖、春节值班双薪。
 津贴福利 (Allowance)：交通补、房补、节日礼金、高温津贴。
 专项奖金 (Bonus)：年终奖、13薪、伯乐奖。
+
+package com.salary.admin.service.impl.salary;
+
+import cn.hutool.core.collection.CollUtil;
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.salary.admin.model.dto.salary.detail.SalaryDetailItemDTO;
+import com.salary.admin.model.dto.salary.period.PeriodAddReqDTO;
+import com.salary.admin.model.dto.salary.period.PeriodBatchInitReqDTO;
+import com.salary.admin.model.entity.salary.*;
+import com.salary.admin.model.vo.salary.archive.SalaryArchiveVO;
+import com.salary.admin.service.salary.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * 薪资核心引擎实现类
+ * 充当薪资模块的“总调度室”，专门处理跨表、跨业务的复杂逻辑。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class SalaryCoreEngineImpl implements ISalaryCoreEngine {
+
+    private final ISalaryPeriodService iSalaryPeriodService;
+    private final ISalarySummaryService iSalarySummaryService;
+    private final ISalaryPaymentRecordService iSalaryPaymentRecordService;
+    private final ISalaryIncomeDetailService iSalaryIncomeDetailService;
+    private final ISalaryDeductionDetailService iSalaryDeductionDetailService;
+    private final ISalaryArchiveService iSalaryArchiveService;
+    private final ISalaryArchiveItemService iSalaryArchiveItemService;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean batchInitPeriods(PeriodBatchInitReqDTO reqDTO) {
+        List<SalaryPeriod> newPeriods = iSalaryPeriodService.batchInitPeriodsOnly(reqDTO);
+        if (CollUtil.isNotEmpty(newPeriods)) {
+            this.initSummaryForPeriods(newPeriods);
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void initSummaryForPeriods(List<SalaryPeriod> periods) {
+        if (CollectionUtils.isEmpty(periods)) return;
+        List<SalarySummary> summaries = periods.stream().map(p -> {
+            SalarySummary s = new SalarySummary();
+            s.setPeriodId(p.getId());
+            s.setCurrency("CNY");
+            s.setExchangeRate(BigDecimal.ONE);
+            s.setSalarySubtotal(BigDecimal.ZERO);
+            s.setSalaryDeductionTotal(BigDecimal.ZERO);
+            s.setSalaryTotal(BigDecimal.ZERO);
+            s.setPaymentStatus(0);
+            return s;
+        }).collect(Collectors.toList());
+        iSalarySummaryService.batchInsert(summaries);
+    }
+
+    /**
+     * 核心核算方法：执行单人薪资核算并生成快照
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createRecordByCalculation(Long summaryId, SalaryArchiveVO archive, SalaryPeriod period) {
+        // 1. 初始化明细 DTO 列表，用于存放所有计算项
+        List<SalaryDetailItemDTO> details = new ArrayList<>();
+
+        // ---------------------------------------------------------
+        // A. 基础工资与出勤折算 (Source: BASE, Category: 基本薪资)
+        // ---------------------------------------------------------
+        BigDecimal baseSalary = archive.getBaseSalary() != null ? archive.getBaseSalary() : BigDecimal.ZERO;
+        BigDecimal monthDays = (period.getMonthDays() != null && period.getMonthDays() > 0)
+                ? new BigDecimal(period.getMonthDays()) : new BigDecimal("21.75");
+        BigDecimal attendanceDays = period.getAttendanceDays() != null
+                ? new BigDecimal(period.getAttendanceDays()) : BigDecimal.ZERO;
+
+        // 公式：(底薪 / 计薪天数) * 出勤天数
+        BigDecimal proratedBaseSalary = baseSalary.divide(monthDays, 4, RoundingMode.HALF_UP)
+                .multiply(attendanceDays).setScale(2, RoundingMode.HALF_UP);
+
+        details.add(SalaryDetailItemDTO.builder()
+                .itemName("基本工资")
+                .amount(proratedBaseSalary)
+                .itemType(1)
+                .category("基本薪资")
+                .source("BASE")
+                .formula(String.format("%s / %s * %s", baseSalary, monthDays, attendanceDays))
+                .build());
+
+        // ---------------------------------------------------------
+        // B. 薪资档案中的固定配置项 (Source: FIXED, Category: 动态)
+        // ---------------------------------------------------------
+        List<SalaryArchiveItem> archiveItems = iSalaryArchiveItemService.list(
+                Wrappers.<SalaryArchiveItem>lambdaQuery().eq(SalaryArchiveItem::getArchiveId, archive.getId())
+        );
+
+        if (CollUtil.isNotEmpty(archiveItems)) {
+            for (SalaryArchiveItem item : archiveItems) {
+                BigDecimal itemAmount = BigDecimal.ZERO;
+                // 计算逻辑：1-固定金额, 2-按基数比例
+                if (Integer.valueOf(1).equals(item.getCalcType())) {
+                    itemAmount = item.getAmount() != null ? item.getAmount() : BigDecimal.ZERO;
+                } else if (Integer.valueOf(2).equals(item.getCalcType())) {
+                    BigDecimal calcBase = (item.getBaseAmount() != null && item.getBaseAmount().compareTo(BigDecimal.ZERO) > 0)
+                            ? item.getBaseAmount() : baseSalary;
+                    BigDecimal ratio = item.getRatio() != null ? item.getRatio() : BigDecimal.ZERO;
+                    itemAmount = calcBase.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+                }
+
+                details.add(SalaryDetailItemDTO.builder()
+                        .itemName(item.getItemName()) // 需确保 ArchiveItem 已冗余 itemName
+                        .amount(itemAmount)
+                        .itemType(item.getItemType())
+                        .category(item.getCategoryName()) // 需确保 ArchiveItem 已冗余 categoryName
+                        .source("FIXED")
+                        .build());
+            }
+        }
+
+        // ---------------------------------------------------------
+        // C. 当月临时变动项 (Source: VARIABLE, Category: 动态)
+        // ---------------------------------------------------------
+        // 1. 临时收入 (基于冗余字段直接构造)
+        List<SalaryIncomeDetail> periodIncomes = iSalaryIncomeDetailService.list(
+                Wrappers.<SalaryIncomeDetail>lambdaQuery().eq(SalaryIncomeDetail::getPeriodId, period.getId())
+        );
+        periodIncomes.forEach(i -> details.add(SalaryDetailItemDTO.builder()
+                .itemName(i.getIncomeName())
+                .amount(i.getAmount())
+                .itemType(1)
+                .category(i.getCategoryName())
+                .source("VARIABLE")
+                .build()));
+
+        // 2. 临时扣款
+        List<SalaryDeductionDetail> periodDeductions = iSalaryDeductionDetailService.list(
+                Wrappers.<SalaryDeductionDetail>lambdaQuery().eq(SalaryDeductionDetail::getPeriodId, period.getId())
+        );
+        periodDeductions.forEach(d -> details.add(SalaryDetailItemDTO.builder()
+                .itemName(d.getDeductionName())
+                .amount(d.getAmount())
+                .itemType(2)
+                .category(d.getCategoryName())
+                .source("VARIABLE")
+                .build()));
+
+        // ---------------------------------------------------------
+        // D. 结果汇总与入库
+        // ---------------------------------------------------------
+        BigDecimal incomeTotal = details.stream().filter(d -> d.getItemType() == 1)
+                .map(SalaryDetailItemDTO::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal deductionTotal = details.stream().filter(d -> d.getItemType() == 2)
+                .map(SalaryDetailItemDTO::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        SalaryPaymentRecord record = new SalaryPaymentRecord();
+        record.setSummaryId(summaryId);
+        record.setEmployeeId(archive.getEmployeeId());
+        record.setArchiveId(archive.getId());
+        record.setBaseSalary(baseSalary);
+        record.setIncomeTotal(incomeTotal);
+        record.setDeductionTotal(deductionTotal);
+        record.setFinalSalary(incomeTotal.subtract(deductionTotal));
+        record.setIsManual(0);
+
+        // 🌟 核心：将 DTO 列表序列化为 JSON 数组快照
+        record.setDetailJson(JSON.toJSONString(details));
+
+        iSalaryPaymentRecordService.save(record);
+        this.refreshSummaryAmountBySummaryId(summaryId);
+
+        return record.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void executeGlobalSettlement(String settlementMonth) {
+        log.info("🚀 [薪资引擎] 开始执行 {} 月份全员核算任务", settlementMonth);
+        List<SalaryPeriod> periods = iSalaryPeriodService.list(
+                Wrappers.<SalaryPeriod>lambdaQuery().eq(SalaryPeriod::getSettlementMonth, settlementMonth)
+        );
+
+        if (CollUtil.isEmpty(periods)) {
+            log.warn("⚠️ {} 月份没有找到任何薪资周期", settlementMonth);
+            return;
+        }
+
+        for (SalaryPeriod period : periods) {
+            SalarySummary summary = iSalarySummaryService.getOne(
+                    Wrappers.<SalarySummary>lambdaQuery().eq(SalarySummary::getPeriodId, period.getId())
+            );
+            if (summary == null) continue;
+
+            SalaryArchiveVO archive = iSalaryArchiveService.getCurrentArchive(period.getEmployeeId());
+            if (archive == null) {
+                log.warn("员工ID {} 缺失薪资档案", period.getEmployeeId());
+                continue;
+            }
+
+            // 幂等处理：清理旧记录
+            iSalaryPaymentRecordService.remove(
+                    Wrappers.<SalaryPaymentRecord>lambdaQuery().eq(SalaryPaymentRecord::getSummaryId, summary.getId())
+            );
+
+            this.createRecordByCalculation(summary.getId(), archive, period);
+        }
+        log.info("✅ [薪资引擎] {} 月份全员核算任务完成", settlementMonth);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refreshSummaryAmountBySummaryId(Long summaryId) {
+        List<SalaryPaymentRecord> records = iSalaryPaymentRecordService.list(
+                Wrappers.<SalaryPaymentRecord>lambdaQuery().eq(SalaryPaymentRecord::getSummaryId, summaryId)
+        );
+
+        BigDecimal totalIncome = records.stream().map(r -> r.getIncomeTotal() != null ? r.getIncomeTotal() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalDeduction = records.stream().map(r -> r.getDeductionTotal() != null ? r.getDeductionTotal() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalFinal = records.stream().map(r -> r.getFinalSalary() != null ? r.getFinalSalary() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        SalarySummary updateSummary = new SalarySummary();
+        updateSummary.setId(summaryId);
+        updateSummary.setSalarySubtotal(totalIncome);
+        updateSummary.setSalaryDeductionTotal(totalDeduction);
+        updateSummary.setSalaryTotal(totalFinal);
+        iSalarySummaryService.updateById(updateSummary);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createRecordByManual(Long summaryId, Long employeeId, BigDecimal finalAmount, String remark) {
+        SalaryPaymentRecord record = new SalaryPaymentRecord();
+        record.setSummaryId(summaryId);
+        record.setEmployeeId(employeeId);
+        record.setFinalSalary(finalAmount);
+        record.setIsManual(1);
+        record.setRemark(remark);
+        iSalaryPaymentRecordService.save(record);
+        this.refreshSummaryAmountBySummaryId(summaryId);
+        return record.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void syncSummaryAmountByPeriodId(Long periodId) {
+        SalarySummary summary = iSalarySummaryService.getOne(Wrappers.<SalarySummary>lambdaQuery().eq(SalarySummary::getPeriodId, periodId));
+        if (summary != null) this.refreshSummaryAmountBySummaryId(summary.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long addPeriodAndSummary(PeriodAddReqDTO reqDTO) {
+        Long periodId = iSalaryPeriodService.addPeriod(reqDTO);
+        SalaryPeriod period = iSalaryPeriodService.getById(periodId);
+        this.initSummaryForPeriods(Collections.singletonList(period));
+        return periodId;
+    }
+}
