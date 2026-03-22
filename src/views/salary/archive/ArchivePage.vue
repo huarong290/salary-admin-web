@@ -207,7 +207,23 @@
             </el-form-item>
           </el-col>
         </el-row>
-
+        <div class="section-title">税务与合规配置</div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="计税方案" prop="taxScheme">
+              <el-select v-model="form.taxScheme" placeholder="选择计税方案" style="width: 100%">
+                <el-option label="不计税 (外包/免税)" :value="0" />
+                <el-option label="居民个人所得税" :value="1" />
+                <el-option label="劳务报酬税" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="档案备注" prop="remark">
+              <el-input v-model="form.remark" placeholder="如：外包协议编号" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <div class="section-title flex-justify-between">
           <span>固定补贴/扣款项 (FIXED)</span>
           <div class="item-actions">
@@ -364,6 +380,17 @@
               {{ detailDrawer.data.currency }}
             </el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="计税方案">
+            <el-tag :type="detailDrawer.data.taxScheme === 0 ? 'info' : 'primary'" size="small">
+              {{
+                detailDrawer.data.taxScheme === 0
+                  ? '不计税'
+                  : detailDrawer.data.taxScheme === 2
+                    ? '劳务报酬'
+                    : '个人所得税'
+              }}
+            </el-tag>
+          </el-descriptions-item>
         </el-descriptions>
 
         <div class="section-container">
@@ -480,7 +507,9 @@ const form = ref<any>({
   currency: 'CNY',
   effectiveDate: '',
   changeReason: '',
+  taxScheme: 1, // 🌟 默认设为 1 (个税)
   items: [],
+  remark: '', // 🌟 建议也加上备注字段
 });
 
 // [审核与详情抽屉状态]
@@ -558,6 +587,7 @@ const handleAdd = () => {
     currency: 'CNY',
     effectiveDate: '',
     changeReason: '入职定薪',
+    taxScheme: 1, // 🌟 默认设为普通个税
     items: [],
   };
   dialog.title = '新员工定薪';
@@ -600,6 +630,7 @@ const handleAdjust = async (row: any) => {
       fullAttendanceBonus: currentData.fullAttendanceBonus || 0,
       currency: currentData.currency || 'CNY',
       effectiveDate: '', // 强制重新录入生效期
+      taxScheme: currentData.taxScheme ?? 1, // 🌟 回显旧版本的计税配置
       changeReason: '年度调薪',
       // 清洗：去除 ID 映射等脏数据
       items: (currentData.items || []).map((item: any) => ({

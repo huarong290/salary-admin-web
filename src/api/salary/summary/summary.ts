@@ -9,6 +9,15 @@ import type {
 import type { PageResult } from '@/types/common.ts';
 
 /**
+ * 🌟 核心初始化：全员月度建账 (只占坑，不触发算薪公式)
+ * 对应后端 ISalaryCoreEngine.initMonthlyBatchForAll
+ * @param settlementMonth 结算月份 (格式: YYYYMM)
+ */
+export function initSummaryBatchApi(settlementMonth: string) {
+  // 注意：后端路径是 /initBatch/{settlementMonth}，必须直接拼接在 URL 末尾
+  return request.post<void>(`/salary/summary/initBatch/${settlementMonth}`);
+}
+/**
  * 🌟 触发全员一键结算核心引擎 (按月份全局核算)
  * @param data 包含 settlementMonth 和 remark 的请求对象
  */

@@ -70,6 +70,14 @@
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
         <el-button
+          v-hasPerm="['salary:summary:init']"
+          type="primary"
+          icon="MagicStick"
+          @click="handleOpenInit"
+        >
+          初始化本月账套
+        </el-button>
+        <el-button
           v-hasPerm="['salary:summary:calc']"
           type="success"
           icon="DataBoard"
@@ -146,7 +154,14 @@
 
         <el-table-column label="本币实发金额" align="right" prop="salaryTotal" width="140">
           <template #default="{ row }">
-            <span class="amount-font real-pay-amount">{{ row.salaryTotal }}</span>
+            <span
+              v-if="Number(row.salaryTotal) === 0"
+              class="text-secondary"
+              style="font-size: 12px"
+            >
+              (待核算)
+            </span>
+            <span v-else class="amount-font real-pay-amount">{{ row.salaryTotal }}</span>
           </template>
         </el-table-column>
 
@@ -193,19 +208,19 @@
         <el-table-column label="操作" align="center" width="90" fixed="right">
           <template #default="scope">
             <el-button link type="success" icon="Refresh" @click="handleSingleCalc(scope.row)"
-              >重新核算</el-button
-            >
+              >重新核算
+            </el-button>
             <el-button link type="primary" icon="Document" @click="handleGoToRecord(scope.row)"
-              >对账明细</el-button
-            >
+              >对账明细
+            </el-button>
             <el-button
               v-hasPerm="['salary:summary:del']"
               link
               type="danger"
               icon="Delete"
               @click="handleDelete(scope.row)"
-              >作废</el-button
-            >
+              >作废
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -277,12 +292,12 @@
     >
       <div v-loading="previewDialog.loading">
         <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="员工姓名">{{
-            previewDialog.data.employeeName
-          }}</el-descriptions-item>
-          <el-descriptions-item label="核算月份">{{
-            previewDialog.data.settlementMonth
-          }}</el-descriptions-item>
+          <el-descriptions-item label="员工姓名"
+            >{{ previewDialog.data.employeeName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="核算月份"
+            >{{ previewDialog.data.settlementMonth }}
+          </el-descriptions-item>
           <el-descriptions-item label="计薪基准 (实发)">
             <span class="amount-font">{{ previewDialog.data.salarySubtotal }}</span>
             {{ previewDialog.data.currency }}
@@ -309,8 +324,35 @@
       <template #footer>
         <el-button @click="previewDialog.visible = false">取 消</el-button>
         <el-button type="success" :loading="previewDialog.submitting" @click="confirmSingleCalc"
-          >确认存盘并更新账单</el-button
-        >
+          >确认存盘并更新账单
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="initDialog.visible" title="初始化月份账套" width="400px" append-to-body>
+      <el-form ref="initFormRef" :model="initForm" :rules="initRules" label-width="80px">
+        <el-alert
+          title="此操作将为所有【在职员工】创建该月的薪资周期及汇总单预览。已存在的记录将自动跳过。"
+          type="info"
+          show-icon
+          :closable="false"
+          style="margin-bottom: 20px"
+        />
+        <el-form-item label="目标月份" prop="settlementMonth">
+          <el-date-picker
+            v-model="initForm.settlementMonth"
+            type="month"
+            value-format="YYYYMM"
+            placeholder="选择月份"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="initDialog.visible = false">取 消</el-button>
+        <el-button type="primary" :loading="initializing" @click="submitInit">
+          立即生成账套
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -341,6 +383,7 @@ import {
   batchDeleteSummaryApi,
   calculateSummaryByPeriodsApi,
   previewSummaryCalculateApi,
+  initSummaryBatchApi,
 } from '@/api/salary/summary/summary.ts';
 import type { PeriodOptionVO } from '@/types/salary/period/period';
 import type {
@@ -350,6 +393,7 @@ import type {
   SummaryVO,
 } from '@/types/salary/summary/summary.ts';
 import { useRouter } from 'vue-router';
+
 const router = useRouter();
 /**
  * --------------------------------------------------------------------
@@ -396,6 +440,16 @@ const previewDialog = reactive({
   loading: false,
   submitting: false,
   data: {} as any,
+});
+
+// [初始化控制台]
+const initDialog = reactive({ visible: false });
+const initFormRef = ref<FormInstance>();
+const initForm = ref({ settlementMonth: '' });
+const initializing = ref(false); // 初始化按钮的 loading
+
+const initRules = reactive<FormRules>({
+  settlementMonth: [{ required: true, message: '请选择要初始化的月份', trigger: 'change' }],
 });
 /**
  * --------------------------------------------------------------------
@@ -605,6 +659,34 @@ const confirmSingleCalc = async () => {
     previewDialog.submitting = false;
   }
 };
+/** 打开初始化面板 */
+const handleOpenInit = () => {
+  initForm.value = { settlementMonth: '' };
+  initDialog.visible = true;
+};
+
+/** 🌟 页面内执行初始化的逻辑微调 */
+const submitInit = async () => {
+  if (!initFormRef.value) return;
+  await initFormRef.value.validate(async (valid) => {
+    if (valid) {
+      initializing.value = true;
+      try {
+        const targetMonth = initForm.value.settlementMonth;
+        await initSummaryBatchApi(targetMonth);
+
+        ElMessage.success(`${targetMonth} 月份账套初始化成功`);
+        initDialog.visible = false;
+
+        // 💡 体验优化：初始化后自动跳转到该月份查看结果
+        queryParams.settlementMonth = targetMonth;
+        handleQuery();
+      } finally {
+        initializing.value = false;
+      }
+    }
+  });
+};
 /**
  * --------------------------------------------------------------------
  * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
@@ -640,10 +722,12 @@ onMounted(() => {
   color: var(--el-color-success);
   font-weight: bold;
 }
+
 .text-danger {
   color: var(--el-color-danger);
   font-weight: bold;
 }
+
 .text-secondary {
   color: var(--el-text-color-secondary);
   font-weight: normal;
@@ -653,6 +737,7 @@ onMounted(() => {
 .drill-link {
   font-weight: bold;
   font-size: 14px;
+
   &:hover {
     text-decoration: underline;
   }

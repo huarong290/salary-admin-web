@@ -186,6 +186,7 @@
                 <el-option label="五险一金" value="五险一金" />
                 <el-option label="考勤扣除" value="考勤扣除" />
                 <el-option label="行政罚款" value="行政罚款" />
+                <el-option label="后勤代扣" value="后勤代扣" />
                 <el-option label="个人所得税" value="个人所得税" />
               </el-select>
             </el-form-item>

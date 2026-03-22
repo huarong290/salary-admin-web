@@ -330,8 +330,8 @@
               <el-input-number
                 v-model="form.exchangeRate"
                 :min="0"
-                :precision="4"
-                :step="0.01"
+                :precision="6"
+                :step="0.0001"
                 style="width: 100%"
                 :disabled="form.currency === baseCurrency"
               />
@@ -351,7 +351,7 @@
           <div class="calc-hint-box">
             <el-icon style="vertical-align: middle; margin-right: 4px"><Money /></el-icon>
             折合本币核算金额：<span class="amount-font" style="font-size: 14px">{{
-              ((form.originalAmount || 0) * (form.exchangeRate || 1)).toFixed(2)
+              convertedAmount
             }}</span>
             {{ baseCurrency }}
           </div>
@@ -386,7 +386,7 @@
  */
 
 // 1. Vue 与核心依赖
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { ref, reactive, onMounted, nextTick, computed } from 'vue';
 
 // 2. Element Plus 与图标
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -751,6 +751,22 @@ const handleImport = () => {
  * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
+// 在 script 标签内调整
+const convertedAmount = computed(() => {
+  // 1. 获取基础数值，确保 undefined/null 时为 0
+  const original = Number(form.value.originalAmount) || 0;
+
+  // 2. 获取汇率，如果未录入汇率则默认为 0（防止计算出误导性的原币金额）
+  // 注意：这里建议默认给 0 或者是 baseCurrency 下的 1
+  const rate = Number(form.value.exchangeRate) || 0;
+
+  // 3. 执行计算
+  const total = original * rate;
+
+  // 4. 使用 Number.EPSILON 修正浮点数精度误差，再保留 2 位小数
+  // 这样可以确保像 1.005 这种数值能准确地四舍五入到 1.01
+  return (Math.round((total + Number.EPSILON) * 100) / 100).toFixed(2);
+});
 onMounted(async () => {
   await loadDicts();
   await getList();
