@@ -91,8 +91,48 @@ export interface PeriodOptionVO {
 export interface PeriodBatchInitReqDTO {
   /** 结算月份 (格式：YYYYMM，必填) */
   settlementMonth: string;
-  /** 在岗月份 (格式：YYYY-MM，可选) */
-  workMonth?: string;
+  /** 周期开始日期 */
+  startDate?: string;
+  /** 周期结束日期 */
+  endDate?: string;
+  /** 本月自然天数 */
+  monthDays?: number;
+  /** 实际出勤天数 */
+  attendanceDays?: number;
+  /** 是否满勤 (1:是, 0:否) */
+  fullAttendanceFlag?: number;
   /** 备注 */
   remark?: string;
+}
+
+/** 批量初始化薪资周期请求参数 */
+export interface PeriodBatchInitReqDTO {
+  /** 结算月份 (格式：YYYYMM，必填) */
+  settlementMonth: string;
+  /** 🌟 目标员工ID列表 (如果不传，后端默认全员) */
+  employeeIds?: number[];
+  /** 周期开始日期 */
+  startDate?: string;
+  /** 周期结束日期 */
+  endDate?: string;
+  /** 本月自然天数 */
+  monthDays?: number;
+  /** 实际出勤天数 */
+  attendanceDays?: number;
+  /** 是否满勤 (1:是, 0:否) */
+  fullAttendanceFlag?: number;
+  /** 备注 */
+  remark?: string;
+}
+
+/** 🌟 批量初始化结果返回对象 (大厂标准：统计摘要) */
+export interface PeriodBatchInitResultVO {
+  /** 结算月份 */
+  settlementMonth: string;
+  /** 目标总人数 */
+  totalCount: number;
+  /** 实际成功生成人数 */
+  successCount: number;
+  /** 幂等跳过人数 */
+  skipCount: number;
 }

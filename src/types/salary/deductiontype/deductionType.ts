@@ -14,8 +14,10 @@ export interface DeductionTypeVO {
   pinyinCode?: string;
   /** 扣款分类 */
   category?: string;
-  /** 是否固定扣款 */
-  isFixed: number;
+  /** 是否固定扣款:0-否, 1-是 */
+  fixeFlag: number;
+  /** 是否为税前合法扣除项(如五险一金): 0-否, 1-是*/
+  taxDeductibleFlag: number;
   /** 扣款项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) */
@@ -44,8 +46,10 @@ export interface DeductionTypeAddReqDTO {
   pinyinCode?: string;
   /** 扣款分类 */
   categoryName?: string;
-  /** 是否固定扣款 */
-  isFixed: number;
+  /** 是否固定扣款:0-否, 1-是 */
+  fixeFlag: number;
+  /** 是否为税前合法扣除项(如五险一金): 0-否, 1-是*/
+  taxDeductibleFlag: number;
   /** 扣款项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) - 必填项 */

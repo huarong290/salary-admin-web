@@ -1,274 +1,502 @@
-固定工资 (Fixed)：基本工资、岗位工资。
-绩效奖金 (Variable)：月度绩效、季度奖金。
-加班考勤 (Overtime)：加班费、全勤奖、春节值班双薪。
-津贴福利 (Allowance)：交通补、房补、节日礼金、高温津贴。
-专项奖金 (Bonus)：年终奖、13薪、伯乐奖。
+<template>
+  <div class="app-container">
+    <el-card shadow="never" class="search-card">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
+        <el-form-item label="结算月份" prop="settlementMonth">
+          <el-date-picker
+            v-model="queryParams.settlementMonth"
+            type="month"
+            placeholder="选择月份 (如: 202603)"
+            value-format="YYYYMM"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="员工姓名" prop="keyword">
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="搜索员工姓名或工号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-package com.salary.admin.service.impl.salary;
+    <el-card shadow="never" class="table-card">
+      <div class="toolbar">
+        <el-button v-hasPerm="['salary:period:add']" type="primary" icon="Plus" @click="handleAdd">
+          开启新周期
+        </el-button>
 
-import cn.hutool.core.collection.CollUtil;
-import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.salary.admin.model.dto.salary.detail.SalaryDetailItemDTO;
-import com.salary.admin.model.dto.salary.period.PeriodAddReqDTO;
-import com.salary.admin.model.dto.salary.period.PeriodBatchInitReqDTO;
-import com.salary.admin.model.entity.salary.*;
-import com.salary.admin.model.vo.salary.archive.SalaryArchiveVO;
-import com.salary.admin.service.salary.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
+        <el-button
+          v-hasPerm="['salary:period:init']"
+          type="warning"
+          icon="MagicStick"
+          @click="handleOpenBatchInit"
+        >
+          批量初始化
+        </el-button>
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+        <el-button
+          v-hasPerm="['salary:period:del']"
+          type="danger"
+          icon="Delete"
+          :disabled="multiple"
+          @click="handleBatchDelete"
+        >
+          批量删除
+        </el-button>
+      </div>
 
-/**
- * 薪资核心引擎实现类
- * 充当薪资模块的“总调度室”，专门处理跨表、跨业务的复杂逻辑。
- */
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class SalaryCoreEngineImpl implements ISalaryCoreEngine {
+      <el-table
+        v-loading="loading"
+        :data="dataList"
+        border
+        height="100%"
+        :row-class-name="tableRowClassName"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column label="员工姓名" align="center" prop="employeeName" width="120" />
+        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="120">
+          <template #default="scope">
+            <el-tag type="primary" effect="plain" class="amount-font">{{ scope.row.settlementMonth }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="在岗月份" align="center" prop="workMonth" width="120">
+          <template #default="scope">
+            <span
+              class="amount-font"
+              :style="{ color: Number(scope.row.workMonth) >= 12 ? '#67c23a' : '#909399' }"
+            >
+              {{ scope.row.workMonth || 0 }} 个月
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="开始日期" align="center" prop="startDate" width="120">
+          <template #default="scope"><span class="amount-font text-secondary">{{ scope.row.startDate }}</span></template>
+        </el-table-column>
+        <el-table-column label="结束日期" align="center" prop="endDate" width="120">
+          <template #default="scope"><span class="amount-font text-secondary">{{ scope.row.endDate }}</span></template>
+        </el-table-column>
+        <el-table-column label="自然天数" align="right" prop="monthDays" width="90">
+          <template #default="scope"><span class="amount-font">{{ scope.row.monthDays }}</span></template>
+        </el-table-column>
+        <el-table-column label="出勤天数" align="right" prop="attendanceDays" width="90">
+          <template #default="scope">
+            <span
+              class="amount-font"
+              :class="scope.row.attendanceDays < scope.row.monthDays ? 'text-danger' : ''"
+            >
+              {{ scope.row.attendanceDays }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="满勤状态" align="center" prop="fullAttendanceFlag" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.fullAttendanceFlag === 1 ? 'success' : 'danger'" effect="dark" size="small">
+              {{ scope.row.fullAttendanceFlag === 1 ? '✔ 满勤' : '✖ 非满勤' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" width="170">
+          <template #default="scope"><span class="amount-font">{{ scope.row.createTime }}</span></template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="160" fixed="right">
+          <template #default="scope">
+            <el-button v-hasPerm="['salary:period:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
+            <el-button v-hasPerm="['salary:period:del']" link type="danger" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
-    private final ISalaryPeriodService iSalaryPeriodService;
-    private final ISalarySummaryService iSalarySummaryService;
-    private final ISalaryPaymentRecordService iSalaryPaymentRecordService;
-    private final ISalaryIncomeDetailService iSalaryIncomeDetailService;
-    private final ISalaryDeductionDetailService iSalaryDeductionDetailService;
-    private final ISalaryArchiveService iSalaryArchiveService;
-    private final ISalaryArchiveItemService iSalaryArchiveItemService;
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="queryParams.pageNum"
+          v-model:page-size="queryParams.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="getList"
+          @current-change="getList"
+        />
+      </div>
+    </el-card>
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean batchInitPeriods(PeriodBatchInitReqDTO reqDTO) {
-        List<SalaryPeriod> newPeriods = iSalaryPeriodService.batchInitPeriodsOnly(reqDTO);
-        if (CollUtil.isNotEmpty(newPeriods)) {
-            this.initSummaryForPeriods(newPeriods);
+    <el-dialog v-model="dialog.visible" width="650px" append-to-body draggable :fullscreen="isFullscreen" @close="cancel">
+      <template #header>
+        <div class="dialog-custom-header">
+          <span class="title">{{ dialog.title }}</span>
+          <el-button link @click="toggleFullscreen">
+            <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
+          </el-button>
+        </div>
+      </template>
+
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <div class="section-title">周期基础信息</div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="员工姓名" prop="employeeId">
+              <el-select
+                v-model="form.employeeId"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="请输入姓名检索"
+                :remote-method="remoteSearchEmployees"
+                :loading="searchLoading"
+                :disabled="!!form.id"
+                style="width: 100%"
+              >
+                <el-option v-for="item in employeeOptions" :key="item.id" :label="item.employeeName" :value="item.id">
+                  <div class="flex-justify-between">
+                    <span>{{ item.employeeName }}</span>
+                    <span style="color: #999; font-size: 12px">{{ item.employeeCode }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结算月份" prop="settlementMonth">
+              <el-date-picker v-model="form.settlementMonth" type="month" placeholder="如: 202603" value-format="YYYYMM" style="width: 100%" @change="handleMonthChange" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="在岗月份" prop="workMonth">
+              <div class="flex-align-center">
+                <el-input-number v-model="form.workMonth" :min="0" :precision="0" controls-position="right" style="flex: 1" />
+                <span style="margin-left: 8px; color: var(--el-text-color-secondary)">个月</span>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="周期范围">
+              <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" style="width: 100%" @change="handleDateRangeChange" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div class="section-title margin-top-20">考勤与核算指标</div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="自然天数" prop="monthDays">
+              <el-input-number v-model="form.monthDays" :min="0" :max="31" disabled controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="出勤天数" prop="attendanceDays">
+              <el-input-number v-model="form.attendanceDays" :min="0" :max="31" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="满勤状态" prop="fullAttendanceFlag">
+              <el-radio-group v-model="form.fullAttendanceFlag">
+                <el-radio :label="1">✔ 确认满勤 (系统将发放全勤奖)</el-radio>
+                <el-radio :label="0">✖ 非满勤 (扣除全勤奖)</el-radio>
+              </el-radio-group>
+              <div class="tips-box">
+                <el-icon><WarningFilled /></el-icon> 远程/弹性打卡员工建议默认选择“非满勤”，由 HR 月末核实后再开启。
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancel">取 消</el-button>
+        <el-button type="primary" @click="submitForm">确 定 保 存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="batchInitDialog.visible" title="批量生成薪资周期" width="450px" append-to-body>
+      <div class="tips-box" style="margin-bottom: 20px;">
+        <el-icon><WarningFilled /></el-icon>
+        系统将自动拉取在职员工名单，为您选定的月份补全缺失的薪资周期。此操作安全可重复，不会覆盖已存在的数据。
+      </div>
+
+      <el-form ref="batchInitFormRef" :model="batchInitForm" :rules="batchInitRules" label-width="90px">
+        <el-form-item label="结算月份" prop="settlementMonth">
+          <el-date-picker
+            v-model="batchInitForm.settlementMonth"
+            type="month"
+            placeholder="请选择需要建账的月份"
+            value-format="YYYYMM"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="附加备注" prop="remark">
+          <el-input
+            v-model="batchInitForm.remark"
+            type="textarea"
+            placeholder="选填 (如: 2026年3月常规薪资建账)"
+            :rows="3"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchInitDialog.visible = false">取 消</el-button>
+        <el-button type="warning" icon="MagicStick" :loading="batchInitLoading" @click="submitBatchInit">
+          一键生成数据
+        </el-button>
+      </template>
+    </el-dialog>
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue';
+import dayjs from 'dayjs';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { WarningFilled, FullScreen, Minus } from '@element-plus/icons-vue';
+
+// 引入全套 API
+import {
+  addPeriodApi,
+  batchDeletePeriodApi,
+  deletePeriodApi,
+  editPeriodApi,
+  getPeriodPageApi,
+  batchInitPeriodApi, // 🌟 引入批量初始化 API
+} from '@/api/salary/period/period.ts';
+import { listEmployeeOptionsApi } from '@/api/salary/employee';
+
+import type { PeriodQueryReqDTO, PeriodVO, PeriodBatchInitReqDTO } from '@/types/salary/period/period.ts';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
+
+// ========== 原有状态及逻辑 ==========
+const loading = ref(false);
+const isFullscreen = ref(false);
+const searchLoading = ref(false);
+const total = ref(0);
+const multiple = ref(true);
+const selectedIds = ref<number[]>([]);
+const dataList = ref<PeriodVO[]>([]);
+
+const queryParams = reactive<PeriodQueryReqDTO>({ pageNum: 1, pageSize: 10 });
+const queryFormRef = ref<FormInstance>();
+
+const dialog = reactive({ visible: false, title: '' });
+const form = ref<any>({});
+const formRef = ref<FormInstance>();
+const dateRange = ref<[string, string] | []>([]);
+const employeeOptions = ref<EmployeeOptionVO[]>([]);
+
+const rules = reactive<FormRules>({
+  employeeId: [{ required: true, message: '员工姓名不能为空', trigger: 'change' }],
+  settlementMonth: [{ required: true, message: '结算月份不能为空', trigger: 'change' }],
+  workMonth: [{ required: true, message: '在岗月份不能为空', trigger: 'blur' }],
+});
+
+// ========== 🌟 新增：批量初始化状态及逻辑 ==========
+const batchInitLoading = ref(false);
+const batchInitDialog = reactive({ visible: false });
+const batchInitFormRef = ref<FormInstance>();
+const batchInitForm = reactive<PeriodBatchInitReqDTO>({
+  settlementMonth: '',
+  workMonth: '',
+  remark: ''
+});
+const batchInitRules = reactive<FormRules>({
+  settlementMonth: [{ required: true, message: '必须选择结算月份', trigger: 'change' }],
+});
+
+/** 打开批量初始化弹窗 */
+const handleOpenBatchInit = () => {
+  // 如果搜索栏当前已经选了月份，为了方便 HR，直接带入弹窗
+  batchInitForm.settlementMonth = queryParams.settlementMonth || '';
+  batchInitForm.remark = '';
+  batchInitDialog.visible = true;
+  // 清除上一次打开可能的校验报错
+  setTimeout(() => batchInitFormRef.value?.clearValidate(), 0);
+};
+
+/** 提交批量初始化请求 */
+const submitBatchInit = async () => {
+  if (!batchInitFormRef.value) return;
+  await batchInitFormRef.value.validate(async (valid) => {
+    if (valid) {
+      batchInitLoading.value = true;
+      try {
+        await batchInitPeriodApi(batchInitForm);
+        ElMessage.success(`【${batchInitForm.settlementMonth}】建账任务执行成功！`);
+        batchInitDialog.visible = false;
+        // 自动把主列表切换到刚才建账的月份，并刷新数据
+        queryParams.settlementMonth = batchInitForm.settlementMonth;
+        handleQuery();
+      } catch (error) {
+        console.error('批量建账失败:', error);
+      } finally {
+        batchInitLoading.value = true;
+      }
+    }
+  });
+};
+
+// ========== UI 交互与基础操作逻辑 ==========
+const toggleFullscreen = () => (isFullscreen.value = !isFullscreen.value);
+
+const handleSelectionChange = (selection: PeriodVO[]) => {
+  selectedIds.value = selection.map((item) => item.id);
+  multiple.value = !selection.length;
+};
+
+const handleQuery = () => {
+  queryParams.pageNum = 1;
+  getList();
+};
+
+const resetQuery = () => {
+  queryFormRef.value?.resetFields();
+  handleQuery();
+};
+
+const cancel = () => {
+  dialog.visible = false;
+  formRef.value?.resetFields();
+  dateRange.value = [];
+};
+
+const tableRowClassName = ({ row }: { row: PeriodVO }) => {
+  return row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
+};
+
+// ========== 核心数据流逻辑 ==========
+const getList = async () => {
+  loading.value = true;
+  try {
+    const res = await getPeriodPageApi(queryParams);
+    dataList.value = res.records || [];
+    total.value = res.total || 0;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleDateRangeChange = (val: [string, string] | null) => {
+  if (val && val.length === 2) {
+    form.value.startDate = val[0];
+    form.value.endDate = val[1];
+    const days = dayjs(val[1]).diff(dayjs(val[0]), 'day') + 1;
+    form.value.monthDays = days > 0 ? days : 0;
+    if (form.value.monthDays > 0) form.value.attendanceDays = form.value.monthDays;
+  } else {
+    form.value.startDate = form.value.endDate = undefined;
+    form.value.monthDays = form.value.attendanceDays = 0;
+  }
+};
+
+const handleMonthChange = (val: string) => {
+  if (!val) return handleDateRangeChange(null);
+  const monthDate = dayjs(val.substring(0, 4) + '-' + val.substring(4, 6));
+  const range: [string, string] = [
+    monthDate.startOf('month').format('YYYY-MM-DD'),
+    monthDate.endOf('month').format('YYYY-MM-DD'),
+  ];
+  dateRange.value = range;
+  handleDateRangeChange(range);
+};
+
+const remoteSearchEmployees = async (query: string) => {
+  if (!query) {
+    employeeOptions.value = [];
+    return;
+  }
+  searchLoading.value = true;
+  try {
+    employeeOptions.value = (await listEmployeeOptionsApi(query)) as any;
+  } finally {
+    searchLoading.value = false;
+  }
+};
+
+const handleAdd = () => {
+  form.value = { employeeId: undefined, settlementMonth: '', workMonth: 0, monthDays: 0, attendanceDays: 0, fullAttendanceFlag: 0 };
+  dateRange.value = [];
+  employeeOptions.value = [];
+  dialog.title = '开启薪资周期';
+  dialog.visible = true;
+  isFullscreen.value = false;
+};
+
+const handleUpdate = (row: PeriodVO) => {
+  form.value = { ...row };
+  employeeOptions.value = [{ id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode || '' } as EmployeeOptionVO];
+  dateRange.value = row.startDate && row.endDate ? [row.startDate, row.endDate] : [];
+  dialog.title = '修改薪资周期';
+  dialog.visible = true;
+  isFullscreen.value = false;
+};
+
+const submitForm = async () => {
+  if (!formRef.value) return;
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      const params: any = {
+        id: form.value.id, employeeId: form.value.employeeId, settlementMonth: form.value.settlementMonth,
+        workMonth: form.value.workMonth !== undefined ? String(form.value.workMonth) : '0',
+        startDate: form.value.startDate, endDate: form.value.endDate,
+        monthDays: form.value.monthDays, attendanceDays: form.value.attendanceDays,
+        fullAttendanceFlag: form.value.fullAttendanceFlag,
+      };
+      try {
+        if (params.id) {
+          await editPeriodApi(params);
+        } else {
+          await addPeriodApi(params);
         }
-        return true;
+        ElMessage.success(params.id ? '修改成功' : '新增成功');
+        dialog.visible = false;
+        await getList();
+      } catch (error) {
+        console.error('提交周期数据失败:', error);
+      }
     }
+  });
+};
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void initSummaryForPeriods(List<SalaryPeriod> periods) {
-        if (CollectionUtils.isEmpty(periods)) return;
-        List<SalarySummary> summaries = periods.stream().map(p -> {
-            SalarySummary s = new SalarySummary();
-            s.setPeriodId(p.getId());
-            s.setCurrency("CNY");
-            s.setExchangeRate(BigDecimal.ONE);
-            s.setSalarySubtotal(BigDecimal.ZERO);
-            s.setSalaryDeductionTotal(BigDecimal.ZERO);
-            s.setSalaryTotal(BigDecimal.ZERO);
-            s.setPaymentStatus(0);
-            return s;
-        }).collect(Collectors.toList());
-        iSalarySummaryService.batchInsert(summaries);
-    }
+const handleDelete = (row: PeriodVO) => {
+  ElMessageBox.confirm(`确认销毁该薪资周期的记录吗? 若已有核算数据将产生关联影响。`, '系统高危操作提示', { type: 'warning' })
+    .then(async () => {
+      await deletePeriodApi(row.id);
+      ElMessage.success('删除成功');
+      getList();
+    }).catch(() => {});
+};
 
-    /**
-     * 核心核算方法：执行单人薪资核算并生成快照
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createRecordByCalculation(Long summaryId, SalaryArchiveVO archive, SalaryPeriod period) {
-        // 1. 初始化明细 DTO 列表，用于存放所有计算项
-        List<SalaryDetailItemDTO> details = new ArrayList<>();
+const handleBatchDelete = () => {
+  ElMessageBox.confirm(`确认批量销毁选中的 ${selectedIds.value.length} 条数据?`, '系统高危操作提示', { type: 'warning' })
+    .then(async () => {
+      await batchDeletePeriodApi(selectedIds.value);
+      ElMessage.success('批量删除成功');
+      getList();
+    }).catch(() => {});
+};
 
-        // ---------------------------------------------------------
-        // A. 基础工资与出勤折算 (Source: BASE, Category: 基本薪资)
-        // ---------------------------------------------------------
-        BigDecimal baseSalary = archive.getBaseSalary() != null ? archive.getBaseSalary() : BigDecimal.ZERO;
-        BigDecimal monthDays = (period.getMonthDays() != null && period.getMonthDays() > 0)
-                ? new BigDecimal(period.getMonthDays()) : new BigDecimal("21.75");
-        BigDecimal attendanceDays = period.getAttendanceDays() != null
-                ? new BigDecimal(period.getAttendanceDays()) : BigDecimal.ZERO;
+onMounted(() => {
+  getList();
+});
+</script>
 
-        // 公式：(底薪 / 计薪天数) * 出勤天数
-        BigDecimal proratedBaseSalary = baseSalary.divide(monthDays, 4, RoundingMode.HALF_UP)
-                .multiply(attendanceDays).setScale(2, RoundingMode.HALF_UP);
-
-        details.add(SalaryDetailItemDTO.builder()
-                .itemName("基本工资")
-                .amount(proratedBaseSalary)
-                .itemType(1)
-                .category("基本薪资")
-                .source("BASE")
-                .formula(String.format("%s / %s * %s", baseSalary, monthDays, attendanceDays))
-                .build());
-
-        // ---------------------------------------------------------
-        // B. 薪资档案中的固定配置项 (Source: FIXED, Category: 动态)
-        // ---------------------------------------------------------
-        List<SalaryArchiveItem> archiveItems = iSalaryArchiveItemService.list(
-                Wrappers.<SalaryArchiveItem>lambdaQuery().eq(SalaryArchiveItem::getArchiveId, archive.getId())
-        );
-
-        if (CollUtil.isNotEmpty(archiveItems)) {
-            for (SalaryArchiveItem item : archiveItems) {
-                BigDecimal itemAmount = BigDecimal.ZERO;
-                // 计算逻辑：1-固定金额, 2-按基数比例
-                if (Integer.valueOf(1).equals(item.getCalcType())) {
-                    itemAmount = item.getAmount() != null ? item.getAmount() : BigDecimal.ZERO;
-                } else if (Integer.valueOf(2).equals(item.getCalcType())) {
-                    BigDecimal calcBase = (item.getBaseAmount() != null && item.getBaseAmount().compareTo(BigDecimal.ZERO) > 0)
-                            ? item.getBaseAmount() : baseSalary;
-                    BigDecimal ratio = item.getRatio() != null ? item.getRatio() : BigDecimal.ZERO;
-                    itemAmount = calcBase.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
-                }
-
-                details.add(SalaryDetailItemDTO.builder()
-                        .itemName(item.getItemName()) // 需确保 ArchiveItem 已冗余 itemName
-                        .amount(itemAmount)
-                        .itemType(item.getItemType())
-                        .category(item.getCategoryName()) // 需确保 ArchiveItem 已冗余 categoryName
-                        .source("FIXED")
-                        .build());
-            }
-        }
-
-        // ---------------------------------------------------------
-        // C. 当月临时变动项 (Source: VARIABLE, Category: 动态)
-        // ---------------------------------------------------------
-        // 1. 临时收入 (基于冗余字段直接构造)
-        List<SalaryIncomeDetail> periodIncomes = iSalaryIncomeDetailService.list(
-                Wrappers.<SalaryIncomeDetail>lambdaQuery().eq(SalaryIncomeDetail::getPeriodId, period.getId())
-        );
-        periodIncomes.forEach(i -> details.add(SalaryDetailItemDTO.builder()
-                .itemName(i.getIncomeName())
-                .amount(i.getAmount())
-                .itemType(1)
-                .category(i.getCategoryName())
-                .source("VARIABLE")
-                .build()));
-
-        // 2. 临时扣款
-        List<SalaryDeductionDetail> periodDeductions = iSalaryDeductionDetailService.list(
-                Wrappers.<SalaryDeductionDetail>lambdaQuery().eq(SalaryDeductionDetail::getPeriodId, period.getId())
-        );
-        periodDeductions.forEach(d -> details.add(SalaryDetailItemDTO.builder()
-                .itemName(d.getDeductionName())
-                .amount(d.getAmount())
-                .itemType(2)
-                .category(d.getCategoryName())
-                .source("VARIABLE")
-                .build()));
-
-        // ---------------------------------------------------------
-        // D. 结果汇总与入库
-        // ---------------------------------------------------------
-        BigDecimal incomeTotal = details.stream().filter(d -> d.getItemType() == 1)
-                .map(SalaryDetailItemDTO::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal deductionTotal = details.stream().filter(d -> d.getItemType() == 2)
-                .map(SalaryDetailItemDTO::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        SalaryPaymentRecord record = new SalaryPaymentRecord();
-        record.setSummaryId(summaryId);
-        record.setEmployeeId(archive.getEmployeeId());
-        record.setArchiveId(archive.getId());
-        record.setBaseSalary(baseSalary);
-        record.setIncomeTotal(incomeTotal);
-        record.setDeductionTotal(deductionTotal);
-        record.setFinalSalary(incomeTotal.subtract(deductionTotal));
-        record.setIsManual(0);
-
-        // 🌟 核心：将 DTO 列表序列化为 JSON 数组快照
-        record.setDetailJson(JSON.toJSONString(details));
-
-        iSalaryPaymentRecordService.save(record);
-        this.refreshSummaryAmountBySummaryId(summaryId);
-
-        return record.getId();
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void executeGlobalSettlement(String settlementMonth) {
-        log.info("🚀 [薪资引擎] 开始执行 {} 月份全员核算任务", settlementMonth);
-        List<SalaryPeriod> periods = iSalaryPeriodService.list(
-                Wrappers.<SalaryPeriod>lambdaQuery().eq(SalaryPeriod::getSettlementMonth, settlementMonth)
-        );
-
-        if (CollUtil.isEmpty(periods)) {
-            log.warn("⚠️ {} 月份没有找到任何薪资周期", settlementMonth);
-            return;
-        }
-
-        for (SalaryPeriod period : periods) {
-            SalarySummary summary = iSalarySummaryService.getOne(
-                    Wrappers.<SalarySummary>lambdaQuery().eq(SalarySummary::getPeriodId, period.getId())
-            );
-            if (summary == null) continue;
-
-            SalaryArchiveVO archive = iSalaryArchiveService.getCurrentArchive(period.getEmployeeId());
-            if (archive == null) {
-                log.warn("员工ID {} 缺失薪资档案", period.getEmployeeId());
-                continue;
-            }
-
-            // 幂等处理：清理旧记录
-            iSalaryPaymentRecordService.remove(
-                    Wrappers.<SalaryPaymentRecord>lambdaQuery().eq(SalaryPaymentRecord::getSummaryId, summary.getId())
-            );
-
-            this.createRecordByCalculation(summary.getId(), archive, period);
-        }
-        log.info("✅ [薪资引擎] {} 月份全员核算任务完成", settlementMonth);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void refreshSummaryAmountBySummaryId(Long summaryId) {
-        List<SalaryPaymentRecord> records = iSalaryPaymentRecordService.list(
-                Wrappers.<SalaryPaymentRecord>lambdaQuery().eq(SalaryPaymentRecord::getSummaryId, summaryId)
-        );
-
-        BigDecimal totalIncome = records.stream().map(r -> r.getIncomeTotal() != null ? r.getIncomeTotal() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalDeduction = records.stream().map(r -> r.getDeductionTotal() != null ? r.getDeductionTotal() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalFinal = records.stream().map(r -> r.getFinalSalary() != null ? r.getFinalSalary() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        SalarySummary updateSummary = new SalarySummary();
-        updateSummary.setId(summaryId);
-        updateSummary.setSalarySubtotal(totalIncome);
-        updateSummary.setSalaryDeductionTotal(totalDeduction);
-        updateSummary.setSalaryTotal(totalFinal);
-        iSalarySummaryService.updateById(updateSummary);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createRecordByManual(Long summaryId, Long employeeId, BigDecimal finalAmount, String remark) {
-        SalaryPaymentRecord record = new SalaryPaymentRecord();
-        record.setSummaryId(summaryId);
-        record.setEmployeeId(employeeId);
-        record.setFinalSalary(finalAmount);
-        record.setIsManual(1);
-        record.setRemark(remark);
-        iSalaryPaymentRecordService.save(record);
-        this.refreshSummaryAmountBySummaryId(summaryId);
-        return record.getId();
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void syncSummaryAmountByPeriodId(Long periodId) {
-        SalarySummary summary = iSalarySummaryService.getOne(Wrappers.<SalarySummary>lambdaQuery().eq(SalarySummary::getPeriodId, periodId));
-        if (summary != null) this.refreshSummaryAmountBySummaryId(summary.getId());
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long addPeriodAndSummary(PeriodAddReqDTO reqDTO) {
-        Long periodId = iSalaryPeriodService.addPeriod(reqDTO);
-        SalaryPeriod period = iSalaryPeriodService.getById(periodId);
-        this.initSummaryForPeriods(Collections.singletonList(period));
-        return periodId;
-    }
-}
+<style scoped lang="scss">
+/* 保持原有样式即可 */
+.amount-font { font-family: 'Consolas', 'Courier New', monospace; font-weight: 500; }
+.text-secondary { color: var(--el-text-color-secondary); }
+.text-danger { color: var(--el-color-danger); font-weight: bold; }
+.section-title { font-weight: bold; padding-left: 10px; border-left: 4px solid var(--el-color-primary); margin: 10px 0 20px; color: var(--el-text-color-primary); font-size: 15px; }
+.margin-top-20 { margin-top: 20px; }
+.dialog-custom-header { display: flex; justify-content: space-between; align-items: center; padding-right: 20px; .title { font-size: 16px; font-weight: bold; color: var(--el-text-color-primary); } }
+.tips-box { font-size: 12px; color: var(--el-color-warning); background-color: var(--el-color-warning-light-9); padding: 6px 10px; border-radius: 4px; line-height: 1.4; margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+.flex-justify-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-align-center { display: flex; align-items: center; }
+</style>

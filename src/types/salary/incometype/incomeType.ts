@@ -14,6 +14,8 @@ export interface IncomeTypeVO {
   pinyinCode?: string;
   /** 分类 (如: 固定工资, 补贴, 奖金) */
   categoryName?: string;
+  /** 是否纳入个税计税基数: 0-否, 1-是 */
+  taxableFlag?: number;
   /** 收入项说明 */
   description?: string;
   /** 排序值 (数值越小越靠前) */

@@ -3,6 +3,7 @@ import request from '@/utils/request';
 import type {
   PeriodAddReqDTO,
   PeriodBatchInitReqDTO,
+  PeriodBatchInitResultVO,
   PeriodEditReqDTO,
   PeriodOptionVO,
   PeriodQueryReqDTO,
@@ -66,10 +67,11 @@ export function getPeriodOptionsApi() {
 
 /**
  * 批量初始化薪资周期
- * (根据在职员工名单，一键生成指定月份的薪资周期及汇总记录)
+ * (根据在职员工名单，一键生成指定月份的薪资周期)
+ * 🌟 修正：返回统计摘要 VO 替代 boolean
  */
 export function batchInitPeriodApi(data: PeriodBatchInitReqDTO) {
-  return request.post<boolean>(`/salary/period/batch-init`, data);
+  return request.post<PeriodBatchInitResultVO>(`/salary/period/batch-init`, data);
 }
 /**
  * 获取指定员工的结算月份列表 (无分页，级联下拉框专用)

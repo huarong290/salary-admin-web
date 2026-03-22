@@ -29,17 +29,28 @@
 
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
-        <el-button v-hasPerm="['salary:period:add']" type="primary" icon="Plus" @click="handleAdd"
-          >开启新周期</el-button
+        <el-button v-hasPerm="['salary:period:add']" type="primary" icon="Plus" @click="handleAdd">
+          开启新周期
+        </el-button>
+
+        <el-button
+          v-hasPerm="['salary:period:init']"
+          type="warning"
+          icon="MagicStick"
+          @click="handleOpenBatchInit"
         >
+          批量初始化
+        </el-button>
+
         <el-button
           v-hasPerm="['salary:period:del']"
           type="danger"
           icon="Delete"
           :disabled="multiple"
           @click="handleBatchDelete"
-          >批量删除</el-button
         >
+          批量删除
+        </el-button>
       </div>
 
       <el-table
@@ -51,9 +62,7 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
-
         <el-table-column label="员工姓名" align="center" prop="employeeName" width="120" />
-
         <el-table-column label="结算月份" align="center" prop="settlementMonth" width="120">
           <template #default="scope">
             <el-tag type="primary" effect="plain" class="amount-font">{{
@@ -61,7 +70,6 @@
             }}</el-tag>
           </template>
         </el-table-column>
-
         <el-table-column label="在岗月份" align="center" prop="workMonth" width="120">
           <template #default="scope">
             <span
@@ -72,7 +80,6 @@
             </span>
           </template>
         </el-table-column>
-
         <el-table-column label="开始日期" align="center" prop="startDate" width="120">
           <template #default="scope"
             ><span class="amount-font text-secondary">{{ scope.row.startDate }}</span></template
@@ -83,13 +90,11 @@
             ><span class="amount-font text-secondary">{{ scope.row.endDate }}</span></template
           >
         </el-table-column>
-
         <el-table-column label="自然天数" align="right" prop="monthDays" width="90">
           <template #default="scope"
             ><span class="amount-font">{{ scope.row.monthDays }}</span></template
           >
         </el-table-column>
-
         <el-table-column label="出勤天数" align="right" prop="attendanceDays" width="90">
           <template #default="scope">
             <span
@@ -100,7 +105,6 @@
             </span>
           </template>
         </el-table-column>
-
         <el-table-column label="满勤状态" align="center" prop="fullAttendanceFlag" width="100">
           <template #default="scope">
             <el-tag
@@ -112,13 +116,11 @@
             </el-tag>
           </template>
         </el-table-column>
-
         <el-table-column label="创建时间" align="center" width="170">
           <template #default="scope"
             ><span class="amount-font">{{ scope.row.createTime }}</span></template
           >
         </el-table-column>
-
         <el-table-column label="操作" align="center" width="160" fixed="right">
           <template #default="scope">
             <el-button
@@ -214,7 +216,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="在岗月份" prop="workMonth">
@@ -272,7 +273,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row>
           <el-col :span="24">
             <el-form-item label="满勤状态" prop="fullAttendanceFlag">
@@ -288,10 +288,115 @@
           </el-col>
         </el-row>
       </el-form>
-
       <template #footer>
         <el-button @click="cancel">取 消</el-button>
         <el-button type="primary" @click="submitForm">确 定 保 存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="batchInitDialog.visible"
+      title="批量生成薪资周期"
+      width="600px"
+      append-to-body
+    >
+      <div class="tips-box" style="margin-bottom: 20px">
+        <el-icon><WarningFilled /></el-icon>
+        系统将自动拉取在职员工名单进行建账。以下设定的参数将作为该批次所有员工的**初始默认值**。
+      </div>
+
+      <el-form
+        ref="batchInitFormRef"
+        :model="batchInitForm"
+        :rules="batchInitRules"
+        label-width="90px"
+      >
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="结算月份" prop="settlementMonth">
+              <el-date-picker
+                v-model="batchInitForm.settlementMonth"
+                type="month"
+                placeholder="请选择结算月份"
+                value-format="YYYYMM"
+                style="width: 100%"
+                @change="handleBatchMonthChange"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="周期范围">
+              <el-date-picker
+                v-model="batchDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始"
+                end-placeholder="结束"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                @change="handleBatchDateRangeChange"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="自然天数" prop="monthDays">
+              <el-input-number
+                v-model="batchInitForm.monthDays"
+                :min="0"
+                :max="31"
+                disabled
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="默认出勤" prop="attendanceDays">
+              <el-input-number
+                v-model="batchInitForm.attendanceDays"
+                :min="0"
+                :max="31"
+                :step="0.5"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="满勤状态" prop="fullAttendanceFlag">
+              <el-radio-group v-model="batchInitForm.fullAttendanceFlag">
+                <el-radio :label="1">✔ 全员默认满勤 (发放全勤奖)</el-radio>
+                <el-radio :label="0">✖ 全员默认非满勤</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="附加备注" prop="remark">
+          <el-input
+            v-model="batchInitForm.remark"
+            type="textarea"
+            placeholder="选填 (如: 2026年3月常规薪资建账)"
+            :rows="2"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchInitDialog.visible = false">取 消</el-button>
+        <el-button
+          type="warning"
+          icon="MagicStick"
+          :loading="batchInitLoading"
+          @click="submitBatchInit"
+        >
+          一键生成数据
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -317,6 +422,7 @@ import { WarningFilled, FullScreen, Minus } from '@element-plus/icons-vue';
 import {
   addPeriodApi,
   batchDeletePeriodApi,
+  batchInitPeriodApi,
   deletePeriodApi,
   editPeriodApi,
   getPeriodPageApi,
@@ -324,7 +430,11 @@ import {
 import { listEmployeeOptionsApi } from '@/api/salary/employee';
 
 // 4. TS 类型定义 (DTO/VO)
-import type { PeriodQueryReqDTO, PeriodVO } from '@/types/salary/period/period.ts';
+import type {
+  PeriodBatchInitReqDTO,
+  PeriodQueryReqDTO,
+  PeriodVO,
+} from '@/types/salary/period/period.ts';
 import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
 
 /**
@@ -362,6 +472,23 @@ const rules = reactive<FormRules>({
   workMonth: [{ required: true, message: '在岗月份不能为空', trigger: 'blur' }],
 });
 
+//批量初始化状态及
+const batchInitLoading = ref(false);
+const batchInitDialog = reactive({ visible: false });
+const batchInitFormRef = ref<FormInstance>();
+const batchDateRange = ref<[string, string] | []>([]); // 批量弹窗专属的日期范围
+const batchInitForm = reactive<PeriodBatchInitReqDTO>({
+  settlementMonth: '',
+  startDate: '',
+  endDate: '',
+  monthDays: 0,
+  attendanceDays: 0,
+  fullAttendanceFlag: 1, // 批量建账通常建议默认全员满勤，特殊情况HR再去单条修改
+  remark: '',
+});
+const batchInitRules = reactive<FormRules>({
+  settlementMonth: [{ required: true, message: '必须选择结算月份', trigger: 'change' }],
+});
 /**
  * --------------------------------------------------------------------
  * 🖱️ 二、UI 交互事件区 (UI Interactions)
@@ -396,6 +523,47 @@ const tableRowClassName = ({ row }: { row: PeriodVO }) => {
   return row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
 };
 
+/** 批量弹窗：日期区间变更联动 */
+const handleBatchDateRangeChange = (val: [string, string] | null) => {
+  if (val && val.length === 2) {
+    batchInitForm.startDate = val[0];
+    batchInitForm.endDate = val[1];
+    const days = dayjs(val[1]).diff(dayjs(val[0]), 'day') + 1;
+    batchInitForm.monthDays = days > 0 ? days : 0;
+    if (batchInitForm.monthDays > 0) batchInitForm.attendanceDays = batchInitForm.monthDays;
+  } else {
+    batchInitForm.startDate = batchInitForm.endDate = undefined;
+    batchInitForm.monthDays = batchInitForm.attendanceDays = 0;
+  }
+};
+/** 批量弹窗：月份变更智能推算起止日期 */
+const handleBatchMonthChange = (val: string) => {
+  if (!val) return handleBatchDateRangeChange(null);
+  const monthDate = dayjs(val.substring(0, 4) + '-' + val.substring(4, 6));
+  const range: [string, string] = [
+    monthDate.startOf('month').format('YYYY-MM-DD'),
+    monthDate.endOf('month').format('YYYY-MM-DD'),
+  ];
+  batchDateRange.value = range;
+  handleBatchDateRangeChange(range);
+};
+/** 打开批量初始化弹窗 */
+const handleOpenBatchInit = () => {
+  batchInitForm.remark = '';
+  // 如果搜索栏当前已经选了月份，为了方便 HR，直接带入并触发计算
+  if (queryParams.settlementMonth) {
+    batchInitForm.settlementMonth = queryParams.settlementMonth;
+    handleBatchMonthChange(queryParams.settlementMonth);
+  } else {
+    batchInitForm.settlementMonth = '';
+    batchDateRange.value = [];
+    batchInitForm.monthDays = 0;
+    batchInitForm.attendanceDays = 0;
+  }
+
+  batchInitDialog.visible = true;
+  setTimeout(() => batchInitFormRef.value?.clearValidate(), 0);
+};
 /**
  * --------------------------------------------------------------------
  * 🧠 三、核心业务与 API 交互区 (Business & API Logic)
@@ -553,6 +721,48 @@ const handleBatchDelete = () => {
     .catch(() => {});
 };
 
+/** 🌟 [修改说明]：核心重构！接收后端统计摘要 VO，使用 ElMessageBox 结构化弹窗展示 */
+const submitBatchInit = async () => {
+  if (!batchInitFormRef.value) return;
+  await batchInitFormRef.value.validate(async (valid) => {
+    if (valid) {
+      batchInitLoading.value = true;
+      try {
+        const response: any = await batchInitPeriodApi(batchInitForm);
+
+        // 🌟 兼容处理：获取返回的核心数据（取决于你 axios 拦截器的配置结构）
+        const resultData = response.data || response;
+        const { totalCount, successCount, skipCount, settlementMonth } = resultData;
+
+        batchInitDialog.visible = false;
+
+        // 🌟 使用弹窗展示清晰的执行结果摘要
+        ElMessageBox.alert(
+          `<div style="line-height: 1.8;">
+            结算月份：<b>${settlementMonth}</b><br/>
+            目标处理：${totalCount} 人<br/>
+            成功生成：<span style="color: var(--el-color-success); font-weight: bold;">${successCount}</span> 条<br/>
+            跳过重复：<span style="color: var(--el-color-warning);">${skipCount}</span> 条
+           </div>`,
+          '建账任务执行完毕',
+          {
+            dangerouslyUseHTMLString: true,
+            type: 'success',
+            confirmButtonText: '我知道了',
+          }
+        );
+
+        // 🌟 自动将查询条件切换到刚初始化的月份，方便 HR 直接查看结果
+        queryParams.settlementMonth = batchInitForm.settlementMonth;
+        handleQuery();
+      } catch (error) {
+        console.error('批量建账失败:', error);
+      } finally {
+        batchInitLoading.value = false; // 修复了这里原本一直是 true 的小 bug
+      }
+    }
+  });
+};
 /**
  * --------------------------------------------------------------------
  * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)

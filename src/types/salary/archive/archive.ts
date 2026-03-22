@@ -33,6 +33,8 @@ export interface SalaryArchiveVO {
   currency: string;
   /** 调薪原因 (如: 年度普调、晋升) */
   changeReason?: string;
+  /** 计税方案: 0-不计税, 1-居民个人所得税, 2-劳务报酬税" */
+  taxScheme?: number;
   /** 档案备注 */
   remark?: string;
   /** 创建时间 */
@@ -69,6 +71,8 @@ export interface ArchiveAddReqDTO {
   currency?: string;
   /** 调薪原因 */
   changeReason?: string;
+  /** 计税方案: 0-不计税, 1-居民个人所得税, 2-劳务报酬税" */
+  taxScheme?: number;
   /** 档案版本 */
   version: number;
   /** 档案备注 */
