@@ -155,15 +155,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column :label="`金额明细 (${baseCurrency}核算)`" align="right" width="180">
+        <el-table-column label="金额明细" align="right" width="200">
           <template #default="{ row }">
             <div :class="activeTab === 'income' ? 'text-success' : 'text-danger'">
-              <div class="amount-font" style="font-size: 15px">
-                {{ activeTab === 'income' ? '+' : '-' }}{{ row.amount }} {{ baseCurrency }}
-              </div>
-              <div v-if="row.currency && row.currency !== baseCurrency" class="currency-hint">
-                (原币: {{ row.originalAmount }} {{ getDictLabel(currencyOptions, row.currency) }})
-              </div>
+              <span class="amount-font" style="font-size: 15px">
+                {{ activeTab === 'income' ? '+' : '-' }}{{ row.amount }}
+              </span>
+              <span style="margin-left: 4px; font-size: 13px; font-weight: bold">
+                {{ row.settlementCurrency || 'CNY' }}
+              </span>
+            </div>
+
+            <div v-if="row.currency !== row.settlementCurrency" class="currency-hint">
+              (原币: {{ row.originalAmount }} {{ getDictLabel(currencyOptions, row.currency) }})
             </div>
           </template>
         </el-table-column>
@@ -291,6 +295,7 @@
             v-model="form[activeTab === 'income' ? 'incomeTypeId' : 'deductionTypeId']"
             placeholder="请选择业务类型"
             style="width: 100%"
+            @change="handleTypeChange"
           >
             <template v-if="activeTab === 'income'">
               <el-option
@@ -333,7 +338,7 @@
                 :precision="6"
                 :step="0.0001"
                 style="width: 100%"
-                :disabled="form.currency === baseCurrency"
+                :disabled="form.currency === form.settlementCurrency"
               />
             </el-form-item>
           </el-col>
@@ -348,12 +353,21 @@
             style="width: 100%"
             placeholder="请输入原币金额"
           />
-          <div class="calc-hint-box">
-            <el-icon style="vertical-align: middle; margin-right: 4px"><Money /></el-icon>
-            折合本币核算金额：<span class="amount-font" style="font-size: 14px">{{
+
+          <div v-if="form.currency !== form.settlementCurrency" class="calc-hint-box">
+            <el-icon style="vertical-align: middle; margin-right: 4px"><InfoFilled /></el-icon>
+            汇率换算：<span class="amount-font">{{ form.originalAmount || 0 }}</span>
+            {{ form.currency }} × <span class="amount-font">{{ form.exchangeRate }}</span> ≈
+            <span class="amount-font" style="font-size: 15px; color: var(--el-color-danger)">{{
               convertedAmount
             }}</span>
-            {{ baseCurrency }}
+            {{ form.settlementCurrency }}
+          </div>
+
+          <div v-else class="calc-hint-box">
+            <el-icon style="vertical-align: middle; margin-right: 4px"><Money /></el-icon>
+            核算本金：<span class="amount-font" style="font-size: 14px">{{ convertedAmount }}</span>
+            {{ form.settlementCurrency }}
           </div>
         </el-form-item>
 
@@ -389,9 +403,10 @@
 import { ref, reactive, onMounted, nextTick, computed } from 'vue';
 
 // 2. Element Plus 与图标
+// 🌟 修改：增加 InfoFilled 图标引入
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { FullScreen, Minus, Money } from '@element-plus/icons-vue';
+import { FullScreen, Minus, Money, InfoFilled } from '@element-plus/icons-vue';
 
 // 3. API 与类型定义
 import { listEmployeeOptionsApi } from '@/api/salary/employee';
@@ -511,6 +526,7 @@ const resetForm = () => {
     originalAmount: 0,
     exchangeRate: 1.0,
     currency: baseCurrency.value,
+    settlementCurrency: baseCurrency.value, // 🌟 修改：初始化时打上结算币种的“快照”
     remark: '',
   };
   if (activeTab.value === 'income') form.value.incomeTypeId = undefined;
@@ -546,7 +562,6 @@ const loadDicts = async () => {
 
 /** 查询列表：底层动态路由 */
 const getList = async () => {
-  loading.value = true;
   try {
     const reqData = { ...queryParams };
     // 动态组装真正的查询键值
@@ -561,6 +576,7 @@ const getList = async () => {
     dataList.value = res.records || [];
     total.value = res.total || 0;
   } finally {
+    // 🌟 修复: 逻辑移入 finally 块，解决 empty block 报错
     loading.value = false;
   }
 };
@@ -605,37 +621,47 @@ const handleEmployeeChange = async (employeeId: number) => {
   }
 };
 
-/** 自动带出多币种汇率 (适配 CNY 和 USD 双轨本位币) */
+/** 🌟 修改：核心联动：选择业务类型后，自动带出字典配置的默认币种 */
+const handleTypeChange = (typeId: number) => {
+  const options =
+    activeTab.value === 'income' ? incomeTypeOptions.value : deductionTypeOptions.value;
+  const selectedType = options.find((item: any) => item.id === typeId);
+
+  // 如果字典配置了默认币种，且与当前选中的不同，则自动切换
+  if (
+    selectedType &&
+    selectedType.defaultCurrency &&
+    form.value.currency !== selectedType.defaultCurrency
+  ) {
+    form.value.currency = selectedType.defaultCurrency;
+    handleCurrencyChange(selectedType.defaultCurrency);
+    ElMessage({
+      message: `已自动切换为该类型的默认币种: ${selectedType.defaultCurrency}`,
+      type: 'info',
+      duration: 2000,
+    });
+  }
+};
+
+/** 自动带出多币种汇率 (🌟 修改：基于记录本身的结算币种，而非全局本位币，防止历史数据被全局污染) */
 const handleCurrencyChange = (val: string) => {
-  // 如果选中的币种就是系统设置的本位币，汇率强制为 1.0 且禁用
-  if (val === baseCurrency.value) {
+  if (val === form.value.settlementCurrency) {
     form.value.exchangeRate = 1.0;
   } else {
-    // 🌟 动态判断本位币，赋予正确的反向汇率
-    if (baseCurrency.value === 'USD') {
-      // 当系统以【美元】结算时：其他币种折合美元的汇率
-      const rateMapToUSD: Record<string, number> = {
-        CNY: 0.138, // 1 CNY ≈ 0.138 USD
-        PHP: 0.017, // 1 PHP ≈ 0.017 USD
-        USDT: 1.0, // 1 USDT ≈ 1 USD
-      };
+    if (form.value.settlementCurrency === 'USD') {
+      const rateMapToUSD: Record<string, number> = { CNY: 0.138, PHP: 0.017, USDT: 1.0 };
       form.value.exchangeRate = rateMapToUSD[val] || 1.0;
     } else {
-      // 当系统以【人民币】结算时 (兼容老逻辑)
-      const rateMapToCNY: Record<string, number> = {
-        USD: 7.23, // 1 USD ≈ 7.23 CNY
-        PHP: 0.125, // 1 PHP ≈ 0.125 CNY
-        USDT: 7.25, // 1 USDT ≈ 7.25 CNY
-      };
+      const rateMapToCNY: Record<string, number> = { USD: 7.23, PHP: 0.125, USDT: 7.25 };
       form.value.exchangeRate = rateMapToCNY[val] || 1.0;
     }
   }
-
   // 切换币种后主动消除一下汇率的校验红框
   if (formRef.value) {
     formRef.value.validateField('exchangeRate');
   }
 };
+
 /** 🌟 新增：字典翻译辅助函数 (将存库的 value 翻译成展示的 label) */
 const getDictLabel = (
   dictList: any[],
@@ -647,6 +673,7 @@ const getDictLabel = (
   const item = dictList.find((d) => d[valueKey] === value);
   return item ? item[labelKey] : value;
 };
+
 const handleAdd = () => {
   resetForm();
   dialog.title = activeTab.value === 'income' ? '新增额外收入' : '新增临时扣款';
@@ -663,12 +690,13 @@ const handleEdit = async (row: any) => {
   ];
   await handleEmployeeChange(row.employeeId);
 
-  // 2. 剥离并回显核心数据 (兼容老数据的单本位币)
+  // 2. 剥离并回显核心数据 (🌟 修改：读取历史结算币种的快照，若无则使用当前本位币)
   form.value = {
     id: row.id,
     periodId: row.periodId,
     employeeId: row.employeeId,
     currency: row.currency || baseCurrency.value,
+    settlementCurrency: row.settlementCurrency || baseCurrency.value,
     originalAmount: row.originalAmount || row.amount,
     exchangeRate: row.exchangeRate || 1.0,
     amount: row.amount,
@@ -767,17 +795,28 @@ const convertedAmount = computed(() => {
   // 这样可以确保像 1.005 这种数值能准确地四舍五入到 1.01
   return (Math.round((total + Number.EPSILON) * 100) / 100).toFixed(2);
 });
+
+// 🌟 修改：修复生命周期，并发拉取字典和系统配置，等待全都就绪后再调取表格数据
 onMounted(async () => {
-  await loadDicts();
-  await getList();
-  // 【新增】：获取全局结算币种配置
+  loading.value = true;
   try {
-    const configValue = await getConfigValueApi('SETTLEMENT_CURRENCY');
-    if (configValue) {
-      baseCurrency.value = configValue;
-    }
-  } catch (e) {
-    console.error('获取结算币种配置失败', e);
+    await Promise.all([
+      loadDicts(),
+      (async () => {
+        try {
+          const configValue = await getConfigValueApi('SETTLEMENT_CURRENCY');
+          if (configValue) {
+            baseCurrency.value = configValue;
+          }
+        } catch (e) {
+          console.error('获取结算币种配置失败', e);
+        }
+      })(),
+    ]);
+  } finally {
+    // 基础环境（包括列头单位与下拉字典）准备好后，统一拉取数据
+    await getList();
+    loading.value = false;
   }
 });
 </script>

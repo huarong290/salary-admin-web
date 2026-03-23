@@ -27,6 +27,8 @@ export interface DeductionDetailVO {
   exchangeRate?: number | string;
   /** 💰 金额 (使用 number | string 兼容后端 BigDecimal) */
   amount: number | string;
+  /** 🌟 新增：结算币种 (入账时的系统本位币，如 CNY, USD) */
+  settlementCurrency?: string;
   /** 备注 */
   remark?: string;
   /** 创建时间 */
@@ -58,6 +60,8 @@ export interface DeductionDetailAddReqDTO {
   exchangeRate: number | string;
   /** 金额 (不能为负数) - 必填项 */
   amount?: number | string;
+  /** 🌟 新增：结算币种 (入账时的系统本位币，如 CNY, USD) */
+  settlementCurrency?: string;
   /** 备注 */
   remark?: string;
 }

@@ -27,6 +27,8 @@ export interface IncomeDetailVO {
   exchangeRate?: number | string;
   /** 💰 金额 (使用 number | string 兼容后端 BigDecimal 防止精度丢失) */
   amount: number | string;
+  /** 🌟 新增：结算币种 (入账时的系统本位币，如 CNY, USD) */
+  settlementCurrency?: string;
   /** 备注 */
   remark?: string;
   /** 创建时间 */
@@ -58,9 +60,12 @@ export interface IncomeDetailAddReqDTO {
   exchangeRate: number | string;
   /** 金额 (不能为负数) - 必填项 */
   amount?: number | string;
+  /** 🌟 新增：结算币种 (入账时的系统本位币，如 CNY, USD) */
+  settlementCurrency?: string;
   /** 备注 */
   remark?: string;
 }
+
 /** 🌟 修改收入明细请求参数 (大厂规范：继承 AddDTO 并强制要求传 ID) */
 export interface IncomeDetailUpdateReqDTO extends IncomeDetailAddReqDTO {
   /** 明细ID - 修改时必填 */
