@@ -22,6 +22,20 @@
             <el-option label="历史版本" :value="0" />
           </el-select>
         </el-form-item>
+
+        <el-form-item label="审核流程" prop="auditStatus">
+          <el-select
+            v-model="queryParams.auditStatus"
+            placeholder="全部状态"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="待审核" :value="0" />
+            <el-option label="已生效" :value="1" />
+            <el-option label="已驳回" :value="2" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -62,9 +76,17 @@
         </el-table-column>
         <el-table-column label="版本控制" align="center" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.isLatest === 1 ? 'success' : 'info'" effect="dark" size="small">
-              {{ row.isLatest === 1 ? '最新' : '历史' }}
-            </el-tag>
+            <el-tag
+              v-if="row.isLatest === 1 && row.auditStatus === 1"
+              type="success"
+              effect="dark"
+              size="small"
+              >最新</el-tag
+            >
+            <el-tag v-else-if="row.auditStatus === 0" type="warning" effect="plain" size="small"
+              >草稿</el-tag
+            >
+            <el-tag v-else type="info" effect="dark" size="small">历史</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="调薪原因" prop="changeReason" show-overflow-tooltip />
@@ -80,7 +102,7 @@
               >审核</el-button
             >
             <el-button
-              v-if="scope.row.isLatest === 1"
+              v-if="scope.row.isLatest === 1 && scope.row.auditStatus === 1"
               link
               type="primary"
               icon="Edit"
@@ -91,7 +113,9 @@
               >详情</el-button
             >
             <el-button
-              v-if="scope.row.isLatest === 1 && scope.row.auditStatus === 0"
+              v-if="
+                scope.row.isLatest === 1 && scope.row.auditStatus === 1 && scope.row.version > 1
+              "
               link
               type="danger"
               icon="RefreshLeft"
@@ -352,7 +376,10 @@
                 <el-tag size="small" effect="dark" type="info"
                   >V{{ detailDrawer.data.version }}</el-tag
                 >
-                <el-tag v-if="detailDrawer.data.isLatest === 1" size="small" type="success"
+                <el-tag
+                  v-if="detailDrawer.data.isLatest === 1 && detailDrawer.data.auditStatus === 1"
+                  size="small"
+                  type="success"
                   >当前生效</el-tag
                 >
                 <el-tag :type="getArchiveStatus(detailDrawer.data.auditStatus).tagType" plain>{{
@@ -494,7 +521,14 @@ const dataList = ref<any[]>([]);
 
 // [查询条件状态]
 const queryFormRef = ref<any>();
-const queryParams = reactive<any>({ pageNum: 1, pageSize: 10, isLatest: 1, keyword: '' });
+// 🌟 补充查询参数 auditStatus
+const queryParams = reactive<any>({
+  pageNum: 1,
+  pageSize: 10,
+  isLatest: 1,
+  auditStatus: undefined,
+  keyword: '',
+});
 
 // [配置弹窗状态]
 const dialog = reactive({ visible: false, title: '' });

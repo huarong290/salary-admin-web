@@ -9,7 +9,7 @@ export interface SalaryArchiveVO {
   id: number;
   /** 员工ID (关联 salary_employee) */
   employeeId: number;
-  /** 🌟 员工姓名 (动态关联填充) */
+  /**  员工姓名 (动态关联填充) */
   employeeName: string;
   /** 员工编号 (工号) */
   employeeCode: string;
@@ -41,7 +41,7 @@ export interface SalaryArchiveVO {
   createTime?: string;
   /** 更新时间 */
   updateTime?: string;
-  /** 🌟 关联的薪资配置明细项列表 */
+  /** 关联的薪资配置明细项列表 */
   items: ArchiveItemDTO[];
 }
 
@@ -51,6 +51,8 @@ export interface ArchiveQueryReqDTO extends PageQuery {
   keyword?: string;
   /** 是否仅查询当前最新版本 (1-是, 0-否) */
   isLatest?: number;
+  /** 🌟 新增：审核状态: 0-待审核, 1-已生效, 2-被驳回 */
+  auditStatus?: number;
   /** 部门名称筛选 */
   department?: string;
 }
@@ -77,11 +79,11 @@ export interface ArchiveAddReqDTO {
   version: number;
   /** 档案备注 */
   remark?: string;
-  /** 🌟 薪资项明细列表 - 包含新增的收入与扣款配置 */
+  /** 薪资项明细列表 - 包含新增的收入与扣款配置 */
   items: ArchiveItemDTO[];
 }
 
-/** 🌟 薪资档案审核请求参数 (处理版本生效/驳回) */
+/**  薪资档案审核请求参数 (处理版本生效/驳回) */
 export interface ArchiveAuditDTO {
   /** 薪资档案主键ID - 必填项 */
   id: number;
