@@ -6,23 +6,24 @@
           <el-calendar v-model="currentDate">
             <template #header>
               <div class="custom-calendar-header">
-                <span class="title">
+                <div class="title">
                   <el-icon class="header-icon"><Calendar /></el-icon>
-                  工作与日程
-                </span>
-                <div class="actions">
-                  <el-date-picker
-                    v-model="currentDate"
-                    type="month"
-                    size="small"
-                    :clearable="false"
-                    class="month-picker"
-                  />
-                  <el-button-group size="small">
-                    <el-button @click="changeMonth(-1)">‹ 上月</el-button>
-                    <el-button type="primary" plain @click="goToday">今天</el-button>
-                    <el-button @click="changeMonth(1)">下月 ›</el-button>
+                  财务万年历日程
+                </div>
+                <div class="calendar-toolbar">
+                  <el-button-group size="small" class="nav-group">
+                    <el-button @click="changeYear(-1)">«</el-button>
+                    <el-button plain class="ym-label">{{ year }}年</el-button>
+                    <el-button @click="changeYear(1)">»</el-button>
                   </el-button-group>
+
+                  <el-button-group size="small" class="nav-group" style="margin: 0 10px">
+                    <el-button @click="changeMonth(-1)">‹</el-button>
+                    <el-button plain class="ym-label">{{ month }}月</el-button>
+                    <el-button @click="changeMonth(1)">›</el-button>
+                  </el-button-group>
+
+                  <el-button size="small" type="primary" @click="goToday"> 回到今天 </el-button>
                 </div>
               </div>
             </template>
@@ -30,19 +31,26 @@
             <template #date-cell="{ data }">
               <div
                 class="date-cell-inner"
-                :class="{ today: data.isToday, selected: data.day === selectedDate }"
+                :class="{
+                  'is-today': data.isToday,
+                  'is-selected': data.day === selectedDate,
+                  'is-weekend':
+                    new Date(data.day).getDay() === 0 || new Date(data.day).getDay() === 6,
+                }"
                 @click="selectDate(data.day)"
               >
                 <div
                   v-if="getLunarInfo(data.day).badge"
-                  class="holiday-badge"
-                  :class="getLunarInfo(data.day).badge === '休' ? 'is-rest' : 'is-work'"
+                  class="classic-badge"
+                  :class="getLunarInfo(data.day).badge === '休' ? 'badge-rest' : 'badge-work'"
                 >
                   {{ getLunarInfo(data.day).badge }}
                 </div>
-
                 <div class="solar-day">{{ data.day.split('-')[2] }}</div>
-                <div class="lunar-day" :class="{ 'is-red': getLunarInfo(data.day).isRedHoliday }">
+                <div
+                  class="lunar-day"
+                  :class="{ 'is-festival': getLunarInfo(data.day).isRedHoliday }"
+                >
                   {{ getLunarInfo(data.day).text }}
                 </div>
                 <div v-if="memoMap[data.day]" class="memo-dot"></div>
@@ -54,9 +62,9 @@
         <el-card shadow="hover" class="memo-card">
           <template #header>
             <div class="card-header">
-              <span class="title"
-                ><el-icon><Notebook /></el-icon> {{ selectedDate }} 备忘录</span
-              >
+              <span class="title">
+                <el-icon><Notebook /></el-icon> {{ selectedDate }} 备忘录
+              </span>
             </div>
           </template>
           <el-input
@@ -75,9 +83,9 @@
         <el-card shadow="hover" class="calculator-card" body-class="calc-card-body">
           <template #header>
             <div class="card-header">
-              <span class="title"
-                ><el-icon><Operation /></el-icon> 财务极客计算器</span
-              >
+              <span class="title">
+                <el-icon><Operation /></el-icon> 财务计算器
+              </span>
             </div>
           </template>
 
@@ -146,9 +154,9 @@
 
           <div class="notepad-area">
             <div class="notepad-header">
-              <span class="notepad-title"
-                ><el-icon><EditPen /></el-icon> 计算结果暂存区</span
-              >
+              <span class="notepad-title">
+                <el-icon><EditPen /></el-icon> 计算结果暂存区
+              </span>
               <el-button link type="danger" size="small" @click="clearNotes">清空</el-button>
             </div>
             <el-input
@@ -168,53 +176,125 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+/** * ====================================================================
+ * 📌 模块/组件说明
+ * 功能描述: 系统首页工作台 (Dashboard)
+ * 包含模块: 财务万年历日程、每日备忘录、极客计算器、计算结果暂存区
+ * ====================================================================
+ */
+
+// 1. Vue 内置与核心依赖库
+import { ref, onMounted } from 'vue';
+
+// 2. 第三方工具库与图标
 import { Solar, HolidayUtil } from 'lunar-javascript';
 import { Calendar, Operation, DocumentAdd, EditPen, Notebook } from '@element-plus/icons-vue';
 
-// ================= 日期与日历逻辑 =================
+/**
+ * --------------------------------------------------------------------
+ * 📦 一、响应式状态区 (State Management)
+ * --------------------------------------------------------------------
+ */
+
+// [日历控制状态]
 const currentDate = ref(new Date());
-const selectedDate = ref(formatDate(new Date()));
+const selectedDate = ref('');
+const year = ref(new Date().getFullYear());
+const month = ref(new Date().getMonth() + 1);
 
-function formatDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+// [备忘录状态]
+const memoMap = ref<Record<string, string>>({});
+const currentMemo = ref('');
 
+// [计算器与暂存区状态]
+const display = ref('');
+const history = ref('');
+const calcNotes = ref('');
+
+// [农历缓存字典]
+const lunarCache = new Map();
+
+/**
+ * --------------------------------------------------------------------
+ * 🖱️ 二、UI 交互事件区 (UI Interactions)
+ * --------------------------------------------------------------------
+ */
+
+/** 切换日历年份 */
+const changeYear = (n: number) => {
+  const d = new Date(currentDate.value);
+  d.setFullYear(d.getFullYear() + n);
+  currentDate.value = d;
+  syncYM();
+};
+
+/** 切换日历月份 */
 const changeMonth = (n: number) => {
   const d = new Date(currentDate.value);
   d.setMonth(d.getMonth() + n);
   currentDate.value = d;
+  syncYM();
 };
 
+/** 日历返回今天 */
 const goToday = () => {
   const d = new Date();
   currentDate.value = d;
   selectedDate.value = formatDate(d);
+  syncYM();
 };
 
-// ================= 日历备忘录逻辑 =================
-const memoMap = ref<Record<string, string>>({});
-const currentMemo = ref('');
-
-const loadMemo = () => {
-  const data = localStorage.getItem('salaryMemoMap');
-  if (data) memoMap.value = JSON.parse(data);
-};
+/** 选中具体日期并回显备忘录 */
 const selectDate = (day: string) => {
   selectedDate.value = day;
   currentMemo.value = memoMap.value[day] || '';
 };
-const saveMemo = () => {
-  memoMap.value[selectedDate.value] = currentMemo.value;
-  localStorage.setItem('salaryMemoMap', JSON.stringify(memoMap.value));
-};
-loadMemo();
-selectDate(selectedDate.value);
 
-// ================= 农历与节假日逻辑 =================
-const cache = new Map();
+/** 计算器：输入数字或小数点 */
+const num = (n: string) => (display.value += n);
+
+/** 计算器：输入操作符 */
+const op = (o: string) => (display.value += o);
+
+/** 计算器：清空全部 */
+const clear = () => {
+  display.value = '';
+  history.value = '';
+};
+
+/** 计算器：退格删除 */
+const del = () => (display.value = display.value.slice(0, -1));
+
+/** 计算器：执行计算 */
+const calc = () => {
+  try {
+    history.value = display.value + ' =';
+    // 注意：生产环境复杂计算建议使用 mathjs，此处为轻量级实现
+    display.value = String(Function('return ' + display.value)());
+  } catch {
+    display.value = '错误';
+  }
+};
+
+/** --------------------------------------------------------------------
+ * 🧠 三、核心业务与存储逻辑区 (Business & Storage Logic)
+ * --------------------------------------------------------------------
+ */
+
+/** * 核心：同步当前日历的年月显示状态 */
+const syncYM = () => {
+  year.value = currentDate.value.getFullYear();
+  month.value = currentDate.value.getMonth() + 1;
+};
+
+/** * 工具：格式化 Date 对象为 YYYY-MM-DD */
+function formatDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** * 核心：获取指定日期的农历、节假日及班休标志 */
 const getLunarInfo = (dateStr: string) => {
-  if (cache.has(dateStr)) return cache.get(dateStr);
+  if (lunarCache.has(dateStr)) return lunarCache.get(dateStr);
 
   const [y, m, d] = dateStr.split('-').map(Number);
   const solar = Solar.fromYmd(y, m, d);
@@ -246,42 +326,34 @@ const getLunarInfo = (dateStr: string) => {
   if (badge === '休') isRedHoliday = true;
 
   const r = { text, isRedHoliday, badge };
-  cache.set(dateStr, r);
+  lunarCache.set(dateStr, r);
   return r;
 };
 
-// ================= 计算器与记事本逻辑 =================
-const display = ref('');
-const history = ref('');
-const calcNotes = ref('');
+/** * 存储：加载本地备忘录数据 */
+const loadMemo = () => {
+  const data = localStorage.getItem('salaryMemoMap');
+  if (data) memoMap.value = JSON.parse(data);
+};
 
+/** * 存储：保存当前日期备忘录到本地 */
+const saveMemo = () => {
+  memoMap.value[selectedDate.value] = currentMemo.value;
+  localStorage.setItem('salaryMemoMap', JSON.stringify(memoMap.value));
+};
+
+/** * 存储：加载本地计算器暂存记录 */
 const loadNotes = () => {
   const saved = localStorage.getItem('salaryCalcNotes');
   if (saved) calcNotes.value = saved;
 };
-loadNotes();
 
+/** * 存储：保存计算器暂存记录到本地 */
 const saveNotesToLocal = () => {
   localStorage.setItem('salaryCalcNotes', calcNotes.value);
 };
 
-const num = (n: string) => (display.value += n);
-const op = (o: string) => (display.value += o);
-const clear = () => {
-  display.value = '';
-  history.value = '';
-};
-const del = () => (display.value = display.value.slice(0, -1));
-
-const calc = () => {
-  try {
-    history.value = display.value + ' =';
-    display.value = String(Function('return ' + display.value)());
-  } catch {
-    display.value = '错误';
-  }
-};
-
+/** * 业务：将计算器当前结果追加至暂存区 */
 const recordToNote = () => {
   if (!display.value || display.value === '错误') return;
   const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
@@ -291,44 +363,46 @@ const recordToNote = () => {
   saveNotesToLocal();
 };
 
+/** * 业务：清空暂存区数据 */
 const clearNotes = () => {
   calcNotes.value = '';
   saveNotesToLocal();
 };
+
+/**
+ * --------------------------------------------------------------------
+ * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
+ * --------------------------------------------------------------------
+ */
+onMounted(() => {
+  // 初始化日期状态
+  selectedDate.value = formatDate(new Date());
+  syncYM();
+
+  // 初始化本地存储数据
+  loadMemo();
+  selectDate(selectedDate.value);
+  loadNotes();
+});
 </script>
 
 <style scoped lang="scss">
+/* =====================================================================
+   🎨 页面私有样式定制区
+   规范：负责 Dashboard 专用的网格、计算器与万年历深度定制
+   ===================================================================== */
+
 .dashboard-container {
   padding: 16px;
   height: calc(100vh - 84px);
   overflow-y: auto;
 }
 
-/* ========================
-   🌟 卡片系统（统一质感）
-======================== */
-.el-card {
-  border-radius: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  background: var(--el-bg-color);
-  transition: all 0.25s ease;
-
-  &:hover {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-  }
-
-  /* 🌙 暗黑重构（核心提升） */
-  html.dark & {
-    background: #0f0f10;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-
-    &:hover {
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
-    }
-  }
-}
-
-/* ===== 布局 ===== */
+/*
+========================
+   1. 全局布局结构
+========================
+*/
 .full-height-row {
   height: 100%;
   align-items: stretch;
@@ -345,127 +419,218 @@ const clearNotes = () => {
   flex-direction: column;
 }
 
-/* ========================
-   📅 日历（高级版本）
-======================== */
+/*
+========================
+   2. 卡片通用系统 (继承暗黑基因)（统一质感）
+========================
+*/
+.el-card {
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
+  transition: all 0.25s ease;
+
+  &:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  }
+
+  html.dark & {
+    background: #0f0f10;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    &:hover {
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+/* ===== 卡片通用头部 ===== */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--el-text-color-primary);
+    .header-icon {
+      margin-right: 8px;
+      font-size: 18px;
+      color: var(--el-color-primary);
+    }
+  }
+}
+/*
+========================
+   3.万年历深度定制
+========================
+*/
 .calendar-card {
   flex: 1;
 }
 
-/* 去默认头 */
+/* 放开原生头部，重置边距，将布局权交给我们的自定义栏 */
 :deep(.el-calendar__header) {
-  display: none !important;
+  display: block !important;
+  padding: 12px 16px 8px !important;
+  border-bottom: 1px solid var(--el-border-color-lighter) !important;
+
+  html.dark & {
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+  }
 }
 
+.custom-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 4px;
+
+  .title {
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    .header-icon {
+      margin-right: 8px;
+      color: var(--el-color-primary);
+    }
+  }
+
+  .calendar-toolbar {
+    display: flex;
+    align-items: center;
+    .ym-label {
+      width: 70px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      cursor: default;
+      html.dark & {
+        color: #ccc;
+      }
+    }
+  }
+}
+
+/* 紧凑型日历网格 */
 :deep(.el-calendar__body) {
-  padding: 4px 12px 12px;
+  padding: 0 8px 12px;
+}
+:deep(.el-calendar-table thead th) {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  padding: 8px 0;
+  border-bottom: 2px solid var(--el-border-color-lighter);
 }
 
-/* 🌟 黄金高度（更精致） */
+/* 周末表头标红 */
+:deep(.el-calendar-table thead th:nth-child(6)),
+:deep(.el-calendar-table thead th:nth-child(7)) {
+  color: var(--el-color-danger);
+}
+
+/* 单元格基础重置 */
 :deep(.el-calendar-table .el-calendar-day) {
-  height: 58px !important;
+  height: 64px !important;
+  padding: 0;
+  border: none;
+}
+:deep(.el-calendar-table td) {
+  border: 1px solid var(--el-border-color-extra-light);
+  html.dark & {
+    border-color: rgba(255, 255, 255, 0.05);
+  }
 }
 
-/* 日期格 */
+/* 单元格核心交互设计 */
 .date-cell-inner {
   position: relative;
-  margin: 2px;
-  border-radius: 8px;
-
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  transition: all 0.18s ease;
+  background: transparent;
+  transition: all 0.15s ease;
   cursor: pointer;
+  border: 2px solid transparent;
 
-  /* 🌟 hover（更轻） */
   &:hover {
     background: var(--el-fill-color-light);
-    transform: translateY(-1px);
+    html.dark & {
+      background: #1a1a1a;
+    }
   }
 
-  /* 🌟 选中 */
-  &.selected {
-    background: var(--el-color-primary-light-9);
-    box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+  &.is-today .solar-day {
+    color: var(--el-color-primary) !important;
+    font-weight: 800;
+    font-size: 18px;
   }
 
-  /* 🌟 今天 */
-  &.today .solar-day {
-    background: var(--el-color-primary);
-    color: #fff;
-    border-radius: 50%;
-    width: 26px;
-    height: 26px;
-    line-height: 26px;
-    font-size: 13px;
+  .solar-day {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+    font-variant-numeric: tabular-nums;
+    html.dark & {
+      color: #e5eaf3;
+    }
   }
-}
 
-/* 阳历 */
-.solar-day {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* 农历 */
-.lunar-day {
-  font-size: 11px;
-  margin-top: 2px;
-  color: var(--el-text-color-secondary);
-
-  &.is-red {
+  &.is-weekend .solar-day {
     color: var(--el-color-danger);
   }
-}
 
-/* 角标 */
-.holiday-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
-  padding: 0 3px;
-  border-radius: 3px;
-  color: #fff;
-  transform: scale(0.85);
+  .lunar-day {
+    font-size: 11px;
+    margin-top: 2px;
+    color: var(--el-text-color-secondary);
+    letter-spacing: 0.5px;
+    html.dark & {
+      color: #a3a6ad;
+    }
 
-  &.is-rest {
-    background: var(--el-color-danger);
+    &.is-festival {
+      color: var(--el-color-danger) !important;
+      font-weight: 600;
+    }
   }
 
-  &.is-work {
-    background: var(--el-color-info);
+  .classic-badge {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 2px;
+    color: #fff;
+    transform: scale(0.9);
+
+    &.badge-rest {
+      background: var(--el-color-danger);
+    }
+    &.badge-work {
+      background: var(--el-color-info);
+    }
+  }
+
+  .memo-dot {
+    position: absolute;
+    bottom: 3px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--el-color-primary);
   }
 }
 
-/* 备忘点 */
-.memo-dot {
-  position: absolute;
-  bottom: 4px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--el-color-primary);
-  box-shadow: 0 0 4px rgba(var(--el-color-primary-rgb), 0.5);
-}
-
-/* 🌙 日历暗黑强化 */
-html.dark {
-  .date-cell-inner:hover {
-    background: #1a1a1a;
-  }
-
-  .date-cell-inner.selected {
-    background: rgba(64, 158, 255, 0.15);
-  }
-}
-
-/* ========================
-   🧮 计算器（设备级）
-======================== */
+/* ===== 4. 财务计算器与暂存区定制 ===== */
 .calculator-card {
   height: 100%;
   display: flex;
@@ -479,30 +644,39 @@ html.dark {
   padding: 16px;
 }
 
-/* 核心容器 */
 .calculator-core {
   background: var(--el-fill-color-extra-light);
   border-radius: 12px;
   padding: 14px;
-
   html.dark & {
     background: #111;
   }
 }
 
-/* 屏幕 */
 .calc-screen {
   background: var(--el-bg-color);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 14px;
   text-align: right;
-
   border: 1px solid var(--el-border-color-lighter);
 
   html.dark & {
     background: #141414;
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .screen-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 24px;
+
+    .calc-history {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      font-family: monospace;
+    }
   }
 }
 
@@ -510,9 +684,11 @@ html.dark {
   font-size: 28px;
   font-weight: 600;
   margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Inter', 'SF Mono', monospace;
 }
 
-/* ===== 键盘（核心优化） ===== */
+/* 极客计算器键盘 Grid */
 .calc-keyboard {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -524,8 +700,8 @@ html.dark {
     border: none;
     font-size: 16px;
     cursor: pointer;
-
     transition: all 0.12s ease;
+    font-family: inherit;
 
     &:active {
       transform: scale(0.94);
@@ -536,73 +712,125 @@ html.dark {
     grid-column: span 2;
   }
 
-  /* 数字 */
   .key-num {
     background: var(--el-bg-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
     &:hover {
       background: var(--el-fill-color-light);
     }
-
     html.dark & {
       background: #1a1a1a;
     }
   }
 
-  /* 运算符 */
   .key-op {
     background: var(--el-color-primary-light-9);
     color: var(--el-color-primary);
     font-size: 20px;
-
     box-shadow: 0 2px 6px rgba(var(--el-color-primary-rgb), 0.2);
-
     html.dark & {
-      background: rgba(64, 158, 255, 0.15);
+      background: rgba(var(--el-color-primary-rgb), 0.15);
     }
   }
 
-  /* 功能 */
   .key-func {
     background: var(--el-fill-color);
   }
 
-  /* 等号 */
   .key-eq {
     background: var(--el-color-primary);
     color: #fff;
-
     box-shadow: 0 6px 14px rgba(var(--el-color-primary-rgb), 0.35);
   }
 }
 
-/* ========================
-   📝 记事本（工具感）
-======================== */
+/* 记事本区域 */
 .notepad-area {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
+.notepad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+
+  .notepad-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--el-text-color-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
 .mac-textarea {
   flex: 1;
-
   :deep(textarea) {
     height: 100%;
     border-radius: 10px;
-
-    font-family: ui-monospace, SFMono-Regular;
+    font-family: ui-monospace, SFMono-Regular, monospace;
     font-size: 13px;
     line-height: 1.6;
-
     background: var(--el-fill-color-blank);
 
     html.dark & {
       background: #111;
       color: #ddd;
       border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+/* =====================================================================
+   🚀 风格联动：精准响应全局 MenuStyle 切换 (Brilliant vs Breeze)
+   ===================================================================== */
+
+/* --- 风格 A：实心高亮风 (Brilliant) --- */
+html[data-menu-style='brilliant'] {
+  .el-card {
+    border-radius: 8px;
+  }
+
+  /* 万年历高亮选中态：实心粗暴方块 */
+  .date-cell-inner.is-selected {
+    background-color: var(--el-color-primary) !important;
+    border: none !important;
+
+    .solar-day,
+    .lunar-day {
+      color: #ffffff !important;
+    }
+    .memo-dot {
+      background: #ffffff !important;
+    }
+  }
+
+  /* 计算器硬朗按键 */
+  .calc-keyboard .key-btn {
+    border-radius: 4px;
+    box-shadow: none;
+  }
+}
+
+/* --- 风格 B：柔和呼吸风 (Breeze) --- */
+html[data-menu-style='breeze'] {
+  .el-card {
+    border-color: var(--el-border-color-extra-light);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+  }
+
+  /* 万年历呼吸选中态：复古金框暖底 */
+  .date-cell-inner.is-selected {
+    background-color: #fff9f0 !important;
+    border: 2px solid #f59e0b !important;
+
+    html.dark & {
+      background-color: rgba(245, 158, 11, 0.1) !important;
+      border-color: #d97706 !important;
     }
   }
 }
