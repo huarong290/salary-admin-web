@@ -1,6 +1,34 @@
 // src/hooks/useTheme.ts
 import { ref } from 'vue';
+// ==========================================================================
+// 🎨 纯函数算法工具区
+// ==========================================================================
 
+/**
+ * Hex 防御清洗器 (容错处理)
+ * 防止传入 #FFF 或没有 # 的残缺色值导致 parseInt 崩溃
+ */
+const normalizeHex = (hex: string): string => {
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex
+      .split('')
+      .map((char) => char + char)
+      .join('');
+  }
+  return `#${cleanHex.padEnd(6, '0').substring(0, 6)}`;
+};
+/**
+ * 🎨 核心色彩算法：Hex 转 RGB 数组
+ */
+const hexToRgb = (hex: string): [number, number, number] => {
+  const cleanHex = normalizeHex(hex);
+  return [
+    parseInt(cleanHex.substring(1, 3), 16),
+    parseInt(cleanHex.substring(3, 5), 16),
+    parseInt(cleanHex.substring(5, 7), 16),
+  ];
+};
 /**
  * 🎨 核心色彩算法：RGB 转 Hex 字符串
  * 使用 ES2017 padStart 确保位数为 2，彻底规避数组索引可能产生的 undefined 报错
@@ -18,13 +46,9 @@ const rgbToHex = (r: number, g: number, b: number): string => {
  */
 const mixColor = (color1: string, color2: string, weight: number): string => {
   weight = Math.max(Math.min(Number(weight), 1), 0);
-  const r1 = parseInt(color1.substring(1, 3), 16);
-  const g1 = parseInt(color1.substring(3, 5), 16);
-  const b1 = parseInt(color1.substring(5, 7), 16);
-  const r2 = parseInt(color2.substring(1, 3), 16);
-  const g2 = parseInt(color2.substring(3, 5), 16);
-  const b2 = parseInt(color2.substring(5, 7), 16);
 
+  const [r1, g1, b1] = hexToRgb(color1);
+  const [r2, g2, b2] = hexToRgb(color2);
   const r = Math.round(r1 * (1 - weight) + r2 * weight);
   const g = Math.round(g1 * (1 - weight) + g2 * weight);
   const b = Math.round(b1 * (1 - weight) + b2 * weight);
@@ -37,31 +61,35 @@ const mixColor = (color1: string, color2: string, weight: number): string => {
  * 用于实现“亮底黑字，暗底白字”的自动反转
  */
 const isLightColor = (hex: string): boolean => {
-  const r = parseInt(hex.substring(1, 3), 16);
-  const g = parseInt(hex.substring(3, 5), 16);
-  const b = parseInt(hex.substring(5, 7), 16);
+  const [r, g, b] = hexToRgb(hex);
   const yiq = (r * 299 + g * 587 + b * 114) / 1000;
   return yiq >= 128; // 亮度阈值设为 128
 };
-
+// ==========================================================================
+// 🌟 状态提升 (State Hoisting) - 缔造天然的单例模式
+// 将响应式状态移出工厂函数，确保全系统只要调用 useTheme() 拿到的都是同一份实例！
+// 这样在 Header 里换皮肤，全局任何组件都能立即响应！
+// ==========================================================================
+// --- 🧊 状态持久化 (从 localStorage 读取) ---
+const primaryColor = ref<string>(localStorage.getItem('theme-primary') || '#409EFF');
+const isDark = ref<boolean>(localStorage.getItem('theme-dark') === 'true');
+const menuStyle = ref<string>(localStorage.getItem('theme-menu-style') || 'breeze');
 export const useTheme = () => {
-  // --- 🧊 状态持久化 (从 localStorage 读取) ---
-  const primaryColor = ref<string>(localStorage.getItem('theme-primary') || '#409EFF');
-  const isDark = ref<boolean>(localStorage.getItem('theme-dark') === 'true');
-  const menuStyle = ref<string>(localStorage.getItem('theme-menu-style') || 'breeze');
-
   /**
    * 🚀 核心方法：修改主题色
    * 包含主色注入、衍生色阶计算、以及文字反色逻辑
    */
   const changePrimaryColor = (val?: string | null) => {
-    const safeColor = val || '#409EFF';
+    const safeColor = normalizeHex(val || '#409EFF');
     primaryColor.value = safeColor;
     localStorage.setItem('theme-primary', safeColor);
 
-    // 1. 注入 Element Plus 核心主色变量
     const el = document.documentElement;
+    const [r, g, b] = hexToRgb(safeColor);
+    // 1. 注入 Element Plus 核心主色变量
     el.style.setProperty('--el-color-primary', safeColor);
+    // 注入底层 RGB 变量！ 缺失此项会导致 Element 组件的 Focus 阴影、rgba 透明背景失效
+    el.style.setProperty('--el-color-primary-rgb', `${r}, ${g}, ${b}`);
 
     // 2. 注入极客反色变量：亮色主题下文字变黑 (#303133)，深色主题下文字用纯白
     const textColor = isLightColor(safeColor) ? '#303133' : '#ffffff';
@@ -92,8 +120,11 @@ export const useTheme = () => {
     const html = document.documentElement;
     if (isDark.value) {
       html.classList.add('dark');
+      //  体验优化：让浏览器的原生滚动条也变黑
+      html.style.colorScheme = 'dark';
     } else {
       html.classList.remove('dark');
+      html.style.colorScheme = 'light';
     }
 
     // 模式切换后，必须重算衍生色，因为混合底色变了
@@ -117,16 +148,16 @@ export const useTheme = () => {
    * 建议在 App.vue 的 onMounted 中调用
    */
   const initTheme = () => {
-    // 初始化主色与衍生色
-    changePrimaryColor(primaryColor.value);
-
     // 初始化暗黑类名
     if (isDark.value) {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
     }
 
     // 初始化菜单风格属性
     document.documentElement.setAttribute('data-menu-style', menuStyle.value);
+    // 初始化主色与衍生色
+    changePrimaryColor(primaryColor.value);
   };
 
   return {

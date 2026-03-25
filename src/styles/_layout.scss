@@ -12,7 +12,10 @@
   gap: 15px;
   /* 统一计算页面高度，若个别页面有差异可在单页面覆盖 */
   height: calc(100vh - 84px);
-
+  /* 防止极端小屏幕下的组件挤压坍塌 */
+  min-height: 500px;
+  //防止水平过度挤压
+  min-width: 800px;
   /* --- 1. 搜索条件区 --- */
   .search-card {
     flex-shrink: 0;
@@ -70,11 +73,14 @@
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
-  transition: all 0.25s ease;
+  transition:
+    box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+    transform 0.3s ease;
 
   /* 悬浮呼吸感 */
   &:hover {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px); /* 物理微交互：轻微上浮感 */
   }
 
   /* 🌙 暗黑模式极客质感 */
@@ -104,6 +110,7 @@
   .fullscreen-btn {
     color: var(--el-text-color-secondary);
     cursor: pointer; /* 按钮恢复点击光标 */
+    transition: color 0.2s ease;
     &:hover {
       color: var(--el-color-primary);
     }
@@ -133,9 +140,12 @@
   }
 }
 
+/* 合并后的状态标签收口处 */
 .status-tag {
   border-radius: 4px;
   font-weight: 500;
+  border: none !important; /* 移除冗余边框显高级 */
+  padding: 0 10px;
 }
 
 /* ---------------------------------------------------------------------
@@ -163,7 +173,7 @@ html[data-menu-style='brilliant'] {
   }
 
   .status-tag {
-    border-radius: 2px;
+    border-radius: 2px !important;
   }
 }
 
@@ -184,7 +194,6 @@ html[data-menu-style='breeze'] {
   }
 
   .status-tag {
-    border-radius: 12px;
-    padding: 0 10px;
+    border-radius: 12px !important;
   }
 }

@@ -22,23 +22,20 @@ body,
   width: 100%;
   height: 100%;
   font-family:
-    'Helvetica Neue',
-    Helvetica,
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Microsoft YaHei',
-    '微软雅黑',
-    Arial,
-    sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+    'Helvetica Neue', 'Helvetica', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑',
+    'Arial', 'sans-serif', '-apple-system', 'BlinkMacSystemFont';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
   // 🌟 直接使用 Element Plus 自带的 CSS 变量
   // 这样既能解决 SCSS 变量找不到的问题，又能完美支持未来的暗黑模式切换！
   background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
   overflow-x: hidden; // 防止出现横向滚动条
+  /* 丝滑的全局滚动体验 (适用于锚点跳转) */
+  scroll-behavior: smooth;
+  /* 消除移动端/触屏设备点击时的半透明灰色高亮 */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* 3. 基础排版标签清理 (吸收对方精华) */
@@ -53,18 +50,35 @@ ol {
 img {
   max-width: 100%;
   height: auto;
-  display: block;
   vertical-align: middle;
+  border-style: none; /* 兼容旧版 IE 图像边框 */
 }
 
 /* 5. 全局链接色彩交互 */
 a {
-  // 🌟 核心修复：直接使用 Element Plus 的原生主题色变量
+  // 直接使用 Element Plus 的原生主题色变量
   color: var(--el-color-primary);
   text-decoration: none;
   transition: color 0.3s;
+  cursor: pointer;
   &:hover {
     // 鼠标悬浮时，使用 Element Plus 提供的淡化混合色
     color: var(--el-color-primary-light-3);
   }
+}
+
+/* 6.品牌级文本选中质感 (Text Selection) */
+::selection {
+  background-color: var(--el-color-primary-light-5);
+  color: #ffffff;
+}
+
+/* 7.  焦点轮廓降噪 (Accessibility & Aesthetics) */
+/* 仅在键盘 Tab 切换时显示焦点边框，鼠标点击时不显示丑陋的默认黑框 */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-5);
+  outline-offset: 1px;
 }

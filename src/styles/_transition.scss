@@ -2,10 +2,19 @@
 // 💫 系统全局动画引擎
 // ==========================================
 
-// Vue Router 页面切换淡入淡出
+// 1.Vue Router 页面切换淡入淡出
 .fade-transform-leave-active,
 .fade-transform-enter-active {
-  transition: all 0.5s;
+  /* 精准定义动画属性，拒绝 all，提升 GPU 渲染性能 */
+  /* 缩短时间至 0.3s，并加入平滑的贝塞尔缓动曲线 */
+  transition:
+    opacity 0.3s cubic-bezier(0.55, 0, 0.1, 1),
+    transform 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+/*彻底解决 Vue 路由切换时，新老页面同框导致的“上下跳动”血案 */
+.fade-transform-leave-active {
+  position: absolute;
+  width: 100%; /* 确保脱离文档流后，容器宽度不坍塌 */
 }
 .fade-transform-enter-from {
   opacity: 0;
@@ -13,10 +22,11 @@
 }
 .fade-transform-leave-to {
   opacity: 0;
-  transform: translateX(30px);
+  transform: translateX(15px);
 }
 
-// 侧边栏折叠过渡
+//2. 侧边栏折叠过渡
 .sidebar-container {
-  transition: width 0.28s;
+  /* 为侧边栏加入柔和的回弹阻尼曲线，消除生硬的机械感 */
+  transition: width 0.28s cubic-bezier(0.25, 0.8, 0.25, 1);
 }

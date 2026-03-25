@@ -7,7 +7,7 @@ import pinia from './stores';
 // 1. 引入 Element Plus 的全局样式 (如果你没有用自动按需导入的话)
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
-// 2.  核心修复：引入咱们自己的全局基础样式与变量配置
+// 2. 引入咱们自己的全局基础样式与变量配置
 import '@/styles/index.scss';
 // 3. 引入 Element Plus 暗黑模式的核心 CSS 变量库
 import 'element-plus/theme-chalk/dark/css-vars.css';

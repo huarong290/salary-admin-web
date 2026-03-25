@@ -15,25 +15,37 @@ $info: var(--el-color-info);
 :root {
   // ☀️ 【亮色模式优化】 - 采用大厂流行的“极简白”风格
   // 背景改为纯白，文字改为深灰，激活色保持主题色
-  --salary-sidebar-bg: #ffffff;
-  --salary-sidebar-text: #303133;
+  --salary-sidebar-bg: var(--el-bg-color);
+  --salary-sidebar-text: var(--el-text-color-primary);
   --salary-sidebar-active-text: var(--el-color-primary);
 
   // 页面底色稍微深一点点（灰白），能更好地衬托出白色的卡片内容区
-  --salary-bg-page: #f5f7fa;
-  --salary-header-bg: #ffffff;
+  --salary-bg-page: var(--el-bg-color-page);
+  --salary-header-bg: var(--el-bg-color);
 
-  // 🌟 新增：侧边栏边框，白底侧边栏必须要有这条线来区分菜单和主内容区
-  --salary-sidebar-border: 1px solid #e6e6e6;
+  // 侧边栏边框，白底侧边栏必须要有这条线来区分菜单和主内容区
+  --salary-sidebar-border: 1px solid var(--el-border-color-lighter);
+
+  //升维架构：将静态的布局尺寸升级为 CSS 运行时变量
+  // 优势：在浏览器的开发者工具中可实时调节，也为未来支持 JS 拖拽调整侧栏宽度埋下伏笔
+  --salary-sidebar-width: 210px;
+  --salary-sidebar-hide-width: 54px;
+  --salary-navbar-height: 50px;
 }
 
-// 🌙 暗黑模式下的变量重写 (当 html 标签加上 class="dark" 时自动生效)
+// 🌙 暗黑模式下的变量重写 (当 html 标签加上 class="dark" 时自动生效 由于上面使用了语义化变量，暗黑其实已经自动适配了 90%))
 html.dark {
-  --salary-sidebar-bg: #141414; // 更深的纯黑
-  --salary-sidebar-text: #e5eaf3; // 偏灰的白字，防止刺眼
-  --salary-bg-page: #000000; // 页面底色纯黑
-  --salary-header-bg: #141414; // 顶栏变黑
-  --salary-sidebar-border: none; // 暗黑模式通常不需要边框，靠色差区分
+  // 更深的纯黑
+  --salary-sidebar-bg: #141414;
+  // 顶栏变黑
+  --salary-header-bg: #141414;
+  // 页面底色纯黑
+  --salary-bg-page: #000000;
+
+  // 侧栏文本颜色可以稍微变淡，防止在纯黑底色上过于刺眼产生光晕
+  --salary-sidebar-text: var(--el-text-color-regular);
+  // 暗黑模式通常不需要边框，靠色差区分
+  --salary-sidebar-border: none;
 }
 
 // 3. SCSS 变量别名 (为了让你在 vue 文件里少敲几个字母)
@@ -42,8 +54,9 @@ $sidebar-text: var(--salary-sidebar-text);
 $sidebar-active-text: var(--salary-sidebar-active-text);
 $bg-page: var(--salary-bg-page);
 $header-bg: var(--salary-header-bg);
-$sidebar-border: var(--salary-sidebar-border); // 🌟 新增别名
+$sidebar-border: var(--salary-sidebar-border);
+
 // 4. 尺寸类变量 (静态 SCSS 即可，通常不需要动态切换)
-$sidebar-width: 210px;
-$sidebar-hide-width: 54px;
-$navbar-height: 50px;
+$sidebar-width: var(--salary-sidebar-width);
+$sidebar-hide-width: var(--salary-sidebar-hide-width);
+$navbar-height: var(--salary-navbar-height);
