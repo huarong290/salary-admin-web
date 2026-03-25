@@ -300,309 +300,300 @@ const clearNotes = () => {
 <style scoped lang="scss">
 .dashboard-container {
   padding: 16px;
-  height: calc(100vh - 84px);
+  height: calc(100vh - 84px); /* 适配布局高度 */
   overflow-y: auto;
 }
 
-/* ========================
-   🌟 卡片系统（统一质感）
-======================== */
-.el-card {
-  border-radius: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  background: var(--el-bg-color);
-  transition: all 0.25s ease;
-
-  &:hover {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-  }
-
-  /* 🌙 暗黑重构（核心提升） */
-  html.dark & {
-    background: #0f0f10;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-
-    &:hover {
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
-    }
-  }
-}
-
-/* ===== 布局 ===== */
+/* ===== 布局结构 ===== */
 .full-height-row {
   height: 100%;
   align-items: stretch;
 }
-
 .left-col {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-
 .right-col {
   display: flex;
   flex-direction: column;
 }
 
-/* ========================
-   📅 日历（高级版本）
-======================== */
+/* ===== 卡片通用头部 ===== */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--el-text-color-primary);
+    .header-icon {
+      margin-right: 8px;
+      font-size: 18px;
+      color: var(--el-color-primary);
+    }
+  }
+}
+
+/* ===== 📅 日历定制优化 ===== */
 .calendar-card {
   flex: 1;
 }
 
-/* 去默认头 */
-:deep(.el-calendar__header) {
-  display: none !important;
+/* 完美接管原生 header */
+.custom-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+
+  .title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--el-text-color-primary);
+    .header-icon {
+      margin-right: 8px;
+      color: var(--el-color-primary);
+    }
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+  }
+  .month-picker {
+    width: 130px;
+    margin-right: 12px;
+  }
 }
 
+/* 清理日历内部边距 */
 :deep(.el-calendar__body) {
-  padding: 4px 12px 12px;
+  padding: 0 16px 16px;
 }
-
-/* 🌟 黄金高度（更精致） */
 :deep(.el-calendar-table .el-calendar-day) {
-  height: 58px !important;
+  height: 60px !important; /* 强制瘦身 */
+  padding: 0;
 }
 
-/* 日期格 */
 .date-cell-inner {
   position: relative;
-  margin: 2px;
-  border-radius: 8px;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100%;
+  margin: 2px;
+  border-radius: 8px;
+  transition: all 0.2s;
 
-  transition: all 0.18s ease;
-  cursor: pointer;
-
-  /* 🌟 hover（更轻） */
   &:hover {
-    background: var(--el-fill-color-light);
-    transform: translateY(-1px);
+    background-color: var(--el-fill-color-light);
   }
-
-  /* 🌟 选中 */
   &.selected {
-    background: var(--el-color-primary-light-9);
+    background-color: var(--el-color-primary-light-9);
     box-shadow: 0 0 0 1px var(--el-color-primary) inset;
   }
 
-  /* 🌟 今天 */
-  &.today .solar-day {
-    background: var(--el-color-primary);
+  .solar-day {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--el-text-color-primary);
+  }
+
+  .lunar-day {
+    font-size: 11px;
+    color: var(--el-text-color-secondary);
+    margin-top: 2px;
+    &.is-red {
+      color: var(--el-color-danger);
+    }
+  }
+
+  .holiday-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 4px;
     color: #fff;
+    transform: scale(0.8);
+    &.is-rest {
+      background-color: var(--el-color-danger);
+    }
+    &.is-work {
+      background-color: var(--el-color-info);
+    }
+  }
+
+  .memo-dot {
+    position: absolute;
+    bottom: 4px;
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
-    width: 26px;
-    height: 26px;
-    line-height: 26px;
-    font-size: 13px;
+    background-color: var(--el-color-primary);
   }
 }
 
-/* 阳历 */
-.solar-day {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* 农历 */
-.lunar-day {
-  font-size: 11px;
-  margin-top: 2px;
-  color: var(--el-text-color-secondary);
-
-  &.is-red {
-    color: var(--el-color-danger);
-  }
-}
-
-/* 角标 */
-.holiday-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
-  padding: 0 3px;
-  border-radius: 3px;
-  color: #fff;
-  transform: scale(0.85);
-
-  &.is-rest {
-    background: var(--el-color-danger);
-  }
-
-  &.is-work {
-    background: var(--el-color-info);
-  }
-}
-
-/* 备忘点 */
-.memo-dot {
-  position: absolute;
-  bottom: 4px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--el-color-primary);
-  box-shadow: 0 0 4px rgba(var(--el-color-primary-rgb), 0.5);
-}
-
-/* 🌙 日历暗黑强化 */
-html.dark {
-  .date-cell-inner:hover {
-    background: #1a1a1a;
-  }
-
-  .date-cell-inner.selected {
-    background: rgba(64, 158, 255, 0.15);
-  }
-}
-
-/* ========================
-   🧮 计算器（设备级）
-======================== */
+/* ===== 🧮 计算器与记事本核心重构 ===== */
 .calculator-card {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
-
 :deep(.calc-card-body) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 20px;
 }
 
-/* 核心容器 */
 .calculator-core {
   background: var(--el-fill-color-extra-light);
   border-radius: 12px;
-  padding: 14px;
-
-  html.dark & {
-    background: #111;
-  }
+  padding: 16px;
 }
 
-/* 屏幕 */
 .calc-screen {
   background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
   text-align: right;
 
-  border: 1px solid var(--el-border-color-lighter);
+  .screen-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 24px;
 
-  html.dark & {
-    background: #141414;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    .calc-history {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      font-family: monospace;
+    }
+  }
+
+  .calc-result {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+    font-variant-numeric: tabular-nums;
   }
 }
 
-.calc-result {
-  font-size: 28px;
-  font-weight: 600;
-  margin-top: 6px;
-}
-
-/* ===== 键盘（核心优化） ===== */
+/* 🌟 最核心的 Grid 修复：使用绝对纯净的网格系统 */
 .calc-keyboard {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-gap: 10px;
 
   .key-btn {
-    height: 46px;
-    border-radius: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 48px;
     border: none;
-    font-size: 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 500;
     cursor: pointer;
-
-    transition: all 0.12s ease;
+    transition:
+      background 0.15s,
+      transform 0.1s;
+    font-family: inherit;
 
     &:active {
-      transform: scale(0.94);
+      transform: scale(0.95);
     }
   }
 
   .key-zero {
-    grid-column: span 2;
+    grid-column: 1 / 3; /* 跨两列 */
   }
 
-  /* 数字 */
   .key-num {
     background: var(--el-bg-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
+    color: var(--el-text-color-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     &:hover {
       background: var(--el-fill-color-light);
     }
-
-    html.dark & {
-      background: #1a1a1a;
-    }
   }
 
-  /* 运算符 */
   .key-op {
     background: var(--el-color-primary-light-9);
     color: var(--el-color-primary);
-    font-size: 20px;
-
-    box-shadow: 0 2px 6px rgba(var(--el-color-primary-rgb), 0.2);
-
-    html.dark & {
-      background: rgba(64, 158, 255, 0.15);
+    font-size: 22px;
+    &:hover {
+      background: var(--el-color-primary-light-8);
     }
   }
 
-  /* 功能 */
   .key-func {
     background: var(--el-fill-color);
+    color: var(--el-text-color-regular);
+    font-size: 16px;
+    &:hover {
+      background: var(--el-fill-color-darker);
+    }
   }
 
-  /* 等号 */
   .key-eq {
     background: var(--el-color-primary);
     color: #fff;
-
-    box-shadow: 0 6px 14px rgba(var(--el-color-primary-rgb), 0.35);
+    &:hover {
+      opacity: 0.9;
+    }
   }
 }
 
-/* ========================
-   📝 记事本（工具感）
-======================== */
+/* ===== 📝 文本域定制 ===== */
 .notepad-area {
   flex: 1;
   display: flex;
   flex-direction: column;
+
+  .notepad-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .notepad-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
 }
 
+/* 适配原生和暗黑的输入框 */
 .mac-textarea {
   flex: 1;
-
   :deep(textarea) {
     height: 100%;
-    border-radius: 10px;
-
-    font-family: ui-monospace, SFMono-Regular;
+    background-color: var(--el-fill-color-blank);
+    font-family: monospace;
     font-size: 13px;
     line-height: 1.6;
+    padding: 12px;
+    border-radius: 8px;
+    border-color: var(--el-border-color-lighter);
 
-    background: var(--el-fill-color-blank);
-
-    html.dark & {
-      background: #111;
-      color: #ddd;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    &:focus {
+      border-color: var(--el-color-primary);
+      box-shadow: 0 0 0 1px var(--el-color-primary-light-5);
     }
   }
 }
