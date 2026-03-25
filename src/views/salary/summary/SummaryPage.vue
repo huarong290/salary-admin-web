@@ -2,64 +2,25 @@
 
 <template>
   <div class="app-container">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="hover" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
         <el-form-item label="结算月份" prop="settlementMonth">
-          <el-select
+          <el-date-picker
             v-model="queryParams.settlementMonth"
-            placeholder="请选择月份"
+            type="month"
+            placeholder="选择月份"
+            value-format="YYYYMM"
             clearable
-            style="width: 160px"
-            @change="handleQuery"
-          >
-            <el-option
-              v-for="item in periodOptions"
-              :key="item.id"
-              :label="item.settlementMonth"
-              :value="item.settlementMonth"
-            >
-              <span style="float: left; font-weight: bold">{{ item.settlementMonth }}</span>
-              <span
-                style="
-                  float: right;
-                  color: var(--el-text-color-secondary);
-                  font-size: 12px;
-                  margin-left: 20px;
-                "
-              >
-                {{ item.startDate ? `(${item.startDate} ~ ${item.endDate})` : '' }}
-              </span>
-            </el-option>
-          </el-select>
+          />
         </el-form-item>
-
-        <el-form-item label="员工姓名" prop="employeeId">
-          <el-select
-            v-model="queryParams.employeeId"
-            filterable
-            remote
+        <el-form-item label="员工姓名" prop="keyword">
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="搜索姓名或工号"
             clearable
-            reserve-keyword
-            placeholder="输入姓名搜索"
-            :remote-method="remoteSearchEmployees"
-            :loading="searchLoading"
-            style="width: 200px"
-            @change="handleQuery"
-          >
-            <el-option
-              v-for="item in employeeOptions"
-              :key="item.id"
-              :label="item.employeeName"
-              :value="item.id"
-            >
-              <span style="float: left">{{ item.employeeName }}</span>
-              <span style="float: right; color: var(--el-text-color-secondary); font-size: 13px">{{
-                item.employeeCode
-              }}</span>
-            </el-option>
-          </el-select>
+            @keyup.enter="handleQuery"
+          />
         </el-form-item>
-
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -67,34 +28,26 @@
       </el-form>
     </el-card>
 
-    <el-card shadow="never" class="table-card">
+    <el-card shadow="hover" class="table-card">
       <div class="toolbar">
+        <el-button v-hasPerm="['salary:period:add']" type="primary" icon="Plus" @click="handleAdd"
+          >开启新周期</el-button
+        >
         <el-button
-          v-hasPerm="['salary:summary:init']"
-          type="primary"
+          v-hasPerm="['salary:period:init']"
+          type="warning"
           icon="MagicStick"
-          @click="handleOpenInit"
+          @click="handleOpenBatchInit"
+          >批量初始化</el-button
         >
-          初始化本月账套
-        </el-button>
         <el-button
-          v-hasPerm="['salary:summary:calc']"
-          type="success"
-          icon="DataBoard"
-          @click="handleOpenCalc"
-        >
-          执行全员核算发薪
-        </el-button>
-        <el-button
-          v-hasPerm="['salary:summary:del']"
+          v-hasPerm="['salary:period:del']"
           type="danger"
-          plain
           icon="Delete"
           :disabled="multiple"
           @click="handleBatchDelete"
+          >批量删除</el-button
         >
-          批量作废
-        </el-button>
       </div>
 
       <el-table
@@ -102,125 +55,89 @@
         :data="dataList"
         border
         height="100%"
+        :row-class-name="tableRowClassName"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" align="center" fixed="left" />
-
+        <el-table-column type="selection" width="50" align="center" />
         <el-table-column
           label="员工姓名"
           align="center"
           prop="employeeName"
           width="120"
           fixed="left"
-        >
-          <template #default="scope">
-            <el-link
-              type="primary"
-              :underline="false"
-              class="drill-link"
-              @click="handleQuickFilter(scope.row)"
-            >
-              {{ scope.row.employeeName }}
-            </el-link>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100">
-          <template #default="scope"
-            ><span class="amount-font">{{ scope.row.settlementMonth }}</span></template
-          >
-        </el-table-column>
-
-        <el-table-column label="应发总计(本币)" align="right" prop="salarySubtotal" width="130">
+        />
+        <el-table-column label="结算月份" align="center" width="100">
           <template #default="{ row }">
-            <span class="amount-font text-success">
-              {{ Number(row.salarySubtotal) === 0 ? '0.00' : '+' + row.salarySubtotal }}
-            </span>
+            <el-tag type="primary" effect="plain" class="amount-font status-tag">{{
+              row.settlementMonth
+            }}</el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column
-          label="应扣总计(本币)"
-          align="right"
-          prop="salaryDeductionTotal"
-          width="130"
-        >
-          <template #default="{ row }">
-            <span class="amount-font text-danger">
-              {{ Number(row.salaryDeductionTotal) === 0 ? '0.00' : '-' + row.salaryDeductionTotal }}
-            </span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="本币实发金额" align="right" prop="salaryTotal" width="140">
+        <el-table-column label="在岗时长" align="center" width="100">
           <template #default="{ row }">
             <span
-              v-if="Number(row.salaryTotal) === 0"
-              class="text-secondary"
-              style="font-size: 12px"
+              class="amount-font"
+              :style="{
+                color: Number(row.workMonth) >= 12 ? 'var(--el-color-success)' : 'inherit',
+              }"
             >
-              (待核算)
+              {{ row.workMonth || 0 }} 个月
             </span>
-            <span v-else class="amount-font real-pay-amount">{{ row.salaryTotal }}</span>
           </template>
         </el-table-column>
-
-        <el-table-column label="结算币种" align="center" prop="currency" width="90" />
-
-        <el-table-column label="折合人民币(CNY)" align="right" prop="salaryRmb" width="140">
+        <el-table-column label="周期范围" align="center" width="220">
+          <template #default="{ row }">
+            <span class="amount-font text-secondary">{{ row.startDate }} ~ {{ row.endDate }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="自然天数" align="right" width="90">
           <template #default="{ row }"
-            ><span class="amount-font text-secondary">{{ row.salaryRmb }}</span></template
+            ><span class="amount-font">{{ row.monthDays }}</span></template
           >
         </el-table-column>
-
-        <el-table-column label="折合泰达币(USDT)" align="right" prop="salaryUsdt" width="140">
-          <template #default="{ row }"
-            ><span class="amount-font text-secondary">{{ row.salaryUsdt }}</span></template
-          >
-        </el-table-column>
-
-        <el-table-column
-          label="发放钱包/账号"
-          align="center"
-          prop="targetAccount"
-          min-width="180"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }"
-            ><span class="amount-font text-secondary">{{
-              row.targetAccount || '未配置'
-            }}</span></template
-          >
-        </el-table-column>
-
-        <el-table-column label="支付状态" align="center" width="100" fixed="right">
-          <template #default="scope">
-            <el-tag
-              :type="getPayStatus(scope.row.paymentStatus).type"
-              :effect="scope.row.paymentStatus === 1 ? 'dark' : 'plain'"
-              size="small"
+        <el-table-column label="出勤天数" align="right" width="90">
+          <template #default="{ row }">
+            <span
+              class="amount-font"
+              :class="row.attendanceDays < row.monthDays ? 'text-danger' : ''"
+              >{{ row.attendanceDays }}</span
             >
-              {{ getPayStatus(scope.row.paymentStatus).text }}
+          </template>
+        </el-table-column>
+        <el-table-column label="满勤状态" align="center" width="100">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.fullAttendanceFlag === 1 ? 'success' : 'danger'"
+              size="small"
+              class="status-tag"
+            >
+              {{ row.fullAttendanceFlag === 1 ? '已满勤' : '非满勤' }}
             </el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column label="操作" align="center" width="90" fixed="right">
-          <template #default="scope">
-            <el-button link type="success" icon="Refresh" @click="handleSingleCalc(scope.row)"
-              >重新核算
-            </el-button>
-            <el-button link type="primary" icon="Document" @click="handleGoToRecord(scope.row)"
-              >对账明细
-            </el-button>
+        <el-table-column label="创建时间" align="center" width="170">
+          <template #default="{ row }"
+            ><span class="amount-font text-secondary">{{ row.createTime }}</span></template
+          >
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="160" fixed="right">
+          <template #default="{ row }">
             <el-button
-              v-hasPerm="['salary:summary:del']"
+              v-hasPerm="['salary:period:edit']"
+              link
+              type="primary"
+              icon="Edit"
+              @click="handleUpdate(row)"
+              >修改</el-button
+            >
+            <el-button
+              v-hasPerm="['salary:period:del']"
               link
               type="danger"
               icon="Delete"
-              @click="handleDelete(scope.row)"
-              >作废
-            </el-button>
+              @click="handleDelete(row)"
+              >删除</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -229,7 +146,7 @@
         <el-pagination
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="getList"
@@ -238,121 +155,219 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="calcDialog.visible" title="系统核算控制台" width="480px" append-to-body>
-      <el-form ref="calcFormRef" :model="calcForm" :rules="calcRules" label-width="100px">
-        <el-alert
-          title="将汇总选定月份所有员工的考勤、档案及变动明细。若该月已有核算数据将被重新覆盖。"
-          type="warning"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 25px"
-        />
-
-        <el-form-item label="核算月份" prop="settlementMonth">
-          <el-select
-            v-model="calcForm.settlementMonth"
-            placeholder="请指定要进行全员核算的月份"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="item in periodOptions"
-              :key="item.id"
-              :label="item.settlementMonth"
-              :value="item.settlementMonth"
-            >
-              <span style="float: left; font-weight: bold">{{ item.settlementMonth }}</span>
-              <span style="float: right; color: var(--el-text-color-secondary); font-size: 12px">
-                {{ item.startDate ? `(${item.startDate} ~ ${item.endDate})` : '' }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="核算备注" prop="remark">
-          <el-input
-            v-model="calcForm.remark"
-            type="textarea"
-            placeholder="选填，如: 2026年3月全局第一次核算"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="calcDialog.visible = false">放弃操作</el-button>
-        <el-button type="success" :loading="calculating" @click="submitCalculate">
-          {{ calculating ? '引 擎 运 算 中...' : '确 认 并 执 行 核 算' }}
-        </el-button>
-      </template>
-    </el-dialog>
     <el-dialog
-      v-model="previewDialog.visible"
-      title="算薪引擎：单人核算预览"
-      width="550px"
+      v-model="dialog.visible"
+      width="650px"
       append-to-body
+      draggable
+      :fullscreen="isFullscreen"
+      @close="cancel"
     >
-      <div v-loading="previewDialog.loading">
-        <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="员工姓名"
-            >{{ previewDialog.data.employeeName }}
-          </el-descriptions-item>
-          <el-descriptions-item label="核算月份"
-            >{{ previewDialog.data.settlementMonth }}
-          </el-descriptions-item>
-          <el-descriptions-item label="计薪基准 (实发)">
-            <span class="amount-font">{{ previewDialog.data.salarySubtotal }}</span>
-            {{ previewDialog.data.currency }}
-          </el-descriptions-item>
-          <el-descriptions-item label="应扣合计 (实扣)">
-            <span class="amount-font text-danger"
-              >-{{ previewDialog.data.salaryDeductionTotal }}</span
-            >
-          </el-descriptions-item>
-          <el-descriptions-item label="预计实发净额">
-            <b class="amount-font real-pay-amount" style="font-size: 20px">{{
-              previewDialog.data.salaryTotal
-            }}</b>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-alert
-          title="预览数据基于当前档案及考勤实时计算。点击'确认存盘'将覆写该员工本月已存在的结算单。"
-          type="warning"
-          show-icon
-          :closable="false"
-          style="margin-top: 15px"
-        />
-      </div>
+      <template #header>
+        <div class="dialog-custom-header">
+          <span class="title">{{ dialog.title }}</span>
+          <el-button link class="fullscreen-btn" @click="toggleFullscreen">
+            <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
+          </el-button>
+        </div>
+      </template>
+
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <div class="section-title">周期基础信息</div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="员工姓名" prop="employeeId">
+              <el-select
+                v-model="form.employeeId"
+                filterable
+                remote
+                :remote-method="remoteSearchEmployees"
+                :loading="searchLoading"
+                :disabled="!!form.id"
+                style="width: 100%"
+                placeholder="姓名搜索"
+              >
+                <el-option
+                  v-for="item in employeeOptions"
+                  :key="item.id"
+                  :label="item.employeeName"
+                  :value="item.id"
+                >
+                  <div class="flex-justify-between">
+                    <span>{{ item.employeeName }}</span>
+                    <span style="color: #999; font-size: 12px">{{ item.employeeCode }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结算月份" prop="settlementMonth">
+              <el-date-picker
+                v-model="form.settlementMonth"
+                type="month"
+                value-format="YYYYMM"
+                style="width: 100%"
+                @change="handleMonthChange"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="在岗月份" prop="workMonth">
+              <el-input-number
+                v-model="form.workMonth"
+                :min="0"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="周期范围">
+              <el-date-picker
+                v-model="dateRange"
+                type="daterange"
+                range-separator="-"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                @change="handleDateRangeChange"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div class="section-title margin-top-20">考勤与核算指标</div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="自然天数" prop="monthDays">
+              <el-input-number
+                v-model="form.monthDays"
+                disabled
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="出勤天数" prop="attendanceDays">
+              <el-input-number
+                v-model="form.attendanceDays"
+                :min="0"
+                :max="form.monthDays"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="满勤状态" prop="fullAttendanceFlag">
+          <el-radio-group v-model="form.fullAttendanceFlag">
+            <el-radio :label="1">确认满勤 (发放全勤奖)</el-radio>
+            <el-radio :label="0">非满勤 (扣减全勤奖)</el-radio>
+          </el-radio-group>
+          <div class="form-tips">
+            <el-icon><WarningFilled /></el-icon> 系统将根据此开关决定是否触发档案中的
+            FullAttendanceBonus 项。
+          </div>
+        </el-form-item>
+      </el-form>
+
       <template #footer>
-        <el-button @click="previewDialog.visible = false">取 消</el-button>
-        <el-button type="success" :loading="previewDialog.submitting" @click="confirmSingleCalc"
-          >确认存盘并更新账单
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="cancel">取 消</el-button>
+          <el-button type="primary" @click="submitForm">确 定 保 存</el-button>
+        </div>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="initDialog.visible" title="初始化月份账套" width="400px" append-to-body>
-      <el-form ref="initFormRef" :model="initForm" :rules="initRules" label-width="80px">
-        <el-alert
-          title="此操作将为所有【在职员工】创建该月的薪资周期及汇总单预览。已存在的记录将自动跳过。"
-          type="info"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 20px"
-        />
-        <el-form-item label="目标月份" prop="settlementMonth">
-          <el-date-picker
-            v-model="initForm.settlementMonth"
-            type="month"
-            value-format="YYYYMM"
-            placeholder="选择月份"
-            style="width: 100%"
+    <el-dialog v-model="batchInitDialog.visible" width="600px" append-to-body draggable>
+      <template #header>
+        <div class="dialog-custom-header"><span class="title">批量生成薪资周期</span></div>
+      </template>
+      <div class="form-tips" style="margin-bottom: 20px">
+        系统将针对当前在职员工名单进行建账。初始出勤天数默认为当月全满。
+      </div>
+
+      <el-form
+        ref="batchInitFormRef"
+        :model="batchInitForm"
+        :rules="batchInitRules"
+        label-width="90px"
+      >
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="结算月份" prop="settlementMonth">
+              <el-date-picker
+                v-model="batchInitForm.settlementMonth"
+                type="month"
+                value-format="YYYYMM"
+                style="width: 100%"
+                @change="handleBatchMonthChange"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="周期范围">
+              <el-date-picker
+                v-model="batchDateRange"
+                type="daterange"
+                range-separator="-"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                @change="handleBatchDateRangeChange"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="自然天数" prop="monthDays">
+              <el-input-number
+                v-model="batchInitForm.monthDays"
+                disabled
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="默认出勤" prop="attendanceDays">
+              <el-input-number
+                v-model="batchInitForm.attendanceDays"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="满勤状态" prop="fullAttendanceFlag">
+          <el-radio-group v-model="batchInitForm.fullAttendanceFlag">
+            <el-radio :label="1">默认全员满勤</el-radio>
+            <el-radio :label="0">默认非满勤</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注说明" prop="remark">
+          <el-input
+            v-model="batchInitForm.remark"
+            type="textarea"
+            :rows="2"
+            placeholder="选填，如：3月定期建账"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="initDialog.visible = false">取 消</el-button>
-        <el-button type="primary" :loading="initializing" @click="submitInit">
-          立即生成账套
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="batchInitDialog.visible = false">取 消</el-button>
+          <el-button
+            type="warning"
+            icon="MagicStick"
+            :loading="batchInitLoading"
+            @click="submitBatchInit"
+            >一键生成数据</el-button
+          >
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -361,169 +376,200 @@
 <script setup lang="ts">
 /** * ====================================================================
  * 📌 模块/组件说明
- * 功能描述: 薪资结算汇总大盘 (调用核心算薪引擎，生成员工最终的工资条)
- * 设计特性: 支持数据钻取、高危覆写阻断、大盘对账排版
+ * 功能描述: 薪资周期管理 (维护员工月度出勤、在岗时长及全勤资格)
+ * 业务逻辑:
+ * 1. 智能推算：选择月份自动填充月度起止日期与自然天数。
+ * 2. 批量建账：快速为全员初始化周期，避免手动录入。
  * ====================================================================
  */
 
-// 1. Vue 与核心依赖
-import { ref, reactive, onMounted } from 'vue';
-
-// 2. Element Plus 与图标
-import { ElMessage, ElMessageBox } from 'element-plus';
-import type { FormInstance, FormRules } from 'element-plus';
-
-// 3. API 与类型定义
-import { getPeriodOptionsApi } from '@/api/salary/period/period';
-import { listEmployeeOptionsApi } from '@/api/salary/employee';
-import {
-  getSummaryPageApi,
-  calculateSummaryApi,
-  deleteSummaryApi,
-  batchDeleteSummaryApi,
-  calculateSummaryByPeriodsApi,
-  previewSummaryCalculateApi,
-  initSummaryBatchApi,
-} from '@/api/salary/summary/summary.ts';
-import type { PeriodOptionVO } from '@/types/salary/period/period';
-import type {
-  SummaryCalcByPeriodReqDTO,
-  SummaryCalcReqDTO,
-  SummaryQueryReqDTO,
-  SummaryVO,
-} from '@/types/salary/summary/summary.ts';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
 /**
  * --------------------------------------------------------------------
- * 📦 一、响应式状态区 (State Management)
+ * 📥 一、 依赖导入区 (Import Dependencies)
+ * --------------------------------------------------------------------
+ */
+
+// [1] Vue 核心钩子与原生生态
+import { ref, reactive, onMounted } from 'vue';
+import dayjs from 'dayjs';
+
+// [2] 第三方 UI 组件库与图标
+import { ElMessage, ElMessageBox } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { WarningFilled, FullScreen, Minus } from '@element-plus/icons-vue';
+
+// [3] 业务 API 请求接口
+import {
+  addPeriodApi,
+  batchDeletePeriodApi,
+  batchInitPeriodApi,
+  deletePeriodApi,
+  editPeriodApi,
+  getPeriodPageApi,
+} from '@/api/salary/period/period.ts';
+import { listEmployeeOptionsApi } from '@/api/salary/employee';
+
+// [4] TS 强类型定义约束
+import type {
+  PeriodBatchInitReqDTO,
+  PeriodQueryReqDTO,
+  PeriodVO,
+} from '@/types/salary/period/period.ts';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
+
+/**
+ * --------------------------------------------------------------------
+ * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
 
 // [UI 控制状态]
 const loading = ref(false);
-const calculating = ref(false); // 独立控制核算按钮的 loading，防止误触双击
+const isFullscreen = ref(false);
 const searchLoading = ref(false);
+const batchInitLoading = ref(false);
 
-// [表格与分页状态]
+// [表格与分页数据]
 const total = ref(0);
 const multiple = ref(true);
 const selectedIds = ref<number[]>([]);
-const dataList = ref<SummaryVO[]>([]);
+const dataList = ref<PeriodVO[]>([]);
 
-// [全局数据字典]
-const periodOptions = ref<PeriodOptionVO[]>([]);
-const employeeOptions = ref<any[]>([]);
-
-// [查询条件]
+// [查询与表单状态]
+const queryParams = reactive<PeriodQueryReqDTO>({ pageNum: 1, pageSize: 10 });
 const queryFormRef = ref<FormInstance>();
-const queryParams = reactive<SummaryQueryReqDTO & { employeeId?: any; settlementMonth?: string }>({
-  pageNum: 1,
-  pageSize: 10,
-  employeeId: undefined,
-  settlementMonth: undefined,
+const formRef = ref<FormInstance>();
+const dialog = reactive({ visible: false, title: '' });
+const form = ref<any>({});
+const dateRange = ref<[string, string] | []>([]);
+const employeeOptions = ref<EmployeeOptionVO[]>([]);
+
+// [批量建账表单状态]
+const batchInitDialog = reactive({ visible: false });
+const batchInitFormRef = ref<FormInstance>();
+const batchDateRange = ref<[string, string] | []>([]);
+const batchInitForm = reactive<PeriodBatchInitReqDTO>({
+  settlementMonth: '',
+  startDate: '',
+  endDate: '',
+  monthDays: 0,
+  attendanceDays: 0,
+  fullAttendanceFlag: 1,
+  remark: '',
 });
 
-// [核心核算控制台表单]
-const calcDialog = reactive({ visible: false });
-const calcFormRef = ref<FormInstance>();
-const calcForm = ref<any>({ settlementMonth: '', remark: '' });
-
-// 强校验规则
-const calcRules = reactive<FormRules>({
-  settlementMonth: [{ required: true, message: '必须指定要执行核算的结算月份', trigger: 'change' }],
-});
-// [ 新增：核算预览对话框状态]
-const previewDialog = reactive({
-  visible: false,
-  loading: false,
-  submitting: false,
-  data: {} as any,
+// [表单校验规则]
+const rules = reactive<FormRules>({
+  employeeId: [{ required: true, message: '请选择员工', trigger: 'change' }],
+  settlementMonth: [{ required: true, message: '请选择结算月份', trigger: 'change' }],
 });
 
-// [初始化控制台]
-const initDialog = reactive({ visible: false });
-const initFormRef = ref<FormInstance>();
-const initForm = ref({ settlementMonth: '' });
-const initializing = ref(false); // 初始化按钮的 loading
-
-const initRules = reactive<FormRules>({
-  settlementMonth: [{ required: true, message: '请选择要初始化的月份', trigger: 'change' }],
+const batchInitRules = reactive<FormRules>({
+  settlementMonth: [{ required: true, message: '必须选择结算月份', trigger: 'change' }],
 });
+
 /**
  * --------------------------------------------------------------------
- * 🖱️ 二、UI 交互与视图工具区 (UI Interactions & Utils)
+ * 🖱️ 三、UI 交互事件区 (UI Interactions)
  * --------------------------------------------------------------------
  */
 
-// 统一支付状态字典映射
-const PAY_STATUS: Record<number, { text: string; type: string }> = {
-  0: { text: '待支付', type: 'info' },
-  1: { text: '已支付', type: 'success' },
-  2: { text: '支付失败', type: 'danger' },
-  3: { text: '账号锁定', type: 'warning' },
-};
+/** 切换全屏 */
+const toggleFullscreen = () => (isFullscreen.value = !isFullscreen.value);
 
-const getPayStatus = (status: any) => {
-  return PAY_STATUS[Number(status)] || { text: '未知状态', type: 'info' };
-};
-
-const handleSelectionChange = (selection: SummaryVO[]) => {
+/** 表格勾选 */
+const handleSelectionChange = (selection: PeriodVO[]) => {
   selectedIds.value = selection.map((item) => item.id);
   multiple.value = !selection.length;
 };
 
+/** 搜索与重置 */
 const handleQuery = () => {
   queryParams.pageNum = 1;
   getList();
 };
-
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
-  queryParams.employeeId = undefined;
-  queryParams.settlementMonth = undefined;
-  employeeOptions.value = []; // 清空员工级联缓存
   handleQuery();
+};
+const cancel = () => {
+  dialog.visible = false;
+  formRef.value?.resetFields();
+  dateRange.value = [];
 };
 
-/** 🌟 核心交互：数据钻取 (Drill-down)。点击姓名，直接过滤看该员工的所有历史单据 */
-const handleQuickFilter = (row: SummaryVO) => {
-  queryParams.employeeId = row.employeeId;
-  // 手动回填员工选项池，避免选择框展示枯燥的 ID
-  employeeOptions.value = [
-    { id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode },
+/** 🌟 核心UI染色：将非满勤行标记为危险色 */
+const tableRowClassName = ({ row }: { row: PeriodVO }) =>
+  row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
+
+// --- 联动计算工具方法 ---
+const calcDaysAndSync = (range: [string, string] | null, target: any) => {
+  if (range && range.length === 2) {
+    target.startDate = range[0];
+    target.endDate = range[1];
+    const days = dayjs(range[1]).diff(dayjs(range[0]), 'day') + 1;
+    target.monthDays = days > 0 ? days : 0;
+    target.attendanceDays = target.monthDays;
+  } else {
+    target.startDate = target.endDate = undefined;
+    target.monthDays = target.attendanceDays = 0;
+  }
+};
+
+const handleMonthChange = (val: string) => {
+  if (!val) return calcDaysAndSync(null, form.value);
+  const m = dayjs(val.substring(0, 4) + '-' + val.substring(4, 6));
+  const range: [string, string] = [
+    m.startOf('month').format('YYYY-MM-DD'),
+    m.endOf('month').format('YYYY-MM-DD'),
   ];
-  handleQuery();
+  dateRange.value = range;
+  calcDaysAndSync(range, form.value);
 };
-/** 🌟 核心打通：跳转到明细页对账 */
-const handleGoToRecord = (row: SummaryVO) => {
-  // 注意：确认你的明细路由路径，通常为 '/salary/record' 或类似路径
-  router.push({
-    // 如果该菜单是子菜单，通常需要带上父级路径，例如 /salary/paymentrecord
-    path: '/salary/paymentrecord',
-    query: { summaryId: row.id }, // 把当前批次ID带过去，那边会自动填充搜索
-  });
+
+const handleDateRangeChange = (val: [string, string] | null) => calcDaysAndSync(val, form.value);
+
+// --- 批量建账交互 ---
+const handleBatchMonthChange = (val: string) => {
+  if (!val) return calcDaysAndSync(null, batchInitForm);
+  const m = dayjs(val.substring(0, 4) + '-' + val.substring(4, 6));
+  const range: [string, string] = [
+    m.startOf('month').format('YYYY-MM-DD'),
+    m.endOf('month').format('YYYY-MM-DD'),
+  ];
+  batchDateRange.value = range;
+  calcDaysAndSync(range, batchInitForm);
 };
-/** 打开核算控制台面板 */
-const handleOpenCalc = () => {
-  calcForm.value = { settlementMonth: '', remark: '' };
-  calcDialog.visible = true;
+
+const handleBatchDateRangeChange = (val: [string, string] | null) =>
+  calcDaysAndSync(val, batchInitForm);
+
+const handleOpenBatchInit = () => {
+  batchInitForm.remark = '';
+  if (queryParams.settlementMonth) {
+    batchInitForm.settlementMonth = queryParams.settlementMonth;
+    handleBatchMonthChange(queryParams.settlementMonth);
+  }
+  batchInitDialog.visible = true;
 };
 
 /**
  * --------------------------------------------------------------------
- * 🧠 三、核心业务与 API 交互区 (Business & API Logic)
+ * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
  * --------------------------------------------------------------------
  */
 
-/** 页面初始化加载底层关联数据 (可选月份列表) */
-const loadPeriodOptions = async () => {
-  const res = await getPeriodOptionsApi();
-  periodOptions.value = res || [];
+const getList = async () => {
+  loading.value = true;
+  try {
+    const res = await getPeriodPageApi(queryParams);
+    dataList.value = res.records || [];
+    total.value = res.total || 0;
+  } finally {
+    loading.value = false;
+  }
 };
 
-/** 远程搜索搜索栏员工 */
 const remoteSearchEmployees = async (query: string) => {
   if (!query) {
     employeeOptions.value = [];
@@ -537,209 +583,134 @@ const remoteSearchEmployees = async (query: string) => {
   }
 };
 
-/** 查询结算大盘列表 */
-const getList = async () => {
-  loading.value = true;
-  try {
-    const res = await getSummaryPageApi(queryParams);
-    dataList.value = res.records || [];
-    total.value = res.total || 0;
-  } finally {
-    loading.value = false;
-  }
+const handleAdd = () => {
+  form.value = {
+    settlementMonth: '',
+    workMonth: 0,
+    monthDays: 0,
+    attendanceDays: 0,
+    fullAttendanceFlag: 0,
+  };
+  dateRange.value = [];
+  employeeOptions.value = [];
+  dialog.title = '新增薪资周期项';
+  dialog.visible = true;
+  isFullscreen.value = false;
 };
 
-/** 🌟 核心引擎驱动：向后端发起全员核算指令 */
-const submitCalculate = async () => {
-  if (!calcFormRef.value) return;
-  await calcFormRef.value.validate(async (valid) => {
+const handleUpdate = (row: PeriodVO) => {
+  form.value = { ...row };
+  employeeOptions.value = [
+    {
+      id: row.employeeId,
+      employeeName: row.employeeName,
+      employeeCode: row.employeeCode || '',
+    } as EmployeeOptionVO,
+  ];
+  dateRange.value = row.startDate && row.endDate ? [row.startDate, row.endDate] : [];
+  dialog.title = '修改薪资周期指标';
+  dialog.visible = true;
+  isFullscreen.value = false;
+};
+
+const submitForm = async () => {
+  if (!formRef.value) return;
+  await formRef.value.validate(async (valid) => {
     if (valid) {
-      calculating.value = true;
+      const p = { ...form.value, workMonth: String(form.value.workMonth) }; // DTO 对齐
+      if (p.id) {
+        await editPeriodApi(p);
+      } else {
+        await addPeriodApi(p);
+      }
+      ElMessage.success('周期数据已更新');
+      dialog.visible = false;
+      await getList();
+    }
+  });
+};
+
+const submitBatchInit = async () => {
+  if (!batchInitFormRef.value) return;
+  await batchInitFormRef.value.validate(async (valid) => {
+    if (valid) {
+      batchInitLoading.value = true;
       try {
-        const params: SummaryCalcReqDTO = {
-          settlementMonth: calcForm.value.settlementMonth,
-          remark: calcForm.value.remark,
-        };
-        const selectedPeriod = periodOptions.value.find(
-          (p) => p.settlementMonth === calcForm.value.settlementMonth
+        const res = await batchInitPeriodApi(batchInitForm);
+        const { totalCount, successCount, skipCount, settlementMonth } = res;
+        batchInitDialog.visible = false;
+        await ElMessageBox.alert(
+          `结算月份：<b>${settlementMonth}</b><br/>处理：${totalCount}人 | 成功：${successCount} | 跳过：${skipCount}`,
+          '建账执行结果',
+          {
+            dangerouslyUseHTMLString: true,
+            type: 'success',
+          }
         );
-        if (selectedPeriod) {
-          params.periodId = selectedPeriod.id;
-        }
-        await calculateSummaryApi(params);
-        ElMessage.success('核算引擎执行完毕！全员账单已生成。');
-        calcDialog.visible = false;
+        queryParams.settlementMonth = batchInitForm.settlementMonth;
         handleQuery();
-      } catch (error) {
-        // 错误通常已被底层的 request.ts 拦截并抛出提示
-        console.error('薪资引擎运算触发失败:', error);
       } finally {
-        calculating.value = false;
+        batchInitLoading.value = false;
       }
     }
   });
 };
 
-/** 危险操作：物理/逻辑销毁结算单 (通常用于局部核算错误后的冲正) */
-const handleDelete = (row: SummaryVO) => {
-  ElMessageBox.confirm(
-    `确认作废 "${row.employeeName}" 该月的结算单吗? 这将直接影响财务最终打款对账!`,
-    '系统高危操作',
-    { type: 'error' }
-  )
+const handleDelete = (row: PeriodVO) => {
+  ElMessageBox.confirm(`确认删除员工 "${row.employeeName}" 的该周期记录吗?`, '高危操作', {
+    type: 'warning',
+  })
     .then(async () => {
-      await deleteSummaryApi(row.id);
-      ElMessage.success('单据作废成功');
-      getList();
+      await deletePeriodApi(row.id);
+      ElMessage.success('已移除');
+      await getList();
     })
     .catch(() => {});
 };
 
 const handleBatchDelete = () => {
-  ElMessageBox.confirm(`确认批量作废选中的 ${selectedIds.value.length} 张结算单?`, '系统高危操作', {
-    type: 'error',
+  ElMessageBox.confirm(`确认销毁选中的 ${selectedIds.value.length} 条周期数据?`, '高危操作', {
+    type: 'warning',
   })
     .then(async () => {
-      await batchDeleteSummaryApi(selectedIds.value);
-      ElMessage.success('批量作废成功');
-      getList();
+      await batchDeletePeriodApi(selectedIds.value);
+      ElMessage.success('批量清理完成');
+      await getList();
     })
     .catch(() => {});
 };
 
-/** 🌟 触发单人即时核算预览 */
-const handleSingleCalc = async (row: SummaryVO) => {
-  // 1. 初始化弹窗与加载状态
-  previewDialog.visible = true;
-  previewDialog.loading = true;
-  // 先把当前行的基础数据放进去占位，保证弹窗能立刻看到人名和月份
-  previewDialog.data = { ...row, currency: row.currency || 'CNY' };
-
-  try {
-    // 🌟 2. 调用真实的后端预览接口，获取引擎实时算出的金额
-    const res = await previewSummaryCalculateApi(row.periodId);
-
-    // 3. 将后端返回的精确计算结果合并到弹窗数据中展示
-    // 此时弹窗里的 salaryTotal、salarySubtotal 就会瞬间跳动更新为计算后的值
-    previewDialog.data = {
-      ...previewDialog.data,
-      salarySubtotal: res.salarySubtotal,
-      salaryDeductionTotal: res.salaryDeductionTotal,
-      salaryTotal: res.salaryTotal,
-      currency: res.currency || previewDialog.data.currency,
-    };
-  } catch (error) {
-    console.error('引擎预览计算异常:', error);
-    ElMessage.error('引擎预览失败，请检查员工档案配置');
-    previewDialog.visible = false;
-  } finally {
-    previewDialog.loading = false;
-  }
-};
-
-/** 🌟 确认预览结果，正式存盘 */
-const confirmSingleCalc = async () => {
-  previewDialog.submitting = true;
-  try {
-    // 🌟 使用新的 DTO 构造参数，传入目标周期 ID 数组
-    const params: SummaryCalcByPeriodReqDTO = {
-      periodIds: [previewDialog.data.periodId],
-      remark: `单人重新核算: ${previewDialog.data.employeeName}`,
-    };
-
-    // 🌟 调用后端新增的精准核算接口
-    await calculateSummaryByPeriodsApi(params);
-
-    ElMessage.success(`${previewDialog.data.employeeName} 的薪资记录已成功更新`);
-    previewDialog.visible = false;
-    handleQuery(); // 刷新表格金额，拉取最新的实发金额
-  } catch (error) {
-    console.error('单人核算存盘失败:', error);
-  } finally {
-    previewDialog.submitting = false;
-  }
-};
-/** 打开初始化面板 */
-const handleOpenInit = () => {
-  initForm.value = { settlementMonth: '' };
-  initDialog.visible = true;
-};
-
-/** 🌟 页面内执行初始化的逻辑微调 */
-const submitInit = async () => {
-  if (!initFormRef.value) return;
-  await initFormRef.value.validate(async (valid) => {
-    if (valid) {
-      initializing.value = true;
-      try {
-        const targetMonth = initForm.value.settlementMonth;
-        await initSummaryBatchApi(targetMonth);
-
-        ElMessage.success(`${targetMonth} 月份账套初始化成功`);
-        initDialog.visible = false;
-
-        // 💡 体验优化：初始化后自动跳转到该月份查看结果
-        queryParams.settlementMonth = targetMonth;
-        handleQuery();
-      } finally {
-        initializing.value = false;
-      }
-    }
-  });
-};
 /**
  * --------------------------------------------------------------------
- * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
+ * ⚡ 五、 Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
 onMounted(() => {
-  loadPeriodOptions();
   getList();
 });
 </script>
 
 <style scoped lang="scss">
 /* =====================================================================
-  🎨 页面私有样式定制区
-  规范：只放置本页面独有的微调样式，通用结构样式已由 src/styles/_layout.scss 接管
-  =====================================================================
-*/
+   🎨 页面私有样式定制区
+   全盘继承 _layout.scss 黄金规范！
+   此处仅保留周期页特有的表单提示风格。
+   ===================================================================== */
 
-/* 财务级数据对齐核心：等宽数字字体 */
-.amount-font {
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-weight: 600;
-}
+.form-tips {
+  font-size: 12px;
+  color: var(--el-color-warning);
+  background-color: var(--el-color-warning-light-9);
+  padding: 8px 12px;
+  border-radius: 6px;
+  line-height: 1.5;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
 
-/* 核心结算数值的加重展示 */
-.real-pay-amount {
-  color: var(--el-color-primary);
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.text-success {
-  color: var(--el-color-success);
-  font-weight: bold;
-}
-
-.text-danger {
-  color: var(--el-color-danger);
-  font-weight: bold;
-}
-
-.text-secondary {
-  color: var(--el-text-color-secondary);
-  font-weight: normal;
-}
-
-/* 数据钻取专属链接样式：强化点击暗示 */
-.drill-link {
-  font-weight: bold;
-  font-size: 14px;
-
-  &:hover {
-    text-decoration: underline;
+  .el-icon {
+    margin-top: 2px;
   }
 }
 </style>

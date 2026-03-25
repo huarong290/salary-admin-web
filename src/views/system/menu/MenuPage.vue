@@ -2,58 +2,94 @@
 
 <template>
   <div class="app-container">
-    <el-card shadow="never" class="table-card">
+    <el-card shadow="hover" class="search-card">
       <div class="toolbar">
         <el-button v-hasPerm="['sys:menu:add']" type="primary" icon="Plus" @click="handleAdd()"
-          >新增菜单</el-button
+          >新增根菜单</el-button
         >
-        <el-button icon="Sort" @click="toggleExpandAll">展开/折叠</el-button>
+        <el-button icon="Sort" @click="toggleExpandAll">展开/折叠全部</el-button>
+        <el-button icon="Refresh" @click="getList">刷新列表</el-button>
       </div>
+    </el-card>
 
+    <el-card shadow="hover" class="table-card">
       <el-table
         v-if="refreshTable"
         v-loading="loading"
         :data="menuList"
         row-key="id"
         border
+        height="100%"
         :default-expand-all="isExpandAll"
-        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+        :tree-props="{ children: 'children' }"
       >
-        <el-table-column prop="menuName" label="菜单名称" width="200" show-overflow-tooltip />
-        <el-table-column prop="menuType" label="类型" align="center" width="80">
-          <template #default="scope">
-            <el-tag v-if="scope.row.menuType === 1" type="warning">目录</el-tag>
-            <el-tag v-else-if="scope.row.menuType === 2" type="success">菜单</el-tag>
-            <el-tag v-else-if="scope.row.menuType === 3" type="info">按钮</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="menuIcon" label="图标" align="center" width="80">
-          <template #default="scope">
-            <el-icon v-if="scope.row.menuIcon" size="16">
-              <component :is="formatIcon(scope.row.menuIcon)" />
+        <el-table-column prop="menuName" label="菜单名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="menuIcon" label="图标" align="center" width="70">
+          <template #default="{ row }">
+            <el-icon v-if="row.menuIcon" size="18" style="vertical-align: middle">
+              <component :is="formatIcon(row.menuIcon)" />
             </el-icon>
           </template>
         </el-table-column>
-        <el-table-column prop="menuSort" label="排序" align="center" width="80" />
-        <el-table-column prop="menuPermission" label="权限标识" show-overflow-tooltip />
-        <el-table-column prop="menuComponent" label="组件路径" show-overflow-tooltip />
-        <el-table-column prop="menuStatus" label="状态" align="center" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.menuStatus === 1 ? 'success' : 'danger'">
-              {{ scope.row.menuStatus === 1 ? '正常' : '停用' }}
+        <el-table-column prop="menuType" label="类型" align="center" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="row.menuType === 1" type="warning" size="small" class="status-tag"
+              >目录</el-tag
+            >
+            <el-tag v-else-if="row.menuType === 2" type="success" size="small" class="status-tag"
+              >菜单</el-tag
+            >
+            <el-tag v-else-if="row.menuType === 3" type="info" size="small" class="status-tag"
+              >按钮</el-tag
+            >
+          </template>
+        </el-table-column>
+        <el-table-column prop="menuSort" label="排序" align="center" width="70">
+          <template #default="{ row }">
+            <span class="amount-font">{{ row.menuSort }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="menuPermission"
+          label="权限标识"
+          min-width="150"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            <span class="amount-font text-secondary">{{ row.menuPermission || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="menuComponent"
+          label="组件路径"
+          min-width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column prop="menuStatus" label="状态" align="center" width="80">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.menuStatus === 1 ? 'success' : 'danger'"
+              size="small"
+              class="status-tag"
+            >
+              {{ row.menuStatus === 1 ? '正常' : '停用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" width="170" />
+        <el-table-column label="创建时间" align="center" width="160">
+          <template #default="{ row }">
+            <span class="amount-font text-secondary">{{ row.createTime }}</span>
+          </template>
+        </el-table-column>
 
-        <el-table-column label="操作" align="center" width="220" fixed="right">
-          <template #default="scope">
+        <el-table-column label="操作" align="center" width="200" fixed="right">
+          <template #default="{ row }">
             <el-button
               v-hasPerm="['sys:menu:edit']"
               link
               type="primary"
               icon="Edit"
-              @click="handleUpdate(scope.row)"
+              @click="handleUpdate(row)"
               >修改</el-button
             >
             <el-button
@@ -61,7 +97,7 @@
               link
               type="primary"
               icon="Plus"
-              @click="handleAdd(scope.row)"
+              @click="handleAdd(row)"
               >新增</el-button
             >
             <el-button
@@ -69,7 +105,7 @@
               link
               type="danger"
               icon="Delete"
-              @click="handleDelete(scope.row)"
+              @click="handleDelete(row)"
               >删除</el-button
             >
           </template>
@@ -79,7 +115,6 @@
 
     <el-dialog
       v-model="dialog.visible"
-      :title="dialog.title"
       width="680px"
       append-to-body
       draggable
@@ -87,20 +122,17 @@
       @close="cancel"
     >
       <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center">
-          <span style="font-size: 18px; font-weight: bold">{{ dialog.title }}</span>
-          <el-button
-            link
-            style="margin-right: 15px; font-size: 16px; color: #909399"
-            @click="toggleFullscreen"
-          >
+        <div class="dialog-custom-header">
+          <span class="title">{{ dialog.title }}</span>
+          <el-button link class="fullscreen-btn" @click="toggleFullscreen">
             <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
       </template>
 
       <el-form ref="menuFormRef" :model="form" :rules="rules" label-width="100px">
-        <el-row>
+        <div class="section-title">层级与类型</div>
+        <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="上级菜单" prop="menuParentId">
               <el-tree-select
@@ -108,13 +140,12 @@
                 :data="menuOptions"
                 :props="{ value: 'id', label: 'menuName', children: 'children' }"
                 value-key="id"
-                placeholder="选择上级菜单"
+                placeholder="选择上级菜单 (不选则为根目录)"
                 check-strictly
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
-
           <el-col :span="24">
             <el-form-item label="菜单类型" prop="menuType">
               <el-radio-group v-model="form.menuType">
@@ -124,45 +155,44 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+        </el-row>
 
+        <div class="section-title margin-top-20">基础属性配置</div>
+        <el-row :gutter="20">
           <el-col v-if="form.menuType !== 3" :span="24">
             <el-form-item label="菜单图标" prop="menuIcon">
               <el-select
                 v-model="form.menuIcon"
-                placeholder="请点击选择图标 (支持拼写搜索，如 'user')"
+                placeholder="选择图标 (支持搜索)"
                 clearable
                 filterable
                 style="width: 100%"
               >
                 <template #prefix>
-                  <el-icon v-if="form.menuIcon" class="el-input__icon">
-                    <component :is="form.menuIcon" />
-                  </el-icon>
+                  <el-icon v-if="form.menuIcon" class="el-input__icon"
+                    ><component :is="form.menuIcon"
+                  /></el-icon>
                   <el-icon v-else class="el-input__icon"><Search /></el-icon>
                 </template>
-
                 <el-option v-for="icon in iconList" :key="icon" :label="icon" :value="icon">
-                  <div style="display: flex; align-items: center; gap: 8px">
-                    <el-icon><component :is="icon" /></el-icon>
+                  <div style="display: flex; align-items: center; gap: 10px">
+                    <el-icon size="18"><component :is="icon" /></el-icon>
                     <span>{{ icon }}</span>
                   </div>
                 </el-option>
               </el-select>
             </el-form-item>
           </el-col>
-
           <el-col :span="12">
             <el-form-item label="菜单名称" prop="menuName">
-              <el-input v-model="form.menuName" placeholder="请输入菜单名称" />
+              <el-input v-model="form.menuName" placeholder="页面显示名称" />
             </el-form-item>
           </el-col>
-
           <el-col :span="12">
             <el-form-item label="菜单编码" prop="menuCode">
-              <el-input v-model="form.menuCode" placeholder="如 sys_user (全局唯一)" />
+              <el-input v-model="form.menuCode" placeholder="路由唯一标识(系统名_模块)" />
             </el-form-item>
           </el-col>
-
           <el-col :span="12">
             <el-form-item label="显示排序" prop="menuSort">
               <el-input-number
@@ -173,92 +203,60 @@
               />
             </el-form-item>
           </el-col>
-
           <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="路由地址" prop="menuPath">
               <template #label>
-                <span>
+                <span
+                  >路由地址
                   <el-tooltip
-                    content="访问的路由地址，如：`user`。如需外链请以 `http(s)://` 开头"
+                    content="侧边栏访问路径，如 `user`，外链需以 `http` 开头"
                     placement="top"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  路由地址
-                </span>
+                    ><el-icon><QuestionFilled /></el-icon></el-tooltip
+                ></span>
               </template>
-              <el-input v-model="form.menuPath" placeholder="请输入路由地址" />
+              <el-input v-model="form.menuPath" placeholder="如: user" />
             </el-form-item>
           </el-col>
+        </el-row>
 
+        <div class="section-title margin-top-20">权限与状态控制</div>
+        <el-row :gutter="20">
           <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="组件路径" prop="menuComponent">
               <template #label>
-                <span>
+                <span
+                  >组件路径
                   <el-tooltip
-                    content="访问的组件路径，如：`system/user/UserPage`，默认在 `views` 目录下"
+                    content="前端 views 下的组件位置，如 `system/user/index`"
                     placement="top"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  组件路径
-                </span>
+                    ><el-icon><QuestionFilled /></el-icon></el-tooltip
+                ></span>
               </template>
               <el-input v-model="form.menuComponent" placeholder="请输入组件路径" />
             </el-form-item>
           </el-col>
-
           <el-col v-if="form.menuType !== 1" :span="12">
             <el-form-item label="权限字符" prop="menuPermission">
               <template #label>
-                <span>
-                  <el-tooltip content="控制器中定义的权限字符，如：`sys:user:list`" placement="top">
-                    <el-icon><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  权限字符
-                </span>
+                <span
+                  >权限字符
+                  <el-tooltip content="后端控制器定义的标识，如 `sys:user:add`" placement="top"
+                    ><el-icon><QuestionFilled /></el-icon></el-tooltip
+                ></span>
               </template>
-              <el-input
-                v-model="form.menuPermission"
-                placeholder="请输入权限标识"
-                maxlength="100"
-              />
+              <el-input v-model="form.menuPermission" placeholder="请输入权限标识" />
             </el-form-item>
           </el-col>
-
           <el-col v-if="form.menuType !== 3" :span="12">
             <el-form-item label="显示状态" prop="menuVisible">
-              <template #label>
-                <span>
-                  <el-tooltip
-                    content="选择隐藏则路由将不会出现在侧边栏，但仍然可以访问"
-                    placement="top"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  显示状态
-                </span>
-              </template>
               <el-radio-group v-model="form.menuVisible">
                 <el-radio :label="1">显示</el-radio>
                 <el-radio :label="0">隐藏</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
-
           <el-col :span="12">
             <el-form-item label="菜单状态" prop="menuStatus">
-              <template #label>
-                <span>
-                  <el-tooltip
-                    content="选择停用则路由将不会出现在侧边栏，也不能被访问"
-                    placement="top"
-                  >
-                    <el-icon><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  菜单状态
-                </span>
-              </template>
               <el-radio-group v-model="form.menuStatus">
                 <el-radio :label="1">正常</el-radio>
                 <el-radio :label="0">停用</el-radio>
@@ -270,8 +268,8 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="cancel">取 消</el-button>
+          <el-button type="primary" @click="submitForm">确 定 保 存</el-button>
         </div>
       </template>
     </el-dialog>
@@ -279,44 +277,103 @@
 </template>
 
 <script setup lang="ts">
+/** * ====================================================================
+ * 📌 模块/组件说明
+ * 功能描述: 系统菜单权限管理 (树形结构维护、路由配置、RBAC 按钮权限控制)
+ * 依赖关联: 该数据直接决定侧边栏渲染、页面路由定义及用户权限过滤
+ * ====================================================================
+ */
+
+/**
+ * --------------------------------------------------------------------
+ * 📥 一、依赖导入区 (Import Dependencies)
+ * --------------------------------------------------------------------
+ */
+
+// [1] Vue 核心钩子与原生生态 (Vue Core)
 import { ref, reactive, onMounted, nextTick, shallowRef } from 'vue';
+
+// [2] 第三方 UI 组件库与图标 (Element Plus & Icons)
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { FullScreen, Minus, QuestionFilled, Search } from '@element-plus/icons-vue';
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'; // 引入全量图标库
+import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+
+// [3] 业务 API 请求接口 (API Services)
 import { addMenuApi, deleteMenuApi, editMenuApi, getMenuTreeApi } from '@/api/menu';
+
+// [4] TS 强类型定义约束 (DTO / VO)
 import type { MenuTreeVO } from '@/types/menu/menu.ts';
-// 提取全量图标的英文名称，生成数组供下拉框循环渲染
-// 使用 shallowRef 是为了提升性能，因为包含几百个字符串的数组不需要被深层 Proxy 代理
-const iconList = shallowRef(Object.keys(ElementPlusIconsVue));
-// --- 状态与数据 ---
-const loading = ref(false);
-const refreshTable = ref(true);
-const isExpandAll = ref(false);
-const menuList = ref<MenuTreeVO[]>([]);
-const menuOptions = ref<any[]>([]);
 
-const dialog = reactive({ visible: false, title: '' });
-const isFullscreen = ref(false);
+/**
+ * --------------------------------------------------------------------
+ * 📦 二、响应式状态区 (State Management)
+ * --------------------------------------------------------------------
+ */
 
-const form = ref<any>({});
+// [UI 控制状态]
+const loading = ref(false); // 加载层状态
+const isFullscreen = ref(false); // 弹窗全屏状态
+const refreshTable = ref(true); // 树表强制刷新标识
+const isExpandAll = ref(false); // 树表全展开标识
+const iconList = shallowRef(Object.keys(ElementPlusIconsVue)); // 全量图标名列表
+
+// [表格数据状态]
+const menuList = ref<MenuTreeVO[]>([]); // 菜单树源数据
+const menuOptions = ref<any[]>([]); // 弹窗中上级菜单的选择树
+
+// [业务表单状态]
 const menuFormRef = ref<FormInstance>();
+const dialog = reactive({ visible: false, title: '' });
+const form = ref<any>({});
 
+// [表单前端合法性校验规则]
 const rules = reactive<FormRules>({
   menuName: [{ required: true, message: '菜单名称不能为空', trigger: 'blur' }],
   menuCode: [{ required: true, message: '菜单编码不能为空', trigger: 'blur' }],
-  menuSort: [{ required: true, message: '菜单顺序不能为空', trigger: 'blur' }],
+  menuSort: [{ required: true, message: '排序不能为空', trigger: 'blur' }],
   menuPath: [{ required: true, message: '路由地址不能为空', trigger: 'blur' }],
 });
 
-// 图标首字母大写转换
+/**
+ * --------------------------------------------------------------------
+ * 🖱️ 三、UI 交互事件区 (UI Interactions)
+ * --------------------------------------------------------------------
+ */
+
+/** 切换用户弹窗全屏模式 */
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
+};
+
+/** 树形表格：一键展开或折叠全部节点 */
+const toggleExpandAll = () => {
+  refreshTable.value = false;
+  isExpandAll.value = !isExpandAll.value;
+  nextTick(() => {
+    refreshTable.value = true;
+  });
+};
+
+/** 关闭并清理弹窗 */
+const cancel = () => {
+  dialog.visible = false;
+  menuFormRef.value?.resetFields();
+};
+
+/** 工具：图标首字母大写转换 (适配组件库渲染) */
 const formatIcon = (icon: string) => {
   if (!icon) return '';
   return icon.charAt(0).toUpperCase() + icon.slice(1);
 };
 
-// --- 核心业务方法 ---
+/**
+ * --------------------------------------------------------------------
+ * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
+ * --------------------------------------------------------------------
+ */
 
+/** * 核心：获取系统菜单树形列表数据 */
 const getList = async () => {
   loading.value = true;
   try {
@@ -329,62 +386,51 @@ const getList = async () => {
   }
 };
 
+/** * 业务：加载用于上级菜单选择的树形结构 */
 const getTreeselect = async () => {
   const res = await getMenuTreeApi();
   const menus = res || [];
+  // 注入“主类目”作为根节点
   menuOptions.value = [{ id: 0, menuName: '主类目', children: menus }];
 };
 
-const toggleExpandAll = () => {
-  refreshTable.value = false;
-  isExpandAll.value = !isExpandAll.value;
-  nextTick(() => {
-    refreshTable.value = true;
-  });
-};
-
-const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value;
-};
-
-const handleAdd = (row?: MenuTreeVO) => {
-  getTreeselect();
+/** * 发起：新增菜单
+ * 说明：若携带 row 则视为新增该行下的子菜单，否则为新增根菜单
+ */
+const handleAdd = async (row?: MenuTreeVO) => {
+  await getTreeselect();
   form.value = {
     menuParentId: row != null && row.id ? row.id : 0,
-    menuType: 1, // 🚨 默认选中目录(1)
+    menuType: 1, // 默认选中目录
     menuVisible: 1,
     menuStatus: 1,
     menuSort: 0,
-    // 🌟 调整部分：显式置空其他字段，防止残留上一次表单数据
     menuCode: undefined,
     menuIcon: undefined,
     menuPath: undefined,
     menuComponent: undefined,
     menuPermission: undefined,
   };
-  dialog.title = '添加菜单';
+  dialog.title = '添加菜单配置';
   dialog.visible = true;
   isFullscreen.value = false;
 };
 
+/** * 发起：修改菜单配置 */
 const handleUpdate = async (row: MenuTreeVO) => {
   await getTreeselect();
   form.value = { ...row };
-  dialog.title = '修改菜单';
+  dialog.title = '修改菜单配置';
   dialog.visible = true;
   isFullscreen.value = false;
 };
 
-const cancel = () => {
-  dialog.visible = false;
-  menuFormRef.value?.resetFields();
-};
-
+/** * 核心：校验并提交菜单表单映射 */
 const submitForm = async () => {
   if (!menuFormRef.value) return;
   await menuFormRef.value.validate(async (valid) => {
     if (valid) {
-      // 提取核心数据，过滤无用字段
+      // 提取核心路由参数，剥离无关的 VO 字段
       const submitData = {
         id: form.value.id,
         menuParentId: form.value.menuParentId,
@@ -402,10 +448,10 @@ const submitForm = async () => {
 
       if (form.value.id) {
         await editMenuApi(submitData);
-        ElMessage.success('修改成功');
+        ElMessage.success('配置更新成功');
       } else {
         await addMenuApi(submitData);
-        ElMessage.success('新增成功');
+        ElMessage.success('菜单创建成功');
       }
       dialog.visible = false;
       getList();
@@ -413,10 +459,13 @@ const submitForm = async () => {
   });
 };
 
+/** * 执行：物理/逻辑删除指定菜单节点
+ * 风险点：后端会校验是否有子节点，此处提示用户
+ */
 const handleDelete = (row: MenuTreeVO) => {
   ElMessageBox.confirm(
-    `是否确认删除名称为 "${row.menuName}" 的菜单? (如有子节点将无法删除)`,
-    '危险操作',
+    `确认删除菜单 "${row.menuName}" 吗? 若存在子节点将无法直接删除。`,
+    '系统高危操作',
     { type: 'warning' }
   )
     .then(async () => {
@@ -427,24 +476,20 @@ const handleDelete = (row: MenuTreeVO) => {
     .catch(() => {});
 };
 
+/**
+ * --------------------------------------------------------------------
+ * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)
+ * --------------------------------------------------------------------
+ */
 onMounted(() => {
   getList();
 });
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-
-  .table-card {
-    flex: 1;
-    .toolbar {
-      margin-bottom: 15px;
-      display: flex;
-      gap: 10px;
-    }
-  }
-}
+/* =====================================================================
+   🎨 页面私有样式定制区
+   全盘继承 _layout.scss 黄金规范！
+   仅处理树形表格特定的垂直排版逻辑。
+   ===================================================================== */
 </style>

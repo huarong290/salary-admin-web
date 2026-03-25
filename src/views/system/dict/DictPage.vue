@@ -1,11 +1,11 @@
 <!--src/views/system/dict/DictPage.vue-->
 <template>
-  <div class="app-container split-container">
-    <el-row :gutter="20" style="height: 100%">
+  <div class="app-container">
+    <el-row :gutter="15" class="full-height-row">
       <el-col :span="11" class="flex-column">
-        <el-card shadow="never" class="search-card" style="margin-bottom: 10px">
+        <el-card shadow="hover" class="search-card">
           <el-form ref="typeQueryFormRef" :model="typeQueryParams" :inline="true" label-width="0">
-            <el-form-item prop="dictTypeName" style="margin-bottom: 0; margin-right: 10px">
+            <el-form-item prop="dictTypeName">
               <el-input
                 v-model="typeQueryParams.dictTypeName"
                 placeholder="字典名称/编码"
@@ -16,21 +16,20 @@
                 @clear="handleTypeQuery"
               />
             </el-form-item>
-            <el-form-item style="margin-bottom: 0">
-              <el-button type="primary" @click="handleTypeQuery">搜索</el-button>
+            <el-form-item>
+              <el-button type="primary" icon="Search" @click="handleTypeQuery">搜索</el-button>
               <el-button
                 v-hasPerm="['sys:dict_type:add']"
                 type="success"
                 icon="Plus"
                 @click="handleAddType"
+                >新增分类</el-button
               >
-                新增分类
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
 
-        <el-card shadow="never" class="table-card flex-1">
+        <el-card shadow="hover" class="table-card flex-1">
           <el-table
             v-loading="typeLoading"
             :data="typeList"
@@ -46,7 +45,10 @@
               show-overflow-tooltip
             >
               <template #default="{ row }">
-                <span style="font-weight: bold; cursor: pointer">{{ row.dictTypeName }}</span>
+                <span
+                  style="font-weight: 600; cursor: pointer; color: var(--el-text-color-primary)"
+                  >{{ row.dictTypeName }}</span
+                >
               </template>
             </el-table-column>
             <el-table-column
@@ -61,7 +63,7 @@
             </el-table-column>
             <el-table-column label="状态" width="80" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+                <el-tag :type="row.status === 1 ? 'success' : 'info'" class="status-tag">
                   {{ row.status === 1 ? '启用' : '停用' }}
                 </el-tag>
               </template>
@@ -103,18 +105,23 @@
       </el-col>
 
       <el-col :span="13" class="flex-column">
-        <el-card shadow="never" class="search-card" style="margin-bottom: 10px">
+        <el-card shadow="hover" class="search-card">
           <div class="right-header">
             <div class="current-type-info">
               <span v-if="currentType.dictTypeCode">
-                当前分类: <el-tag effect="dark">{{ currentType.dictTypeName }}</el-tag>
+                当前分类:
+                <el-tag effect="dark" class="status-tag">{{ currentType.dictTypeName }}</el-tag>
                 <span class="amount-font text-secondary" style="margin-left: 10px">{{
                   currentType.dictTypeCode
                 }}</span>
               </span>
-              <span v-else class="text-secondary"
-                ><el-icon><InfoFilled /></el-icon> 请点击左侧列表选择一个字典分类</span
+              <span
+                v-else
+                class="text-secondary"
+                style="display: flex; align-items: center; gap: 4px"
               >
+                <el-icon><InfoFilled /></el-icon> 请从左侧列表选择字典分类
+              </span>
             </div>
             <div class="right-toolbar">
               <el-button
@@ -124,35 +131,37 @@
                 :disabled="!currentType.dictTypeCode"
                 @click="handleAddItem"
               >
-                新增字典项
+                新增项
               </el-button>
             </div>
           </div>
         </el-card>
 
-        <el-card shadow="never" class="table-card flex-1">
+        <el-card shadow="hover" class="table-card flex-1">
           <el-table
             v-loading="itemLoading"
             :data="itemList"
             border
             height="100%"
-            empty-text="点击左侧分类查看明细，或当前分类下暂无数据"
+            empty-text="选择左侧分类加载数据"
           >
             <el-table-column label="键值 (Value)" prop="dictItemValue" min-width="120">
               <template #default="{ row }">
-                <el-tag type="info" effect="plain" class="amount-font">{{
+                <el-tag type="info" effect="plain" class="amount-font status-tag">{{
                   row.dictItemValue
                 }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="数据标签 (Label)" prop="dictItemLabel" min-width="140">
               <template #default="{ row }">
-                <span style="font-weight: bold">{{ row.dictItemLabel }}</span>
+                <span style="font-weight: 600; color: var(--el-text-color-primary)">{{
+                  row.dictItemLabel
+                }}</span>
               </template>
             </el-table-column>
             <el-table-column label="排序" prop="sort" width="80" align="center">
               <template #default="{ row }">
-                <span class="amount-font">{{ row.sort }}</span>
+                <span class="amount-font text-secondary">{{ row.sort }}</span>
               </template>
             </el-table-column>
             <el-table-column label="状态" width="80" align="center">
@@ -202,7 +211,7 @@
       <template #header>
         <div class="dialog-custom-header">
           <span class="title">{{ typeDialog.title }}</span>
-          <el-button link @click="isTypeFullscreen = !isTypeFullscreen">
+          <el-button link class="fullscreen-btn" @click="isTypeFullscreen = !isTypeFullscreen">
             <el-icon><FullScreen v-if="!isTypeFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
@@ -235,8 +244,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cancelType">取 消</el-button>
-        <el-button type="primary" @click="submitTypeForm">确 定 保 存</el-button>
+        <div class="dialog-footer">
+          <el-button @click="cancelType">取 消</el-button>
+          <el-button type="primary" @click="submitTypeForm">确 定 保 存</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -251,7 +262,7 @@
       <template #header>
         <div class="dialog-custom-header">
           <span class="title">{{ itemDialog.title }}</span>
-          <el-button link @click="isItemFullscreen = !isItemFullscreen">
+          <el-button link class="fullscreen-btn" @click="isItemFullscreen = !isItemFullscreen">
             <el-icon><FullScreen v-if="!isItemFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
@@ -305,8 +316,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cancelItem">取 消</el-button>
-        <el-button type="primary" @click="submitItemForm">确 定 保 存</el-button>
+        <div class="dialog-footer">
+          <el-button @click="cancelItem">取 消</el-button>
+          <el-button type="primary" @click="submitItemForm">确 定 保 存</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -315,19 +328,28 @@
 <script setup lang="ts">
 /** * ====================================================================
  * 📌 模块/组件说明
- * 功能描述: 系统字典管理页 (左树右表经典布局：管理字典大类及底层数据池)
- * 依赖关联: 全局配置、业务下拉框的核心数据源。
+ * 功能描述: 系统字典管理页 (左分类右明细布局，支撑全系统下拉框与映射逻辑)
+ * 业务逻辑:
+ * 1. 左侧加载字典大类，默认加载首行并联动右侧列表。
+ * 2. 右侧展示具体字典项，新增明细时强制绑定左侧当前选中的类型编码。
  * ====================================================================
  */
 
-// 1. Vue 内置与核心依赖库
+/**
+ * --------------------------------------------------------------------
+ * 📥 一、依赖导入区 (Import Dependencies)
+ * --------------------------------------------------------------------
+ */
+
+// [1] Vue 核心钩子与原生生态 (Vue Core)
 import { ref, reactive, onMounted } from 'vue';
 
-// 2. 第三方 UI 组件库及图标
+// [2] 第三方 UI 组件库与图标 (Element Plus & Icons)
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { FullScreen, Minus, InfoFilled } from '@element-plus/icons-vue';
-// 3. 业务 API 接口 (请确认路径是否与实际一致)
+
+// [3] 业务 API 请求接口 (API Services)
 import {
   addDictTypeApi,
   deleteDictTypeApi,
@@ -341,16 +363,17 @@ import {
   updateDictItemApi,
 } from '@/api/dictitem/dictItem.ts';
 
-// 4. TS 类型定义 (DTO/VO)
+// [4] TS 强类型定义约束 (DTO / VO)
 import type { DictItemVO } from '@/types/dictitem/dictitem.ts';
 import type { DictTypeQueryReqDTO, DictTypeVO } from '@/types/dicttype/dicttype.ts';
+
 /**
  * --------------------------------------------------------------------
- * 📦 一、响应式状态区 (State Management)
+ * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
 
-// --- 左侧：字典类型 (Dict Type) 状态 ---
+// --- [左侧：字典类型状态] ---
 const typeLoading = ref(false);
 const typeTotal = ref(0);
 const typeList = ref<DictTypeVO[]>([]);
@@ -360,25 +383,25 @@ const typeQueryParams = reactive<DictTypeQueryReqDTO>({
   pageSize: 10,
   dictTypeName: undefined,
 });
-const currentType = ref<Partial<DictTypeVO>>({}); // 记录左侧当前点击选中的类型
+const currentType = ref<Partial<DictTypeVO>>({}); // 记录左侧选中的焦点类型
 
-// --- 右侧：字典明细 (Dict Item) 状态 ---
+// --- [右侧：字典明细状态] ---
 const itemLoading = ref(false);
 const itemList = ref<DictItemVO[]>([]);
 
-// --- 弹窗状态 ---
+// --- [UI 控制状态：全屏与弹窗] ---
 const isTypeFullscreen = ref(false);
 const isItemFullscreen = ref(false);
-
 const typeDialog = reactive({ visible: false, title: '' });
+const itemDialog = reactive({ visible: false, title: '' });
+
+// --- [业务表单数据] ---
 const typeFormRef = ref<FormInstance>();
 const typeForm = ref<any>({});
-
-const itemDialog = reactive({ visible: false, title: '' });
 const itemFormRef = ref<FormInstance>();
 const itemForm = ref<any>({});
 
-// --- 校验规则 ---
+// --- [校验规则集] ---
 const typeRules = reactive<FormRules>({
   dictTypeName: [{ required: true, message: '字典名称不能为空', trigger: 'blur' }],
   dictTypeCode: [{ required: true, message: '字典编码不能为空', trigger: 'blur' }],
@@ -386,35 +409,34 @@ const typeRules = reactive<FormRules>({
 });
 
 const itemRules = reactive<FormRules>({
-  dictItemLabel: [{ required: true, message: '数据标签不能为空', trigger: 'blur' }],
-  dictItemValue: [{ required: true, message: '数据键值不能为空', trigger: 'blur' }],
+  dictItemLabel: [{ required: true, message: '标签不能为空', trigger: 'blur' }],
+  dictItemValue: [{ required: true, message: '键值不能为空', trigger: 'blur' }],
   sort: [{ required: true, message: '排序不能为空', trigger: 'blur' }],
 });
 
 /**
  * --------------------------------------------------------------------
- * 🖱️ 二、UI 交互事件区 (UI Interactions)
+ * 🖱️ 三、UI 交互事件区 (UI Interactions)
  * --------------------------------------------------------------------
  */
 
-// ================= 左侧类型交互 =================
+// [类型管理相关交互]
 const handleTypeQuery = () => {
   typeQueryParams.pageNum = 1;
   getTypeList();
 };
-
 const cancelType = () => {
   typeDialog.visible = false;
   typeFormRef.value?.resetFields();
 };
 
-/** 🌟 核心联动：点击左侧类型行，加载右侧明细 */
+/** 🌟 核心：行点击联动逻辑 (触发右侧加载) */
 const handleTypeRowClick = (row: DictTypeVO) => {
   currentType.value = row;
   getItemList();
 };
 
-// ================= 右侧明细交互 =================
+// [明细管理相关交互]
 const cancelItem = () => {
   itemDialog.visible = false;
   itemFormRef.value?.resetFields();
@@ -422,11 +444,15 @@ const cancelItem = () => {
 
 /**
  * --------------------------------------------------------------------
- * 🧠 三、核心业务与 API 交互区 (Business & API Logic)
+ * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
  * --------------------------------------------------------------------
  */
 
-// ================= 左侧：字典类型 (Type) 业务逻辑 =================
+// ================= 左侧：字典大类管理业务逻辑 =================
+
+/** * 执行：获取字典分类分页列表
+ * 说明：若存在数据且右侧为空，则默认触发表格第一行的点击联动
+ */
 const getTypeList = async () => {
   typeLoading.value = true;
   try {
@@ -434,10 +460,7 @@ const getTypeList = async () => {
     typeList.value = res.records || [];
     typeTotal.value = res.total || 0;
 
-    // 如果列表刷新且右侧还没有选中任何项，默认选中第一项
-    // 🌟 修复 TS 报错：使用中间变量安全提取首个元素
     const firstItem = typeList.value[0];
-    // 如果列表有数据，且右侧还没有选中任何项，默认选中第一项
     if (firstItem && !currentType.value.dictTypeCode) {
       handleTypeRowClick(firstItem);
     }
@@ -446,45 +469,50 @@ const getTypeList = async () => {
   }
 };
 
+/** * 发起：新增分类 */
 const handleAddType = () => {
   typeForm.value = { status: 1 };
-  typeDialog.title = '新增字典类型';
+  typeDialog.title = '新增字典分类';
   typeDialog.visible = true;
   isTypeFullscreen.value = false;
 };
 
+/** * 发起：修改分类 */
 const handleUpdateType = (row: DictTypeVO) => {
   typeForm.value = { ...row };
-  typeDialog.title = '修改字典类型';
+  typeDialog.title = '修改字典分类';
   typeDialog.visible = true;
   isTypeFullscreen.value = false;
 };
 
+/** * 核心：提交分类表单 */
 const submitTypeForm = async () => {
   if (!typeFormRef.value) return;
   await typeFormRef.value.validate(async (valid) => {
     if (valid) {
       if (typeForm.value.id) {
         await updateDictTypeApi(typeForm.value);
-        ElMessage.success('字典类型修改成功');
+        ElMessage.success('分类修改成功');
       } else {
         await addDictTypeApi(typeForm.value);
-        ElMessage.success('字典类型新增成功');
+        ElMessage.success('分类新增成功');
       }
-      dialogCloseAndRefreshType();
+      typeDialog.visible = false;
+      getTypeList();
     }
   });
 };
 
+/** * 执行：删除指定分类
+ * 说明：涉及级联风险，加入高危确认。若删除的是当前选中项，需清空右侧明细。
+ */
 const handleDeleteType = (row: DictTypeVO) => {
-  ElMessageBox.confirm(`确认永久删除字典类型 "${row.dictTypeName}" 吗?`, '高危操作提示', {
+  ElMessageBox.confirm(`确认永久删除分类 "${row.dictTypeName}" 吗?`, '危险操作提示', {
     type: 'warning',
   })
     .then(async () => {
       await deleteDictTypeApi(row.id);
       ElMessage.success('分类已删除');
-
-      // 如果删除的是当前选中的项，清空右侧
       if (currentType.value.id === row.id) {
         currentType.value = {};
         itemList.value = [];
@@ -494,12 +522,9 @@ const handleDeleteType = (row: DictTypeVO) => {
     .catch(() => {});
 };
 
-const dialogCloseAndRefreshType = () => {
-  typeDialog.visible = false;
-  getTypeList();
-};
+// ================= 右侧：字典明细项管理业务逻辑 =================
 
-// ================= 右侧：字典明细 (Item) 业务逻辑 =================
+/** * 核心：获取当前选中分类下的所有明细项 */
 const getItemList = async () => {
   if (!currentType.value.dictTypeCode) return;
   itemLoading.value = true;
@@ -511,49 +536,51 @@ const getItemList = async () => {
   }
 };
 
+/** * 发起：新增明细
+ * 说明：强制注入当前焦点的分类编码 (dictTypeCode)
+ */
 const handleAddItem = () => {
   if (!currentType.value.dictTypeCode) return;
-  itemForm.value = {
-    dictTypeCode: currentType.value.dictTypeCode, // 🌟 核心：强制绑定当前分类编码
-    sort: 0,
-    status: 1,
-  };
-  itemDialog.title = '新增字典项';
+  itemForm.value = { dictTypeCode: currentType.value.dictTypeCode, sort: 0, status: 1 };
+  itemDialog.title = '新增项明细';
   itemDialog.visible = true;
   isItemFullscreen.value = false;
 };
 
+/** * 发起：修改明细 */
 const handleUpdateItem = (row: DictItemVO) => {
   itemForm.value = { ...row };
-  itemDialog.title = '修改字典项';
+  itemDialog.title = '修改项明细';
   itemDialog.visible = true;
   isItemFullscreen.value = false;
 };
 
+/** * 核心：提交明细表单 */
 const submitItemForm = async () => {
   if (!itemFormRef.value) return;
   await itemFormRef.value.validate(async (valid) => {
     if (valid) {
       if (itemForm.value.id) {
         await updateDictItemApi(itemForm.value);
-        ElMessage.success('字典项修改成功');
+        ElMessage.success('明细修改成功');
       } else {
         await addDictItemApi(itemForm.value);
-        ElMessage.success('字典项新增成功');
+        ElMessage.success('明细新增成功');
       }
       itemDialog.visible = false;
-      getItemList(); // 刷新右侧列表
+      getItemList();
     }
   });
 };
 
+/** * 执行：删除明细项 */
 const handleDeleteItem = (row: DictItemVO) => {
-  ElMessageBox.confirm(`确认删除字典项 "${row.dictItemLabel}" 吗?`, '高危操作提示', {
+  ElMessageBox.confirm(`确认删除明细 "${row.dictItemLabel}" 吗?`, '危险操作提示', {
     type: 'warning',
   })
     .then(async () => {
       await deleteDictItemApi(row.id);
-      ElMessage.success('字典项已删除');
+      ElMessage.success('明细项已删除');
       getItemList();
     })
     .catch(() => {});
@@ -561,82 +588,44 @@ const handleDeleteItem = (row: DictItemVO) => {
 
 /**
  * --------------------------------------------------------------------
- * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
+ * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
 onMounted(() => {
-  getTypeList();
+  getTypeList(); // 初始化：拉取左侧分类列表
 });
 </script>
 
 <style scoped lang="scss">
 /* =====================================================================
-  🎨 页面私有样式定制区
-  规范：继承 EmployeePage.vue 的高级感与严谨风格
-  =====================================================================
-*/
+   🎨 页面私有样式定制区
+   规范：此页采用特殊的左(11)右(13)双卡片结构。
+   全局阴影、标题、弹窗、Brilliant/Breeze 主题逻辑全由 _layout.scss 自动托管。
+   ===================================================================== */
 
-.split-container {
-  height: calc(100vh - 84px); /* 适配后台框架高度，防止出现双滚动条 */
-  display: flex;
-  flex-direction: column;
+.full-height-row {
+  flex: 1;
+  min-height: 0;
+  margin: 0 !important;
+  width: 100%;
 }
 
 .flex-column {
   display: flex;
   flex-direction: column;
+  gap: 15px; /* 模块垂直间距对齐全局 app-container 规范 */
   height: 100%;
 }
 
-.flex-1 {
-  flex: 1;
-  min-height: 0; /* 嵌套 Flex 滚动核心属性 */
-}
-
-/* 金融级数字排版 */
-.amount-font {
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-weight: 500;
-}
-.text-secondary {
-  color: var(--el-text-color-secondary);
-}
-
-/* 弹窗区块标题 */
-.section-title {
-  font-weight: bold;
-  padding-left: 10px;
-  border-left: 4px solid var(--el-color-primary);
-  margin: 10px 0 20px;
-  color: var(--el-text-color-primary);
-  font-size: 15px;
-}
-.margin-top-20 {
-  margin-top: 20px;
-}
-
-/* 弹窗自定义头部 */
-.dialog-custom-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-right: 20px;
-  .title {
-    font-size: 16px;
-    font-weight: bold;
-    color: var(--el-text-color-primary);
-  }
-}
-
-/* 右侧顶部控制台 */
+/* 右侧顶部联动信息栏对齐优化 */
 .right-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 32px; /* 与左侧搜索框对齐高度 */
-
+  height: 32px;
   .current-type-info {
     font-size: 14px;
+    font-weight: 500;
     color: var(--el-text-color-primary);
   }
 }

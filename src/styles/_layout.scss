@@ -29,7 +29,7 @@
     overflow: hidden;
 
     /* 全局生效：让卡片 body 也变成 flex 容器 */
-    .el-card__body {
+    :deep(.el-card__body) {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -57,5 +57,134 @@
       display: flex;
       justify-content: flex-end;
     }
+  }
+}
+
+/* ---------------------------------------------------------------------
+   二、视觉皮囊：全局核心业务组件规范 (卡片、弹窗、字体)
+--------------------------------------------------------------------- */
+
+/* --- 1. 卡片统一质感 (深度兼容暗黑模式) --- */
+.search-card,
+.table-card {
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
+  transition: all 0.25s ease;
+
+  /* 悬浮呼吸感 */
+  &:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  }
+
+  /* 🌙 暗黑模式极客质感 */
+  html.dark & {
+    background: #0f0f10;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    &:hover {
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    }
+  }
+}
+
+/* --- 2. 弹窗自定义头部 (注入丝滑拖拽体验) --- */
+.dialog-custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 20px;
+  cursor: move; /* 拖拽十字光标 */
+  user-select: none; /* 防误选文本 */
+
+  .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+  .fullscreen-btn {
+    color: var(--el-text-color-secondary);
+    cursor: pointer; /* 按钮恢复点击光标 */
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
+}
+
+/* --- 3. 表单区块标题 --- */
+.section-title {
+  font-weight: 600;
+  margin: 10px 0 20px;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+/* --- 4. 金融级数字排版与状态标签 --- */
+.amount-font {
+  font-family: 'Inter', 'SF Mono', 'Consolas', monospace;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums; /* 垂直等宽对齐 */
+  letter-spacing: 0.5px;
+}
+.text-secondary {
+  color: var(--el-text-color-secondary);
+  html.dark & {
+    color: #a3a6ad;
+  }
+}
+
+.status-tag {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------
+   三、换肤引擎：精准响应 MenuStyle 切换 (Brilliant vs Breeze)
+--------------------------------------------------------------------- */
+
+/* --- 风格 A：实心高亮风 (Brilliant) --- */
+/* 特点：线条硬朗、强调色块、表格对比度高 */
+html[data-menu-style='brilliant'] {
+  .search-card,
+  .table-card {
+    border-radius: 8px;
+  }
+
+  .section-title {
+    padding-left: 10px;
+    border-left: 4px solid var(--el-color-primary);
+    background: var(--el-color-primary-light-9);
+    padding: 6px 10px;
+    border-radius: 0 4px 4px 0;
+
+    html.dark & {
+      background: rgba(var(--el-color-primary-rgb), 0.15);
+    }
+  }
+
+  .status-tag {
+    border-radius: 2px;
+  }
+}
+
+/* --- 风格 B：柔和呼吸风 (Breeze) --- */
+/* 特点：空气感、微阴影、圆润去线化 */
+html[data-menu-style='breeze'] {
+  .search-card,
+  .table-card {
+    border-color: var(--el-border-color-extra-light);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+    border-radius: 16px;
+  }
+
+  .section-title {
+    padding-left: 10px;
+    border-left: 3px solid var(--el-color-primary-light-4);
+    background: transparent;
+  }
+
+  .status-tag {
+    border-radius: 12px;
+    padding: 0 10px;
   }
 }

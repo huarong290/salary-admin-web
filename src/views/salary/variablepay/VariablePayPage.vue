@@ -2,17 +2,17 @@
 <template>
   <div class="app-container">
     <el-tabs v-model="activeTab" class="custom-tabs" @tab-change="handleTabChange">
-      <el-tab-pane label="额外收入明细 (绩效/提成等)" name="income" />
-      <el-tab-pane label="临时扣款明细 (考勤/罚款等)" name="deduction" />
+      <el-tab-pane label="额外收入明细 (绩效/提成)" name="income" />
+      <el-tab-pane label="临时扣款明细 (考勤/罚款)" name="deduction" />
     </el-tabs>
 
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="hover" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
         <el-form-item label="结算月份" prop="settlementMonth">
           <el-date-picker
             v-model="queryParams.settlementMonth"
             type="month"
-            placeholder="选择发薪月份"
+            placeholder="选择月份"
             value-format="YYYYMM"
             clearable
             style="width: 140px"
@@ -25,7 +25,6 @@
             filterable
             remote
             clearable
-            reserve-keyword
             placeholder="输入姓名搜索"
             :remote-method="remoteSearchEmployees"
             :loading="searchLoading"
@@ -39,40 +38,28 @@
               :value="item.id"
             >
               <span style="float: left">{{ item.employeeName }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">{{
-                item.employeeCode
-              }}</span>
+              <span class="amount-font" style="float: right; color: #999; font-size: 12px"
+                >#{{ item.employeeCode }}</span
+              >
             </el-option>
           </el-select>
         </el-form-item>
-
-        <el-form-item :label="activeTab === 'income' ? '收入类型' : '扣款类型'" prop="typeId">
+        <el-form-item :label="activeTab === 'income' ? '收入项目' : '扣款项目'" prop="typeId">
           <el-select
             v-model="queryParams.typeId"
-            placeholder="全部分类"
+            placeholder="全部类型"
             clearable
             style="width: 150px"
             @change="handleQuery"
           >
-            <template v-if="activeTab === 'income'">
-              <el-option
-                v-for="dict in incomeTypeOptions"
-                :key="dict.id"
-                :label="dict.typeName"
-                :value="dict.id"
-              />
-            </template>
-            <template v-else>
-              <el-option
-                v-for="dict in deductionTypeOptions"
-                :key="dict.id"
-                :label="dict.typeName"
-                :value="dict.id"
-              />
-            </template>
+            <el-option
+              v-for="dict in activeTab === 'income' ? incomeTypeOptions : deductionTypeOptions"
+              :key="dict.id"
+              :label="dict.typeName"
+              :value="dict.id"
+            />
           </el-select>
         </el-form-item>
-
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -80,7 +67,7 @@
       </el-form>
     </el-card>
 
-    <el-card shadow="never" class="table-card">
+    <el-card shadow="hover" class="table-card">
       <div class="toolbar">
         <el-button
           v-hasPerm="['salary:variablepay:add']"
@@ -88,16 +75,7 @@
           icon="Plus"
           @click="handleAdd"
         >
-          {{ activeTab === 'income' ? '录入收入' : '录入扣款' }}
-        </el-button>
-        <el-button
-          v-hasPerm="['salary:variablepay:import']"
-          type="success"
-          icon="Upload"
-          plain
-          @click="handleImport"
-        >
-          Excel 批量导入
+          录入{{ activeTab === 'income' ? '收入' : '扣款' }}
         </el-button>
         <el-button
           v-hasPerm="['salary:variablepay:del']"
@@ -105,9 +83,8 @@
           icon="Delete"
           :disabled="multiple"
           @click="handleBatchDelete"
+          >批量删除</el-button
         >
-          批量删除
-        </el-button>
       </div>
 
       <el-table
@@ -118,75 +95,68 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" fixed="left" />
-        <el-table-column
-          label="员工姓名"
-          align="center"
-          prop="employeeName"
-          width="120"
-          fixed="left"
-        >
-          <template #default="{ row }">
-            <span style="font-weight: bold">{{ row.employeeName || '未知' }}</span>
-          </template>
+        <el-table-column label="姓名" align="center" width="120" fixed="left">
+          <template #default="{ row }"
+            ><span style="font-weight: 600">{{ row.employeeName }}</span></template
+          >
         </el-table-column>
-
-        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100">
-          <template #default="{ row }">
-            <el-tag type="primary" effect="plain" class="amount-font">{{
-              row.settlementMonth || '--'
-            }}</el-tag>
-          </template>
+        <el-table-column label="结算月份" align="center" width="100">
+          <template #default="{ row }"
+            ><el-tag type="primary" effect="plain" class="amount-font status-tag">{{
+              row.settlementMonth
+            }}</el-tag></template
+          >
         </el-table-column>
-        <el-table-column label="业务分类" align="center" prop="categoryName" width="120">
-          <template #default="{ row }">
-            <el-tag type="info" effect="plain">{{ row.categoryName || '未分类' }}</el-tag>
-          </template>
-        </el-table-column>
-
         <el-table-column
           :label="activeTab === 'income' ? '收入项目' : '扣款项目'"
           align="center"
           width="150"
+          show-overflow-tooltip
         >
           <template #default="{ row }">
-            <el-tag :type="activeTab === 'income' ? 'success' : 'danger'" effect="light">
+            <el-tag
+              :type="activeTab === 'income' ? 'success' : 'danger'"
+              size="small"
+              class="status-tag"
+            >
               {{ activeTab === 'income' ? row.incomeTypeName : row.deductionTypeName }}
             </el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column label="金额明细" align="right" width="200">
+        <el-table-column label="决算金额" align="right" width="180">
           <template #default="{ row }">
-            <div :class="activeTab === 'income' ? 'text-success' : 'text-danger'">
-              <span class="amount-font" style="font-size: 15px">
+            <div
+              :style="{
+                color:
+                  activeTab === 'income' ? 'var(--el-color-success)' : 'var(--el-color-danger)',
+              }"
+            >
+              <span class="amount-font" style="font-size: 15px; font-weight: bold">
                 {{ activeTab === 'income' ? '+' : '-' }}{{ row.amount }}
               </span>
-              <span style="margin-left: 4px; font-size: 13px; font-weight: bold">
-                {{ row.settlementCurrency || 'CNY' }}
-              </span>
+              <span class="amount-font" style="margin-left: 4px; font-size: 12px">{{
+                row.settlementCurrency || 'CNY'
+              }}</span>
             </div>
-
             <div v-if="row.currency !== row.settlementCurrency" class="currency-hint">
-              (原币: {{ row.originalAmount }} {{ getDictLabel(currencyOptions, row.currency) }})
+              (原币: {{ row.originalAmount }} {{ row.currency }})
             </div>
           </template>
         </el-table-column>
-
         <el-table-column label="备注说明" prop="remark" min-width="180" show-overflow-tooltip />
         <el-table-column label="录入时间" align="center" width="160">
-          <template #default="scope"
-            ><span class="amount-font">{{ scope.row.createTime }}</span></template
+          <template #default="{ row }"
+            ><span class="amount-font text-secondary">{{ row.createTime }}</span></template
           >
         </el-table-column>
-
-        <el-table-column label="操作" align="center" width="150" fixed="right">
-          <template #default="scope">
+        <el-table-column label="操作" align="center" width="140" fixed="right">
+          <template #default="{ row }">
             <el-button
               v-hasPerm="['salary:variablepay:edit']"
               link
               type="primary"
               icon="Edit"
-              @click="handleEdit(scope.row)"
+              @click="handleEdit(row)"
               >修改</el-button
             >
             <el-button
@@ -194,7 +164,7 @@
               link
               type="danger"
               icon="Delete"
-              @click="handleDelete(scope.row)"
+              @click="handleDelete(row)"
               >删除</el-button
             >
           </template>
@@ -225,7 +195,7 @@
       <template #header>
         <div class="dialog-custom-header">
           <span class="title">{{ dialog.title }}</span>
-          <el-button link @click="toggleFullscreen">
+          <el-button link class="fullscreen-btn" @click="toggleFullscreen">
             <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
@@ -238,12 +208,11 @@
             v-model="form.employeeId"
             filterable
             remote
-            reserve-keyword
-            placeholder="输入姓名搜索并选择员工"
             :remote-method="remoteSearchEmployeesForm"
             :loading="searchLoadingForm"
             style="width: 100%"
             :disabled="!!form.id"
+            placeholder="请输入姓名检索"
             @change="handleEmployeeChange"
           >
             <el-option
@@ -253,9 +222,9 @@
               :value="item.id"
             >
               <span style="float: left">{{ item.employeeName }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">{{
-                item.employeeCode
-              }}</span>
+              <span class="amount-font" style="float: right; color: #999; font-size: 12px"
+                >#{{ item.employeeCode }}</span
+              >
             </el-option>
           </el-select>
         </el-form-item>
@@ -275,11 +244,10 @@
               :value="item.id"
             >
               <div class="flex-justify-between">
-                <span
-                  style="font-weight: bold; color: var(--el-text-color-primary); font-size: 14px"
-                  >{{ item.settlementMonth }}</span
-                >
-                <span style="color: var(--el-text-color-placeholder); font-size: 13px">{{
+                <span class="amount-font" style="font-weight: bold">{{
+                  item.settlementMonth
+                }}</span>
+                <span style="color: #999; font-size: 12px">{{
                   item.startDate ? `(${item.startDate} ~ ${item.endDate})` : ''
                 }}</span>
               </div>
@@ -293,26 +261,16 @@
         >
           <el-select
             v-model="form[activeTab === 'income' ? 'incomeTypeId' : 'deductionTypeId']"
-            placeholder="请选择业务类型"
+            placeholder="选择具体业务项目"
             style="width: 100%"
             @change="handleTypeChange"
           >
-            <template v-if="activeTab === 'income'">
-              <el-option
-                v-for="dict in incomeTypeOptions"
-                :key="dict.id"
-                :label="dict.typeName"
-                :value="dict.id"
-              />
-            </template>
-            <template v-else>
-              <el-option
-                v-for="dict in deductionTypeOptions"
-                :key="dict.id"
-                :label="dict.typeName"
-                :value="dict.id"
-              />
-            </template>
+            <el-option
+              v-for="dict in activeTab === 'income' ? incomeTypeOptions : deductionTypeOptions"
+              :key="dict.id"
+              :label="dict.typeName"
+              :value="dict.id"
+            />
           </el-select>
         </el-form-item>
 
@@ -331,12 +289,12 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="当前汇率" prop="exchangeRate">
+            <el-form-item label="实时汇率" prop="exchangeRate">
               <el-input-number
                 v-model="form.exchangeRate"
                 :min="0"
                 :precision="6"
-                :step="0.0001"
+                :controls="false"
                 style="width: 100%"
                 :disabled="form.currency === form.settlementCurrency"
               />
@@ -349,25 +307,16 @@
             v-model="form.originalAmount"
             :min="0"
             :precision="2"
-            :step="100"
+            :controls="false"
             style="width: 100%"
-            placeholder="请输入原币金额"
           />
-
-          <div v-if="form.currency !== form.settlementCurrency" class="calc-hint-box">
-            <el-icon style="vertical-align: middle; margin-right: 4px"><InfoFilled /></el-icon>
-            汇率换算：<span class="amount-font">{{ form.originalAmount || 0 }}</span>
-            {{ form.currency }} × <span class="amount-font">{{ form.exchangeRate }}</span> ≈
-            <span class="amount-font" style="font-size: 15px; color: var(--el-color-danger)">{{
-              convertedAmount
-            }}</span>
-            {{ form.settlementCurrency }}
-          </div>
-
-          <div v-else class="calc-hint-box">
-            <el-icon style="vertical-align: middle; margin-right: 4px"><Money /></el-icon>
-            核算本金：<span class="amount-font" style="font-size: 14px">{{ convertedAmount }}</span>
-            {{ form.settlementCurrency }}
+          <div
+            class="calc-hint-box"
+            :class="activeTab === 'income' ? 'income-hint' : 'deduction-hint'"
+          >
+            <el-icon><Money /></el-icon>
+            {{ form.currency !== form.settlementCurrency ? '汇率折算结果' : '核算本位金额' }}：
+            <span class="amount-font">{{ convertedAmount }}</span> {{ form.settlementCurrency }}
           </div>
         </el-form-item>
 
@@ -375,17 +324,19 @@
           <el-input
             v-model="form.remark"
             type="textarea"
-            placeholder="如：3月份销售销冠奖励 / 3月15日迟到半小时"
-            :rows="3"
+            :rows="2"
+            placeholder="补充核算依据或调整原因..."
           />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="cancel">取 消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="submitForm"
-          >确 定 保 存</el-button
-        >
+        <div class="dialog-footer">
+          <el-button @click="cancel">取 消</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="submitForm"
+            >确 定 保 存</el-button
+          >
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -394,21 +345,23 @@
 <script setup lang="ts">
 /** * ====================================================================
  * 📌 模块/组件说明
- * 功能描述: 变动薪资明细管理页 (双轨制：处理临时的额外收入与惩罚扣款)
- * 设计特性: 支持多币种动态折算，级联锁定员工周期
+ * 功能描述: 变动薪资流水管理 (处理奖金、提成、罚款、考勤扣款等)
  * ====================================================================
  */
 
-// 1. Vue 与核心依赖
+/**
+ * --------------------------------------------------------------------
+ * 📥 一、 依赖导入区 (Import Dependencies)
+ * --------------------------------------------------------------------
+ */
+// 1.1  Vue 与核心依赖
 import { ref, reactive, onMounted, nextTick, computed } from 'vue';
-
-// 2. Element Plus 与图标
-// 🌟 修改：增加 InfoFilled 图标引入
+// 1.2 Element Plus 与图标
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { FullScreen, Minus, Money, InfoFilled } from '@element-plus/icons-vue';
+import { FullScreen, Minus, Money } from '@element-plus/icons-vue';
 
-// 3. API 与类型定义
+// 1.3 API 与类型定义
 import { listEmployeeOptionsApi } from '@/api/salary/employee';
 import { listPeriodOptionsByEmployeeApi } from '@/api/salary/period/period';
 import { getIncomeTypeOptionsApi } from '@/api/salary/incometype/incomeType.ts';
@@ -432,13 +385,11 @@ import { getItemsByTypeApi } from '@/api/dictitem/dictItem.ts';
 
 /**
  * --------------------------------------------------------------------
- * 📦 一、响应式状态区 (State Management)
+ * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
-
 // [双轨制控制器]
 const activeTab = ref<'income' | 'deduction'>('income');
-
 // [UI 控制状态]
 const loading = ref(false);
 const submitLoading = ref(false);
@@ -452,15 +403,15 @@ const selectedIds = ref<(number | string)[]>([]);
 const dataList = ref<any[]>([]);
 
 // [全局数据字典]
-const employeeOptions = ref<any[]>([]);
+const baseCurrency = ref('CNY');
 const incomeTypeOptions = ref<any[]>([]);
 const deductionTypeOptions = ref<any[]>([]);
-const currencyOptions = ref<any[]>([]); // 🌟 2. 新增：币种字典数据池
+const currencyOptions = ref<any[]>([]);
+const employeeOptions = ref<any[]>([]);
 // [表单专有级联字典]
 const searchLoadingForm = ref(false);
 const employeeOptionsForm = ref<any[]>([]);
 const formPeriodOptions = ref<any[]>([]);
-
 // [查询条件]
 const queryFormRef = ref<FormInstance>();
 const queryParams = reactive<any>({
@@ -468,28 +419,27 @@ const queryParams = reactive<any>({
   pageSize: 10,
   employeeId: undefined,
   typeId: undefined,
+  settlementMonth: '',
 });
 
 // [表单模型]
-const dialog = reactive({ visible: false, title: '' });
 const formRef = ref<FormInstance>();
+const dialog = reactive({ visible: false, title: '' });
 const form = ref<any>({});
 
 // 强校验规则
 const rules = reactive<FormRules>({
-  employeeId: [{ required: true, message: '请先选择员工', trigger: 'change' }],
-  periodId: [{ required: true, message: '请选择薪资周期', trigger: 'change' }],
-  incomeTypeId: [{ required: true, message: '请选择收入类型', trigger: 'change' }],
-  deductionTypeId: [{ required: true, message: '请选择扣款类型', trigger: 'change' }],
-  originalAmount: [{ required: true, message: '原币金额不能为空', trigger: 'blur' }],
+  employeeId: [{ required: true, message: '必须指定员工', trigger: 'change' }],
+  periodId: [{ required: true, message: '必须指定结算周期', trigger: 'change' }],
+  incomeTypeId: [{ required: true, message: '请选择项目', trigger: 'change' }],
+  deductionTypeId: [{ required: true, message: '请选择项目', trigger: 'change' }],
+  originalAmount: [{ required: true, message: '金额不能为空', trigger: 'blur' }],
   exchangeRate: [{ required: true, message: '汇率不能为空', trigger: 'blur' }],
 });
 
-// [全局本位币状态]
-const baseCurrency = ref('CNY'); // 默认人民币
 /**
  * --------------------------------------------------------------------
- * 🖱️ 二、UI 交互事件区 (UI Interactions)
+ * 🖱️ 三、UI 交互事件区 (UI Interactions)
  * --------------------------------------------------------------------
  */
 
@@ -500,7 +450,7 @@ const handleSelectionChange = (selection: any[]) => {
   multiple.value = !selection.length;
 };
 
-// 切换收入/扣款 Tab 时，必须重置分页和类型条件
+/** 切换 Tab 时精准清除 typeId，防止跨模块查询污染 */
 const handleTabChange = () => {
   queryParams.typeId = undefined;
   queryParams.pageNum = 1;
@@ -514,200 +464,105 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryParams.employeeId = undefined;
   handleQuery();
-};
-
-// 重置复杂的表单状态
-const resetForm = () => {
-  form.value = {
-    id: undefined,
-    employeeId: undefined,
-    periodId: undefined,
-    originalAmount: 0,
-    exchangeRate: 1.0,
-    currency: baseCurrency.value,
-    settlementCurrency: baseCurrency.value, // 🌟 修改：初始化时打上结算币种的“快照”
-    remark: '',
-  };
-  if (activeTab.value === 'income') form.value.incomeTypeId = undefined;
-  else form.value.deductionTypeId = undefined;
-
-  employeeOptionsForm.value = [];
-  formPeriodOptions.value = [];
 };
 
 const cancel = () => {
   dialog.visible = false;
-  resetForm();
 };
 
-/**
- * --------------------------------------------------------------------
- * 🧠 三、核心业务与 API 交互区 (Business & API Logic)
- * --------------------------------------------------------------------
- */
+/** 🌟 精度校准：自动计算折算后的本位币金额 */
+const convertedAmount = computed(() => {
+  const original = Number(form.value.originalAmount) || 0;
+  const rate = Number(form.value.exchangeRate) || 0;
+  return (Math.round((original * rate + Number.EPSILON) * 100) / 100).toFixed(2);
+});
 
-/** 初始化全局字典 */
-const loadDicts = async () => {
-  incomeTypeOptions.value = (await getIncomeTypeOptionsApi()) || [];
-  deductionTypeOptions.value = (await getDeductionTypeOptionsApi()) || [];
-  try {
-    // 传入字典类型编码获取对应数据
-    const currencyRes = await getItemsByTypeApi('currency_type');
-    currencyOptions.value = currencyRes || [];
-  } catch (error) {
-    console.error('加载币种字典失败', error);
-  }
-};
+// --- 级联响应 ---
 
-/** 查询列表：底层动态路由 */
-const getList = async () => {
-  try {
-    const reqData = { ...queryParams };
-    // 动态组装真正的查询键值
-    if (activeTab.value === 'income' && reqData.typeId) reqData.incomeTypeId = reqData.typeId;
-    if (activeTab.value === 'deduction' && reqData.typeId) reqData.deductionTypeId = reqData.typeId;
-
-    const res =
-      activeTab.value === 'income'
-        ? await getIncomeDetailPageApi(reqData)
-        : await getDeductionDetailPageApi(reqData);
-
-    dataList.value = res.records || [];
-    total.value = res.total || 0;
-  } finally {
-    // 🌟 修复: 逻辑移入 finally 块，解决 empty block 报错
-    loading.value = false;
-  }
-};
-
-/** 远程搜索搜索栏员工 */
-const remoteSearchEmployees = async (query: string) => {
-  if (!query) return;
-  searchLoading.value = true;
-  try {
-    employeeOptions.value = await listEmployeeOptionsApi(query);
-  } finally {
-    searchLoading.value = false;
-  }
-};
-
-/** 远程搜索弹窗内员工 */
-const remoteSearchEmployeesForm = async (query: string) => {
-  if (!query) {
-    employeeOptionsForm.value = [];
-    return;
-  }
-  searchLoadingForm.value = true;
-  try {
-    employeeOptionsForm.value = await listEmployeeOptionsApi(query);
-  } finally {
-    searchLoadingForm.value = false;
-  }
-};
-
-/** 🌟 核心防穿透逻辑：选择员工后，只展示该员工的有效周期，防止张三的钱发进李四的月份 */
 const handleEmployeeChange = async (employeeId: number) => {
   form.value.periodId = undefined;
   formPeriodOptions.value = [];
   if (employeeId) {
-    try {
-      const res = await listPeriodOptionsByEmployeeApi(employeeId);
-      formPeriodOptions.value = res || [];
-    } catch (error) {
-      console.error(error);
-      ElMessage.error('获取该员工薪资周期失败');
-    }
+    const res = await listPeriodOptionsByEmployeeApi(employeeId);
+    formPeriodOptions.value = res || [];
   }
 };
 
-/** 🌟 修改：核心联动：选择业务类型后，自动带出字典配置的默认币种 */
 const handleTypeChange = (typeId: number) => {
   const options =
     activeTab.value === 'income' ? incomeTypeOptions.value : deductionTypeOptions.value;
-  const selectedType = options.find((item: any) => item.id === typeId);
-
-  // 如果字典配置了默认币种，且与当前选中的不同，则自动切换
-  if (
-    selectedType &&
-    selectedType.defaultCurrency &&
-    form.value.currency !== selectedType.defaultCurrency
-  ) {
-    form.value.currency = selectedType.defaultCurrency;
-    handleCurrencyChange(selectedType.defaultCurrency);
-    ElMessage({
-      message: `已自动切换为该类型的默认币种: ${selectedType.defaultCurrency}`,
-      type: 'info',
-      duration: 2000,
-    });
+  const selected = options.find((item: any) => item.id === typeId);
+  if (selected?.defaultCurrency && form.value.currency !== selected.defaultCurrency) {
+    form.value.currency = selected.defaultCurrency;
+    handleCurrencyChange(selected.defaultCurrency);
   }
 };
 
-/** 自动带出多币种汇率 (🌟 修改：基于记录本身的结算币种，而非全局本位币，防止历史数据被全局污染) */
 const handleCurrencyChange = (val: string) => {
   if (val === form.value.settlementCurrency) {
     form.value.exchangeRate = 1.0;
   } else {
-    if (form.value.settlementCurrency === 'USD') {
-      const rateMapToUSD: Record<string, number> = { CNY: 0.138, PHP: 0.017, USDT: 1.0 };
-      form.value.exchangeRate = rateMapToUSD[val] || 1.0;
-    } else {
-      const rateMapToCNY: Record<string, number> = { USD: 7.23, PHP: 0.125, USDT: 7.25 };
-      form.value.exchangeRate = rateMapToCNY[val] || 1.0;
-    }
-  }
-  // 切换币种后主动消除一下汇率的校验红框
-  if (formRef.value) {
-    formRef.value.validateField('exchangeRate');
+    // 汇率快照建议从后端拉取实时数据，此处为系统演示逻辑
+    const rateMap: Record<string, number> =
+      form.value.settlementCurrency === 'USD'
+        ? { CNY: 0.138, PHP: 0.017, USDT: 1.0 }
+        : { USD: 7.23, PHP: 0.125, USDT: 7.25 };
+    form.value.exchangeRate = rateMap[val] || 1.0;
   }
 };
 
-/** 🌟 新增：字典翻译辅助函数 (将存库的 value 翻译成展示的 label) */
-const getDictLabel = (
-  dictList: any[],
-  value: string | number,
-  valueKey = 'dictItemValue',
-  labelKey = 'dictItemLabel'
-) => {
-  if (!dictList || !dictList.length) return value;
-  const item = dictList.find((d) => d[valueKey] === value);
-  return item ? item[labelKey] : value;
+/**
+ * --------------------------------------------------------------------
+ * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
+ * --------------------------------------------------------------------
+ */
+
+const getList = async () => {
+  loading.value = true;
+  try {
+    const reqData = {
+      ...queryParams,
+    };
+    // 动态映射真正的 API 查询字段
+    if (activeTab.value === 'income' && reqData.typeId) reqData.incomeTypeId = reqData.typeId;
+    if (activeTab.value === 'deduction' && reqData.typeId) reqData.deductionTypeId = reqData.typeId;
+    const res =
+      activeTab.value === 'income'
+        ? await getIncomeDetailPageApi(reqData)
+        : await getDeductionDetailPageApi(reqData);
+    dataList.value = res.records || [];
+    total.value = res.total || 0;
+  } finally {
+    loading.value = false;
+  }
 };
 
 const handleAdd = () => {
-  resetForm();
-  dialog.title = activeTab.value === 'income' ? '新增额外收入' : '新增临时扣款';
+  resetFormState();
+  dialog.title = `录入${activeTab.value === 'income' ? '额外收入' : '临时扣款'}`;
   dialog.visible = true;
   isFullscreen.value = false;
   nextTick(() => formRef.value?.clearValidate());
 };
 
 const handleEdit = async (row: any) => {
-  resetForm();
-  // 1. 回显对象与下拉池
+  resetFormState();
   employeeOptionsForm.value = [
     { id: row.employeeId, employeeName: row.employeeName, employeeCode: '' },
   ];
   await handleEmployeeChange(row.employeeId);
 
-  // 2. 剥离并回显核心数据 (🌟 修改：读取历史结算币种的快照，若无则使用当前本位币)
   form.value = {
-    id: row.id,
-    periodId: row.periodId,
-    employeeId: row.employeeId,
+    ...row,
     currency: row.currency || baseCurrency.value,
     settlementCurrency: row.settlementCurrency || baseCurrency.value,
     originalAmount: row.originalAmount || row.amount,
     exchangeRate: row.exchangeRate || 1.0,
-    amount: row.amount,
-    remark: row.remark,
   };
-  if (activeTab.value === 'income') form.value.incomeTypeId = row.incomeTypeId;
-  else form.value.deductionTypeId = row.deductionTypeId;
-
-  dialog.title = activeTab.value === 'income' ? '修改额外收入' : '修改临时扣款';
+  dialog.title = `修改${activeTab.value === 'income' ? '收入' : '扣款'}记录`;
   dialog.visible = true;
-  isFullscreen.value = false;
 };
 
 const submitForm = async () => {
@@ -717,22 +572,24 @@ const submitForm = async () => {
       submitLoading.value = true;
       try {
         const isEdit = !!form.value.id;
+        const submitData = { ...form.value, amount: convertedAmount.value };
+
         if (activeTab.value === 'income') {
           if (isEdit) {
-            await updateIncomeDetailApi(form.value);
+            await updateIncomeDetailApi(submitData);
           } else {
-            await addIncomeDetailApi(form.value);
+            await addIncomeDetailApi(submitData);
           }
         } else {
           if (isEdit) {
-            await updateDeductionDetailApi(form.value);
+            await updateDeductionDetailApi(submitData);
           } else {
-            await addDeductionDetailApi(form.value);
+            await addDeductionDetailApi(submitData);
           }
         }
-        ElMessage.success(isEdit ? '修改成功' : '录入成功');
+        ElMessage.success('数据已同步');
         dialog.visible = false;
-        getList();
+        await getList();
       } finally {
         submitLoading.value = false;
       }
@@ -741,21 +598,21 @@ const submitForm = async () => {
 };
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm('确认删除该条明细流水吗?', '高危操作警告', { type: 'warning' })
+  ElMessageBox.confirm('确认删除该条记录吗?', '风险提示', { type: 'warning' })
     .then(async () => {
       if (activeTab.value === 'income') {
         await deleteIncomeDetailApi(row.id);
       } else {
         await deleteDeductionDetailApi(row.id);
       }
-      ElMessage.success('明细已销毁');
-      getList();
+      ElMessage.success('已删除');
+      await getList();
     })
     .catch(() => {});
 };
 
 const handleBatchDelete = () => {
-  ElMessageBox.confirm(`确认批量删除选中的 ${selectedIds.value.length} 条记录吗?`, '高危操作警告', {
+  ElMessageBox.confirm(`确认批量销毁选中的 ${selectedIds.value.length} 条记录吗?`, '高危操作', {
     type: 'warning',
   })
     .then(async () => {
@@ -764,150 +621,98 @@ const handleBatchDelete = () => {
       } else {
         await batchDeleteDeductionDetailApi(selectedIds.value);
       }
-      ElMessage.success('批量销毁成功');
-      getList();
+      ElMessage.success('批量处理成功');
+      await getList();
     })
     .catch(() => {});
 };
 
-const handleImport = () => {
-  ElMessage.info('即将开放：Excel模板下载与批量导入向导');
+// --- 状态重置辅助 ---
+const resetFormState = () => {
+  form.value = {
+    id: undefined,
+    employeeId: undefined,
+    periodId: undefined,
+    originalAmount: 0,
+    exchangeRate: 1.0,
+    currency: baseCurrency.value,
+    settlementCurrency: baseCurrency.value,
+    remark: '',
+  };
+  employeeOptionsForm.value = [];
+  formPeriodOptions.value = [];
+};
+
+const remoteSearchEmployees = async (q: string) => {
+  if (q) employeeOptions.value = await listEmployeeOptionsApi(q);
+};
+const remoteSearchEmployeesForm = async (q: string) => {
+  if (q) employeeOptionsForm.value = await listEmployeeOptionsApi(q);
 };
 
 /**
  * --------------------------------------------------------------------
- * ⚡ 四、Vue 生命周期区 (Lifecycle Hooks)
+ * ⚡ 五、 Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
-// 在 script 标签内调整
-const convertedAmount = computed(() => {
-  // 1. 获取基础数值，确保 undefined/null 时为 0
-  const original = Number(form.value.originalAmount) || 0;
-
-  // 2. 获取汇率，如果未录入汇率则默认为 0（防止计算出误导性的原币金额）
-  // 注意：这里建议默认给 0 或者是 baseCurrency 下的 1
-  const rate = Number(form.value.exchangeRate) || 0;
-
-  // 3. 执行计算
-  const total = original * rate;
-
-  // 4. 使用 Number.EPSILON 修正浮点数精度误差，再保留 2 位小数
-  // 这样可以确保像 1.005 这种数值能准确地四舍五入到 1.01
-  return (Math.round((total + Number.EPSILON) * 100) / 100).toFixed(2);
-});
-
-// 🌟 修改：修复生命周期，并发拉取字典和系统配置，等待全都就绪后再调取表格数据
 onMounted(async () => {
   loading.value = true;
-  try {
-    await Promise.all([
-      loadDicts(),
-      (async () => {
-        try {
-          const configValue = await getConfigValueApi('SETTLEMENT_CURRENCY');
-          if (configValue) {
-            baseCurrency.value = configValue;
-          }
-        } catch (e) {
-          console.error('获取结算币种配置失败', e);
-        }
-      })(),
-    ]);
-  } finally {
-    // 基础环境（包括列头单位与下拉字典）准备好后，统一拉取数据
-    await getList();
-    loading.value = false;
-  }
+  await Promise.all([
+    getIncomeTypeOptionsApi().then((res) => (incomeTypeOptions.value = res)),
+    getDeductionTypeOptionsApi().then((res) => (deductionTypeOptions.value = res)),
+    getItemsByTypeApi('currency_type').then((res) => (currencyOptions.value = res)),
+    getConfigValueApi('SETTLEMENT_CURRENCY').then((res) => (baseCurrency.value = res || 'CNY')),
+  ]);
+  await getList();
 });
 </script>
 
 <style scoped lang="scss">
 /* =====================================================================
-  🎨 页面私有样式定制区
-  规范：只放置本页面独有的微调样式，通用结构样式已由 src/styles/_layout.scss 接管
-  =====================================================================
-*/
+   🎨 页面私有样式定制区
+   全盘继承 _layout.scss 黄金规范！
+   ===================================================================== */
 
-.amount-font {
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-weight: 600;
-}
-.text-success {
-  color: var(--el-color-success);
-  font-weight: bold;
-}
-.text-danger {
-  color: var(--el-color-danger);
-  font-weight: bold;
-}
 .currency-hint {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--el-text-color-secondary);
-  font-weight: normal;
-  line-height: 1.2;
-  margin-top: 4px;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
-/* 定制化顶部 Tabs (使其融入企业级系统质感) */
 .custom-tabs {
   background: var(--el-bg-color);
-  padding: 0 20px;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04); // 降低阴影饱和度
-  border: 1px solid var(--el-border-color-light); // 适配黑暗模式
+  padding: 0 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--el-border-color-lighter);
 
   :deep(.el-tabs__header) {
     margin: 0;
   }
   :deep(.el-tabs__nav-wrap::after) {
-    height: 1px;
-    background-color: var(--el-border-color-lighter);
+    display: none;
   }
 }
 
-/* 弹窗分块标题 */
-.section-title {
-  font-weight: bold;
-  padding-left: 10px;
-  border-left: 4px solid var(--el-color-primary);
-  margin: 10px 0 20px;
-  color: var(--el-text-color-primary);
-  font-size: 15px;
-}
-.margin-top-20 {
-  margin-top: 20px;
-}
-
-/* 弹窗自定义头部 */
-.dialog-custom-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-right: 20px;
-  .title {
-    font-size: 16px;
-    font-weight: bold;
-    color: var(--el-text-color-primary);
-  }
-}
-
-/* 自动计算辅助提示框 */
 .calc-hint-box {
-  font-size: 13px;
-  color: var(--el-color-primary);
-  background-color: var(--el-color-primary-light-9);
-  padding: 6px 12px;
-  border-radius: 4px;
-  margin-top: 8px;
-  line-height: 1.2;
-  font-weight: bold;
-}
-
-.flex-justify-between {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
+  gap: 6px;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-weight: 600;
+
+  &.income-hint {
+    background-color: var(--el-color-success-light-9);
+    color: var(--el-color-success);
+  }
+
+  &.deduction-hint {
+    background-color: var(--el-color-danger-light-9);
+    color: var(--el-color-danger);
+  }
 }
 </style>

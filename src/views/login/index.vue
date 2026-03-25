@@ -1,14 +1,21 @@
+<!--src/views/login/index.vue-->
 <template>
   <div class="login-container">
-    <el-card class="login-box" shadow="hover">
-      <h2 class="title">Study Admin 登录</h2>
+    <div class="bg-decoration top"></div>
+    <div class="bg-decoration bottom"></div>
 
-      <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" size="large">
+    <el-card class="login-box" shadow="hover">
+      <div class="login-header">
+        <h2 class="title">Study Admin</h2>
+        <p class="subtitle">财务后台管理系统</p>
+      </div>
+
+      <el-form ref="loginFormRef" :model="loginForm" :rules="rules" size="large">
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
             placeholder="请输入用户名"
-            :prefix-icon="User"
+            :prefix-icon="UserIcon"
             clearable
           />
         </el-form-item>
@@ -18,7 +25,7 @@
             v-model="loginForm.password"
             type="password"
             placeholder="请输入密码"
-            :prefix-icon="Lock"
+            :prefix-icon="LockIcon"
             show-password
           />
         </el-form-item>
@@ -28,7 +35,7 @@
             <el-input
               v-model="loginForm.captchaCode"
               placeholder="验证码"
-              :prefix-icon="CircleCheck"
+              :prefix-icon="CheckIcon"
               @keyup.enter="handleLogin"
             />
             <div class="captcha-img" @click="fetchCaptcha">
@@ -49,173 +56,275 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
+/** * ====================================================================
+ * 📌 模块/组件说明
+ * 功能描述: 系统登录页面
+ * 核心逻辑: 验证码获取、登录 DTO 构造、身份令牌持久化
+ * ====================================================================
+ */
+
+/**
+ * --------------------------------------------------------------------
+ * 📥 一、依赖导入区 (Import Dependencies)
+ * --------------------------------------------------------------------
+ */
+
+// [1] Vue 核心钩子与原生生态
+import { reactive, ref, onMounted, markRaw } from 'vue';
 import { useRouter } from 'vue-router';
-import { User, Lock, CircleCheck } from '@element-plus/icons-vue';
+
+// [2] 第三方 UI 组件库与图标
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-// 1. 引入 Auth Store 和 验证码 API
+import { User, Lock, CircleCheck } from '@element-plus/icons-vue';
+
+// [3] 业务 API 与 全局 Store
 import { useAuthStore } from '@/stores/modules/auth';
-import { getCaptchaApi } from '@/api/auth';
 import { useUserStore } from '@/stores/modules/user';
+import { getCaptchaApi } from '@/api/auth';
+
+/**
+ * --------------------------------------------------------------------
+ * 📦 二、响应式状态区 (State Management)
+ * --------------------------------------------------------------------
+ */
 
 const router = useRouter();
 const authStore = useAuthStore();
+const userStore = useUserStore();
 
-const loginFormRef = ref<FormInstance>();
+// [UI 控制状态]
 const loading = ref(false);
-const captchaImg = ref(''); // 存储 Base64 验证码图片
+const captchaImg = ref('');
+const loginFormRef = ref<FormInstance>();
 
-// 2. 表单数据 (增加验证码字段)
+// [图标性能优化] - 使用 markRaw 避免 Vue 对图标进行无谓的 Proxy 代理
+const UserIcon = markRaw(User);
+const LockIcon = markRaw(Lock);
+const CheckIcon = markRaw(CircleCheck);
+
+// [业务表单数据]
 const loginForm = reactive({
   username: 'admin',
   password: '123456',
-  captchaId: '', // 关联后端的验证码ID
+  captchaId: '',
   captchaCode: '',
 });
 
-// 3. 校验规则 (增加验证码校验)
-const loginRules = reactive<FormRules>({
+// [表单前端校验规则]
+const rules = reactive<FormRules>({
   username: [{ required: true, message: '用户名不能为空', trigger: 'blur' }],
   password: [{ required: true, message: '密码不能为空', trigger: 'blur' }],
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
 });
 
-// 4. 获取验证码逻辑
+/**
+ * --------------------------------------------------------------------
+ * 🖱️ 三、UI 交互事件区 (UI Interactions)
+ * --------------------------------------------------------------------
+ */
+
+/** 执行登录动作 */
+const handleLogin = async () => {
+  if (!loginFormRef.value) return;
+
+  await loginFormRef.value.validate(async (valid) => {
+    if (valid) {
+      await performLogin();
+    }
+  });
+};
+
+/**
+ * --------------------------------------------------------------------
+ * 🧠 四、核心业务逻辑区 (Business Logic)
+ * --------------------------------------------------------------------
+ */
+
+/** 业务：获取/刷新验证码 */
 const fetchCaptcha = async () => {
   try {
     const res = await getCaptchaApi();
-    captchaImg.value = res.captchaImage; // 假设后端返回的是 base64
+    captchaImg.value = res.captchaImage;
     loginForm.captchaId = res.captchaId;
   } catch (err) {
     console.error('验证码加载失败', err);
   }
 };
 
-// 页面加载时自动获取验证码
+/** 业务：执行登录 API 调度 */
+const performLogin = async () => {
+  loading.value = true;
+  try {
+    // 构造符合后端 UserLoginReqDTO 的完整对象
+    const loginData = {
+      username: loginForm.username,
+      password: loginForm.password,
+      captchaId: loginForm.captchaId,
+      captchaCode: loginForm.captchaCode,
+      clientInfo: {
+        deviceId: authStore.deviceId || 'WEB_' + Math.random().toString(36).slice(2),
+        clientType: 'WEB',
+        os: 'macOS',
+        browser: 'Chrome',
+      },
+    };
+
+    // 1. 调用 Pinia 封装的登录 Action
+    await authStore.login(loginData);
+
+    // 2. 清理旧缓存（非常重要，防止动态路由死循环）
+    userStore.clearUserInfo();
+
+    ElMessage.success('欢迎回来');
+    await router.push('/');
+  } catch (error) {
+    // 登录失败必须刷新验证码
+    await fetchCaptcha();
+    console.error('登录异常', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+/**
+ * --------------------------------------------------------------------
+ * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)
+ * --------------------------------------------------------------------
+ */
 onMounted(() => {
   fetchCaptcha();
 });
-
-// 5. 核心登录逻辑
-const handleLogin = async () => {
-  if (!loginFormRef.value) return;
-
-  await loginFormRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true;
-      try {
-        // 构造符合后端 UserLoginReqDTO 的数据
-        const loginData = {
-          username: loginForm.username,
-          password: loginForm.password,
-          captchaId: loginForm.captchaId,
-          captchaCode: loginForm.captchaCode,
-          // 注入客户端信息（对应后端 ClientInfo）
-          clientInfo: {
-            deviceId: authStore.deviceId || 'WEB_CLIENT_' + Date.now(), // 简单模拟，建议用 FingerprintJS
-            clientType: 'WEB',
-            // 可选：增加 OS 和 Browser 信息，让后端的日志更漂亮
-            os: 'macOS',
-            browser: 'Chrome',
-          },
-        };
-
-        // 🌟 调用 Pinia 封装的登录 Action
-        await authStore.login(loginData);
-        // 登录成功后清空用户信息，避免持久化的 menus 导致守卫不触发
-        const userStore = useUserStore();
-        userStore.clearUserInfo();
-        ElMessage.success('登录成功');
-        router.push('/'); // 跳转至首页
-      } catch (error: any) {
-        // 登录失败后刷新验证码
-        fetchCaptcha();
-        // 错误提示已在 axios 拦截器中统一处理
-        console.error('登录异常', error);
-      } finally {
-        loading.value = false;
-      }
-    }
-  });
-};
 </script>
 
 <style scoped lang="scss">
+/* =====================================================================
+   🎨 登录页私有样式定制
+   ===================================================================== */
+
 .login-container {
-  /* 布局核心：使用 Flexbox 实现全屏水平垂直居中 */
   display: flex;
   justify-content: center;
   align-items: center;
-  /* 尺寸控制：占据整个视口高度，确保背景铺满 */
   height: 100vh;
-  /* 色彩规范：使用 Element Plus 官方页面背景变量，自动适配暗黑模式 */
   background-color: var(--el-bg-color-page);
+  /* 注入一点点科技感的径向渐变 */
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--el-color-primary-light-9) 0%,
+    var(--el-bg-color-page) 100%
+  );
+  position: relative;
+  overflow: hidden;
+
+  /* 背景装饰球 */
+  .bg-decoration {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.1;
+    z-index: 0;
+    &.top {
+      background: var(--el-color-primary);
+      top: -250px;
+      right: -100px;
+    }
+    &.bottom {
+      background: var(--el-color-success);
+      bottom: -250px;
+      left: -100px;
+    }
+  }
 }
 
 .login-box {
-  /* 响应式基础：设定登录框宽度 */
-  width: 400px;
-  /* 视觉打磨：大圆角更显现代感，通过 Padding 撑开内部呼吸感 */
-  border-radius: 12px;
-  padding: 30px 20px;
-}
+  width: 420px;
+  border-radius: 16px;
+  padding: 40px 30px;
+  z-index: 10;
+  border: 1px solid var(--el-border-color-lighter);
 
-.title {
-  /* 排版规范：水平居中并增加底部间距，与表单保持安全距离 */
-  text-align: center;
-  margin-bottom: 40px;
-  /* 文字打磨：增加字重和字间距，提升品牌展示效果 */
-  font-weight: 600;
-  letter-spacing: 2px;
-  /* 文字色彩：使用 Element 主文本色变量 */
-  color: var(--el-text-color-primary);
+  /* 适配暗黑模式 */
+  html.dark & {
+    background-color: rgba(20, 20, 20, 0.8);
+    backdrop-filter: blur(10px);
+  }
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 40px;
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      color: var(--el-text-color-primary);
+    }
+    .subtitle {
+      font-size: 14px;
+      color: var(--el-text-color-secondary);
+    }
+  }
 }
 
 .captcha-wrapper {
-  /* 布局核心：横向排列输入框与验证码图片 */
   display: flex;
   width: 100%;
-  /* 间距控制：通过 gap 代替 margin，确保元素分布均匀 */
   gap: 12px;
-  /* 对齐方式：确保输入框和图片在同一水平线上 */
   align-items: center;
   .captcha-img {
-    /* 尺寸锁定：高度与 el-input large 尺寸保持一致 (40px) */
     height: 40px;
-    /* 弹性控制：固定宽度，防止图片加载前后导致布局抖动 */
     flex: 0 0 120px;
-    width: 120px;
-    /* 交互逻辑：设置手型指针提醒用户可点击刷新 */
     cursor: pointer;
-    /* 边框规范：使用 Element 标准边框色 */
-    border: 1px solid var(--el-border-color);
+    border: 1px solid var(--el-border-color-lighter);
     border-radius: 4px;
-    /* 防御性样式：防止图片过大导致溢出容器 */
     overflow: hidden;
-    /* 兼容处理：图片透明时露出背景底色 */
-    background-color: #fff;
+    transition: all 0.3s;
+    &:hover {
+      border-color: var(--el-color-primary);
+    }
     img {
-      /* 填充策略：完全占据容器 */
       width: 100%;
       height: 100%;
-      /*
-         使用 contain 确保验证码图片按比例完整展示，
-         即使后端返回的图片比例不一致，也不会被切掉。 */
       object-fit: cover;
-      /* 去除图片底部的 inline 间隙 */
-      display: block;
     }
   }
 }
 
 .login-btn {
-  /* 布局策略：撑满容器宽度 */
   width: 100%;
-  /* 尺寸加固：相比普通按钮稍大，增加视觉权重，作为首要操作点 (CTA) */
-  height: 45px;
+  height: 48px;
   font-size: 16px;
-  /* 间距微调：与上方验证码区域保持逻辑分组的距离 */
-  margin-top: 15px;
+  font-weight: 600;
+  margin-top: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(var(--el-color-primary-rgb), 0.3);
+}
+
+/* =====================================================================
+   🚀 风格联动：响应全局 MenuStyle 切换 (Brilliant vs Breeze)
+   ===================================================================== */
+
+/* 风格 A：实心高亮风 - 登录页显得更强硬、更有力量感 */
+html[data-menu-style='brilliant'] {
+  .login-box {
+    border-radius: 4px;
+  }
+  .login-btn {
+    border-radius: 4px;
+  }
+}
+
+/* 风格 B：柔和呼吸风 - 登录页显得圆润、现代 */
+html[data-menu-style='breeze'] {
+  .login-box {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  }
+  .login-btn {
+    border-radius: 24px;
+  }
 }
 </style>

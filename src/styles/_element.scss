@@ -82,7 +82,7 @@ html[data-menu-style='breeze'] {
   font-size: 14px;
 
   /* 2. 表头 (Header) 深度定制 */
-  :deep(thead th.el-table__cell) {
+  thead th.el-table__cell {
     // 使用 Element Plus 官方填充色变量，自动适配 Dark Mode
     background-color: var(--el-fill-color-light) !important;
     color: var(--el-text-color-primary);
