@@ -55,7 +55,6 @@
         :data="dataList"
         border
         height="100%"
-        :row-class-name="tableRowClassName"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -496,11 +495,6 @@ const cancel = () => {
   formRef.value?.resetFields();
   dateRange.value = [];
 };
-
-/** 🌟 视觉染色：异常数据行（非满勤）标记 */
-const tableRowClassName = ({ row }: { row: PeriodVO }) =>
-  row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
-
 // --- 智能推算引擎辅助 ---
 
 const calcDaysByRange = (val: [string, string] | null, target: any) => {

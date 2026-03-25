@@ -76,12 +76,16 @@ html[data-menu-style='breeze'] {
 // ==========================================================================
 
 .el-table {
-  /* 1. 基础排版优化：金融级等宽数字展示 */
-  // 🌟 核心：让所有数字字符宽度一致，方便 HR 在对齐查账时一眼看出金额差异
+  /* 1. 全局变量覆盖区 (集中声明，彻底消除 Duplicate Overwrite 警告) */
+  --el-table-header-bg-color: var(--el-fill-color-light);
+  --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
+
+  /* 2. 基础排版优化：金融级等宽数字展示 */
+  // 让所有数字字符宽度一致，方便 HR 在对齐查账时一眼看出金额差异
   font-variant-numeric: tabular-nums;
   font-size: 14px;
 
-  /* 2. 表头 (Header) 深度定制 */
+  /* 3. 表头 (Header) 深度定制 */
   thead th.el-table__cell {
     // 使用 Element Plus 官方填充色变量，自动适配 Dark Mode
     background-color: var(--el-fill-color-light) !important;
@@ -91,37 +95,61 @@ html[data-menu-style='breeze'] {
     border-bottom: 1px solid var(--el-border-color-lighter);
   }
 
-  /* 3. 布局与边框微调 (配合 _layout.scss 的 Flex 布局) */
+  /* 4. 布局与边框微调 (配合 _layout.scss 的 Flex 布局) */
   .el-table__inner-wrapper {
     height: 100%;
-    // 🌟 细节：移除表格底部冗余的 1px 伪类边框，避免与外层 el-card 边框重叠
+    // 移除表格底部冗余的 1px 伪类边框，避免与外层 el-card 边框重叠
     &::before {
       display: none;
     }
   }
 
-  /* 4. 单元格 (Cell) 呼吸感调整 */
+  /* 5. 单元格 (Cell) 呼吸感调整 */
   .el-table__cell {
     padding: 8px 0; // 紧凑布局：在有限的高度内展示更多数据行
   }
-
-  /* 5. 交互与状态反馈优化 */
-  // 🌟 鼠标悬浮行背景色：比普通行稍亮，但不过分抢夺注意力
-  &:not(.el-table--striped) {
-    .el-table__row:hover > td.el-table__cell {
-      background-color: var(--el-fill-color-lighter) !important;
-      transition: background-color 0.25s ease;
-    }
-  }
-
-  // 斑马纹 (Striped) 视觉补强
+  // 6.斑马纹 (Striped) 视觉补强
   &.el-table--striped {
     .el-table__row--striped td.el-table__cell {
       background-color: var(--el-fill-color-lighter);
     }
   }
 
-  /* 6. 🌈 菜单风格联动逻辑 (Theme Styles Adaption) */
+  /* 7.交互与状态反馈优化 (Hover & Selected 高级视觉引擎) */
+  .el-table__body {
+    /* 为所有单元格增加丝滑的背景色渐变动画 */
+    tr > td.el-table__cell {
+      transition:
+        background-color 0.25s ease,
+        color 0.25s ease;
+    }
+
+    /* 深度定制 Selected 选中态 (现代 CSS 黑魔法 :has) */
+    /* 当行内存在被勾选的复选框时，自动触发整行背景色加深 */
+    tr:has(.el-checkbox__input.is-checked) > td.el-table__cell {
+      background-color: var(--el-color-primary-light-8) !important;
+    }
+
+    /* 选中态的极致细节：在选中的行左侧加上一条品牌色的高亮指示线 */
+    tr:has(.el-checkbox__input.is-checked) > td.el-table__cell:first-child {
+      position: relative;
+    }
+
+    tr:has(.el-checkbox__input.is-checked) > td.el-table__cell:first-child::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px; /* 指示线的宽度 */
+      background-color: var(--el-color-primary);
+      z-index: 2;
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+    }
+  }
+
+  /* 8. 🌈 菜单风格联动逻辑 (Theme Styles Adaption) */
 
   // 🚀 场景 A：【柔和呼吸风 (Breeze)】 - 进一步弱化边框，增加空气感
   html[data-menu-style='breeze'] & {
@@ -137,11 +165,7 @@ html[data-menu-style='breeze'] {
     --el-table-border-color: var(--el-border-color-lighter);
   }
 
-  /* 7. 🌟 适配明暗主题的全局变量覆盖 (兜底保障) */
-  --el-table-header-bg-color: var(--el-fill-color-light);
-  --el-table-row-hover-bg-color: var(--el-fill-color-lighter);
-
-  /* 🔴 异常/危险状态行 (如：非满勤、异常考勤、冻结账户) */
+  /* 9. 状态行染色引擎 (Danger / Warning / Success) */
   .row-theme-danger {
     --el-table-tr-bg-color: var(--el-color-danger-light-9);
     // 鼠标悬浮时颜色稍微加深一点点，保持交互感

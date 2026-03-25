@@ -55,7 +55,6 @@
         :data="dataList"
         border
         height="100%"
-        :row-class-name="tableRowClassName"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -499,8 +498,8 @@ const cancel = () => {
 };
 
 /** 🌟 核心UI染色：将非满勤行标记为危险色 */
-const tableRowClassName = ({ row }: { row: PeriodVO }) =>
-  row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
+// const tableRowClassName = ({ row }: { row: PeriodVO }) =>
+//   row.fullAttendanceFlag === 0 ? 'row-theme-danger' : '';
 
 // --- 联动计算工具方法 ---
 const calcDaysAndSync = (range: [string, string] | null, target: any) => {
