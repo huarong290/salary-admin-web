@@ -44,7 +44,8 @@ const props = withDefaults(
     defaultOptions?: EmployeeOptionVO[];
   }>(),
   {
-    placeholder: undefined,
+    modelValue: '',
+    placeholder: '输入姓名或工号搜索', // ✅ 建议有具体值
     disabled: false,
     defaultOptions: () => [],
   }
