@@ -44,7 +44,7 @@ const props = withDefaults(
     defaultOptions?: EmployeeOptionVO[];
   }>(),
   {
-    placeholder: '输入姓名或工号搜索',
+    placeholder: undefined,
     disabled: false,
     defaultOptions: () => [],
   }
@@ -97,9 +97,9 @@ const handleUpdate = (val?: number | string) => {
 
 const handleChange = (val?: number | string) => {
   emit('change', val);
-  // 清空选项时，清理下拉列表
+  // 清空选项时，不要直接 = []，而是恢复默认回显项
   if (!val) {
-    options.value = [];
+    options.value = props.defaultOptions.length > 0 ? [...props.defaultOptions] : [];
   }
 };
 </script>
