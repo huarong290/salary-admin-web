@@ -82,7 +82,7 @@
               v-model="row.roleStatus"
               :active-value="1"
               :inactive-value="0"
-              :disabled="!checkPerm(['sys:role:edit'])"
+              :disabled="!checkPermission('sys:role:edit')"
               @change="handleStatusChange(row)"
             />
           </template>
@@ -282,7 +282,7 @@ import { assignRoleMenuApi, getRoleMenuIdsApi } from '@/api/rolemenu';
 
 // [4] TS 强类型定义与工具类 (DTO / VO / Utils)
 import type { RoleQueryReqDTO, SysRoleVO } from '@/types/role/role.ts';
-import { checkPerm } from '@/utils/permission';
+import { checkPermission } from '@/utils/permission.ts';
 
 /**
  * --------------------------------------------------------------------

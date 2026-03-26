@@ -3,12 +3,11 @@
   <div class="app-container">
     <el-card shadow="hover" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="68px">
-        <el-form-item label="关键字" prop="keyword">
-          <el-input
-            v-model="queryParams.keyword"
-            placeholder="搜索姓名或工号"
-            clearable
-            @keyup.enter="handleQuery"
+        <el-form-item label="员工姓名" prop="employeeId">
+          <EmployeeSelect
+            v-model="queryParams.employeeId"
+            style="width: 240px"
+            @change="handleQuery"
           />
         </el-form-item>
         <el-form-item label="版本状态" prop="isLatest">
@@ -172,29 +171,12 @@
         <div class="section-title">核心档案配置</div>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="选择员工" prop="employeeId">
-              <el-select
+            <el-form-item label="员工姓名" prop="employeeId">
+              <EmployeeSelect
                 v-model="form.employeeId"
-                filterable
-                remote
-                :remote-method="remoteSearchEmployees"
-                :loading="searchLoading"
-                :disabled="isAdjusting"
-                style="width: 100%"
-                placeholder="输入姓名搜索员工"
-              >
-                <el-option
-                  v-for="item in employeeOptions"
-                  :key="item.id"
-                  :label="item.employeeName"
-                  :value="item.id"
-                >
-                  <span>{{ item.employeeName }}</span>
-                  <small class="amount-font" style="margin-left: 8px; color: #999"
-                    >#{{ item.employeeCode }}</small
-                  >
-                </el-option>
-              </el-select>
+                :disabled="!!form.id"
+                :default-options="echoEmployeeOptions"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -541,7 +523,6 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Calendar, FullScreen, Minus } from '@element-plus/icons-vue';
 
 // [3] 业务 API 请求接口
-import { listEmployeeOptionsApi } from '@/api/salary/employee';
 import {
   getArchivePageApi,
   getCurrentArchiveApi,
@@ -552,6 +533,8 @@ import {
 } from '@/api/salary/archive/archive.ts';
 import { getIncomeTypeOptionsApi } from '@/api/salary/incometype/incomeType.ts';
 import { getDeductionTypeOptionsApi } from '@/api/salary/deductiontype/deductionType.ts';
+import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
 
 /**
  * --------------------------------------------------------------------
@@ -562,8 +545,6 @@ import { getDeductionTypeOptionsApi } from '@/api/salary/deductiontype/deduction
 // [UI 控制状态]
 const loading = ref(false);
 const isFullscreen = ref(false);
-const searchLoading = ref(false);
-
 // [表格与分页状态]
 const total = ref(0);
 const dataList = ref<any[]>([]);
@@ -602,7 +583,8 @@ const detailDrawer = reactive({ visible: false, loading: false, data: {} as any 
 // [资源字典数据]
 const incomeOptions = ref<any[]>([]);
 const deductionOptions = ref<any[]>([]);
-const employeeOptions = ref<any[]>([]);
+// 只需要维护一个回显数组
+const echoEmployeeOptions = ref<EmployeeOptionVO[]>([]);
 
 // [表单前端合法性校验规则]
 const rules = {
@@ -698,7 +680,7 @@ const handleAdd = () => {
 /** 业务：发起调薪 (清洗旧版本 DTO) */
 const handleAdjust = async (row: any) => {
   isAdjusting.value = true;
-  employeeOptions.value = [
+  echoEmployeeOptions.value = [
     { id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode },
   ];
 
@@ -780,17 +762,6 @@ const handleRevoke = (row: any) => {
     ElMessage.success('版本回退成功');
     await getList();
   });
-};
-
-/** 业务：远程搜索 */
-const remoteSearchEmployees = async (q: string) => {
-  if (!q) {
-    employeeOptions.value = [];
-    return;
-  }
-  searchLoading.value = true;
-  employeeOptions.value = await listEmployeeOptionsApi(q);
-  searchLoading.value = false;
 };
 
 /** 辅助函数 */
