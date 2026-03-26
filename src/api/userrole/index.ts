@@ -14,5 +14,5 @@ export const getUserRoleIdsApi = (userId: number) => {
  * 给用户分配角色
  */
 export const assignUserRoleApi = (data: UserRoleAssignReqDTO) => {
-  return request.post<any>('/userrole/assignRoles', data);
+  return request.post<void>('/userrole/assignRoles', data);
 };

@@ -10,19 +10,3 @@ import type { ArchiveItemDTO } from '@/types/salary/archiveitem/archiveItem.ts';
 export function listItemsByArchiveIdApi(archiveId: number | string) {
   return request.get<ArchiveItemDTO[]>(`/salary-archive-item/list/${archiveId}`);
 }
-
-/**
- * 获取所有可用的收入类型字典
- * (用于定薪页面添加收入项时的下拉选择)
- */
-export function getIncomeTypeListApi() {
-  return request.get<any[]>(`/salary/income-type/list`);
-}
-
-/**
- * 获取所有可用的扣款类型字典
- * (用于定薪页面添加扣款项时的下拉选择)
- */
-export function getDeductionTypeListApi() {
-  return request.get<any[]>(`/salary/deduction-type/list`);
-}

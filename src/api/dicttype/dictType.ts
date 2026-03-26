@@ -4,6 +4,7 @@ import request from '@/utils/request';
 import type { PageResult } from '@/types/common.ts';
 import type {
   DictTypeAddReqDTO,
+  DictTypeEditReqDTO,
   DictTypeQueryReqDTO,
   DictTypeVO,
 } from '@/types/dicttype/dicttype.ts';
@@ -22,12 +23,10 @@ export function addDictTypeApi(data: DictTypeAddReqDTO) {
   return request.post<number>(`/dict/type/add`, data);
 }
 
-class DictTypeUpdateReqDTO {}
-
 /**
  * 修改字典类型
  */
-export function updateDictTypeApi(data: DictTypeUpdateReqDTO) {
+export function updateDictTypeApi(data: DictTypeEditReqDTO) {
   return request.put<boolean>(`/dict/type/edit`, data);
 }
 

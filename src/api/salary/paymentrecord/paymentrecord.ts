@@ -11,7 +11,7 @@ export function getPaymentRecordPageApi(data: PaymentRecordQueryReqDTO) {
 
 /** 获取单条详情 (含快照) */
 export function getPaymentRecordDetailApi(id: number | string) {
-  return request.get<SalaryPaymentRecordVO>(`/salary/payment-record/${id}`);
+  return request.get<SalaryPaymentRecordVO>(`/salary/payment-record/getById/${id}`);
 }
 
 /** 手动更新/调整金额 */
@@ -21,5 +21,5 @@ export function updatePaymentRecordApi(data: any) {
 
 /** 删除记录 (会自动联动更新汇总单金额) */
 export function deletePaymentRecordApi(id: number | string) {
-  return request.delete<boolean>(`/salary/payment-record/${id}`);
+  return request.delete<boolean>(`/salary/payment-record/delete/${id}`);
 }
