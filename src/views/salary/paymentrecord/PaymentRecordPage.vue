@@ -143,23 +143,21 @@
       <div class="snapshot-content">
         <div class="section-title">计算引擎上下文参数</div>
         <el-descriptions border :column="3" size="small" class="margin-bottom-20">
-          <el-descriptions-item label="汇总批次溯源"
-            ><span class="amount-font text-secondary">{{
-              currentRecord.summaryId
-            }}</span></el-descriptions-item
-          >
-          <el-descriptions-item label="档案标准底薪"
-            ><span class="amount-font" style="font-weight: bold; color: var(--el-color-primary)">{{
+          <el-descriptions-item label="汇总批次溯源">
+            <span class="amount-font text-secondary">{{ currentRecord.summaryId }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="档案标准底薪">
+            <span class="amount-font" style="font-weight: bold; color: var(--el-color-primary)">{{
               snapshotData.baseSalary || '0.00'
-            }}</span></el-descriptions-item
-          >
-          <el-descriptions-item label="结算币种">{{
-            snapshotData.settlementCurrency || 'CNY'
-          }}</el-descriptions-item>
-          <el-descriptions-item label="当月计薪天数"
-            ><span class="amount-font">{{ snapshotData.monthDays || '0' }}</span>
-            天</el-descriptions-item
-          >
+            }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="结算币种">
+            {{ snapshotData.settlementCurrency || 'CNY' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="当月计薪天数">
+            <span class="amount-font">{{ snapshotData.monthDays || '0' }}</span
+            >天
+          </el-descriptions-item>
           <el-descriptions-item label="实际出勤天数">
             <span
               class="amount-font"
@@ -170,9 +168,8 @@
                     : 'var(--el-color-success)',
               }"
             >
-              {{ snapshotData.attendanceDays || '0' }}
-            </span>
-            天
+              {{ snapshotData.attendanceDays || '0' }} </span
+            >天
           </el-descriptions-item>
           <el-descriptions-item label="全勤奖资格">
             <el-tag
@@ -189,11 +186,11 @@
         <el-table :data="snapshotItems" border stripe max-height="400">
           <el-table-column prop="itemName" label="明细项目" width="150" />
           <el-table-column prop="category" label="分类" width="100" align="center">
-            <template #default="{ row }"
-              ><el-tag size="small" type="info" class="status-tag">{{
+            <template #default="{ row }">
+              <el-tag size="small" type="info" class="status-tag">{{
                 row.category || '通用'
-              }}</el-tag></template
-            >
+              }}</el-tag>
+            </template>
           </el-table-column>
           <el-table-column label="收支属性" width="90" align="center">
             <template #default="{ row }">
@@ -201,9 +198,8 @@
                 :style="{
                   color: row.itemType === 1 ? 'var(--el-color-success)' : 'var(--el-color-danger)',
                 }"
+                >{{ row.itemType === 1 ? '↑ 收入' : '↓ 扣款' }}</span
               >
-                {{ row.itemType === 1 ? '↑ 收入' : '↓ 扣款' }}
-              </span>
             </template>
           </el-table-column>
           <el-table-column label="决算金额" width="120" align="right">
@@ -221,9 +217,9 @@
             </template>
           </el-table-column>
           <el-table-column prop="formula" label="计算公式追踪 (审计依据)" min-width="260">
-            <template #default="{ row }"
-              ><code class="formula-code">{{ row.formula || '固定值录入' }}</code></template
-            >
+            <template #default="{ row }">
+              <code class="formula-code">{{ row.formula || '固定值录入' }}</code>
+            </template>
           </el-table-column>
         </el-table>
       </div>
@@ -390,9 +386,10 @@ const getList = async () => {
 /** 查看快照详情 */
 const handleViewSnapshot = (row: any) => {
   currentRecord.value = row;
+  // 1. 获取 JSON 内部详情
+  let parsed: any = {};
   if (row.parsedSnapshot) {
-    snapshotData.value = row.parsedSnapshot;
-    snapshotItems.value = row.parsedSnapshot.items || [];
+    parsed = row.parsedSnapshot;
   } else if (row.detailJson) {
     try {
       const parsed =
@@ -403,6 +400,19 @@ const handleViewSnapshot = (row: any) => {
       ElMessage.error('底层快照数据解析失败');
     }
   }
+  // 合并数据！
+  // 确保弹窗内的基础参数优先使用数据库字段（row），详情列表使用 JSON 内部的 items
+  snapshotData.value = {
+    ...parsed,
+    baseSalary: row.baseSalary, // 优先取列表显示的底薪
+    settlementCurrency: row.settlementCurrency, // 强制使用列表一致的币种
+    summaryId: row.summaryId,
+    // 补齐可能缺失的计算天数
+    monthDays: parsed.monthDays || row.monthDays,
+    attendanceDays: parsed.attendanceDays || row.attendanceDays,
+  };
+
+  snapshotItems.value = parsed.items || [];
   snapshotDialog.visible = true;
   isFullscreen.value = false;
 };
