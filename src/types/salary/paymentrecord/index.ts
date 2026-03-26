@@ -21,6 +21,8 @@ export interface SalaryPaymentRecordVO {
   /** 结算月份 (如: 202603) */
   settlementMonth?: string;
 
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  settlementCurrency: string;
   /* ================== 💰 核心核算金额 (本币/基准) ================== */
   /** 核算底薪 (取自当时档案的 base_salary) */
   baseSalary: number;

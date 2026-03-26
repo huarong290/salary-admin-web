@@ -78,6 +78,11 @@
             >
           </template>
         </el-table-column>
+        <el-table-column label="结算币种" align="right" width="130">
+          <template #default="{ row }">
+            <span class="amount-font text-secondary">{{ row.settlementCurrency }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="核算方式" align="center" width="110">
           <template #default="{ row }">
             <el-tag :type="row.isManual === 1 ? 'warning' : 'info'" class="status-tag" size="small">
@@ -149,7 +154,7 @@
             }}</span></el-descriptions-item
           >
           <el-descriptions-item label="结算币种">{{
-            snapshotData.currency || 'CNY'
+            snapshotData.settlementCurrency || 'CNY'
           }}</el-descriptions-item>
           <el-descriptions-item label="当月计薪天数"
             ><span class="amount-font">{{ snapshotData.monthDays || '0' }}</span>

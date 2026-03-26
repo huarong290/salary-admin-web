@@ -15,6 +15,8 @@ export interface PeriodVO {
   workMonth?: string;
   /** 结算月份 (格式：YYYYMM) */
   settlementMonth: string;
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  currency: string;
   /** 周期开始日期 (YYYY-MM-DD) */
   startDate?: string;
   /** 周期结束日期 (YYYY-MM-DD) */
@@ -41,6 +43,8 @@ export interface PeriodQueryReqDTO extends PageQuery {
   keyword?: string;
   /** 结算月份 (如: 202603) */
   settlementMonth?: string;
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  currency: string;
   /** 在岗月份 */
   workMonth?: string;
   /** 部门名称筛选 */
@@ -55,6 +59,8 @@ export interface PeriodAddReqDTO {
   workMonth?: string;
   /** 结算月份- 必填项 */
   settlementMonth: string;
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  currency: string;
   /** 周期开始日期 */
   startDate?: string;
   /** 周期结束日期 */
@@ -91,6 +97,8 @@ export interface PeriodOptionVO {
 export interface PeriodBatchInitReqDTO {
   /** 结算月份 (格式：YYYYMM，必填) */
   settlementMonth: string;
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  currency: string;
   /** 周期开始日期 */
   startDate?: string;
   /** 周期结束日期 */
@@ -109,6 +117,8 @@ export interface PeriodBatchInitReqDTO {
 export interface PeriodBatchInitReqDTO {
   /** 结算月份 (格式：YYYYMM，必填) */
   settlementMonth: string;
+  /** 结算币种 (如: CNY, PHP, USDT) */
+  currency: string;
   /** 🌟 目标员工ID列表 (如果不传，后端默认全员) */
   employeeIds?: number[];
   /** 周期开始日期 */
