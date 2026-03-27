@@ -61,6 +61,11 @@
                 <span class="amount-font text-secondary">{{ row.dictTypeCode }}</span>
               </template>
             </el-table-column>
+            <el-table-column label="分类" width="80" align="center">
+              <template #default="{ row }">
+                <span class="amount-font text-secondary">{{ row.dictCategory }}</span>
+              </template>
+            </el-table-column>
             <el-table-column label="状态" width="80" align="center">
               <template #default="{ row }">
                 <el-tag :type="row.status === 1 ? 'success' : 'info'" class="status-tag">
@@ -227,9 +232,6 @@
             placeholder="如：currency_type"
             :disabled="!!typeForm.id"
           />
-        </el-form-item>
-        <el-form-item label="字典分类" prop="dictCategory">
-          <el-input v-model="typeForm.dictCategory" placeholder="字典分类" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="typeForm.status">
