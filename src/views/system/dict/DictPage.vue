@@ -228,6 +228,9 @@
             :disabled="!!typeForm.id"
           />
         </el-form-item>
+        <el-form-item label="字典分类" prop="dictCategory">
+          <el-input v-model="typeForm.dictCategory" placeholder="字典分类" />
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="typeForm.status">
             <el-radio :label="1">启用</el-radio>
