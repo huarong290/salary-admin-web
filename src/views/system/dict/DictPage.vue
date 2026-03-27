@@ -159,9 +159,9 @@
                 }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="排序" prop="sort" width="80" align="center">
+            <el-table-column label="排序" prop="dictItemSort" width="80" align="center">
               <template #default="{ row }">
-                <span class="amount-font text-secondary">{{ row.sort }}</span>
+                <span class="amount-font text-secondary">{{ row.dictItemSort }}</span>
               </template>
             </el-table-column>
             <el-table-column label="状态" width="80" align="center">
@@ -290,9 +290,9 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="显示排序" prop="sort">
+            <el-form-item label="显示排序" prop="dictItemSort">
               <el-input-number
-                v-model="itemForm.sort"
+                v-model="itemForm.dictItemSort"
                 :min="0"
                 :controls="false"
                 style="width: 100%"
@@ -411,7 +411,7 @@ const typeRules = reactive<FormRules>({
 const itemRules = reactive<FormRules>({
   dictItemLabel: [{ required: true, message: '标签不能为空', trigger: 'blur' }],
   dictItemValue: [{ required: true, message: '键值不能为空', trigger: 'blur' }],
-  sort: [{ required: true, message: '排序不能为空', trigger: 'blur' }],
+  dictItemSort: [{ required: true, message: '排序不能为空', trigger: 'blur' }],
 });
 
 /**
@@ -541,7 +541,7 @@ const getItemList = async () => {
  */
 const handleAddItem = () => {
   if (!currentType.value.dictTypeCode) return;
-  itemForm.value = { dictTypeCode: currentType.value.dictTypeCode, sort: 0, status: 1 };
+  itemForm.value = { dictTypeCode: currentType.value.dictTypeCode, dictItemSort: 0, status: 1 };
   itemDialog.title = '新增项明细';
   itemDialog.visible = true;
   isItemFullscreen.value = false;

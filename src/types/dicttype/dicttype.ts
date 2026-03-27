@@ -14,6 +14,8 @@ export interface DictTypeVO {
   dictTypeCode: string;
   /** 字典类型名称 (中文描述, 如: 用户性别) */
   dictTypeName: string;
+  /** 类别 */
+  dictCategory: string;
   /** 状态: 0-停用, 1-正常 */
   status: number;
   /** 备注说明 */
@@ -26,9 +28,9 @@ export interface DictTypeVO {
 
 /** 分页查询字典类型请求参数 DTO */
 export interface DictTypeQueryReqDTO extends PageQuery {
-  /** 🌟 字典类型名称 - 支持模糊搜索 */
+  /**  字典类型名称 - 支持模糊搜索 */
   dictTypeName?: string;
-  /** 🌟 字典类型编码 - 支持模糊搜索 */
+  /**  字典类型编码 - 支持模糊搜索 */
   dictTypeCode?: string;
   /** 状态筛选: 0-停用, 1-正常 */
   status?: number;
@@ -40,6 +42,8 @@ export interface DictTypeAddReqDTO {
   dictTypeCode: string;
   /** 字典类型名称 - 必填项 */
   dictTypeName: string;
+  /** 类别 */
+  dictCategory: string;
   /** 状态: 0-停用, 1-正常 - 默认 1 */
   status: number;
   /** 类型备注说明 */

@@ -17,7 +17,7 @@ export interface DictItemVO {
   /** 字典键值 (后端存储值, 如: 1, 2, 0) */
   dictItemValue: string;
   /** 显示排序 (数值越小越靠前) */
-  sort: number;
+  dictItemSort: number;
   /** 状态: 0-停用, 1-正常 */
   status: number;
   /** 字典项备注 */
@@ -35,7 +35,7 @@ export interface DictItemAddReqDTO {
   /** 字典键值 - 必填项 (业务逻辑判定值) */
   dictItemValue: string;
   /** 排序号 - 必填项 (默认可设为 0) */
-  sort: number;
+  dictItemSort: number;
   /** 状态: 0-停用, 1-正常 - 必填项 */
   status: number;
   /** 备注说明 */
@@ -44,13 +44,13 @@ export interface DictItemAddReqDTO {
 
 /** 修改字典明细项请求参数 DTO (继承自新增对象) */
 export interface DictItemUpdateReqDTO extends DictItemAddReqDTO {
-  /** 字典项主键 ID - 🌟 修改时必传，用于定位记录 */
+  /** 字典项主键 ID -  修改时必传，用于定位记录 */
   id: number;
 }
 
 /** 字典项简单过滤请求参数 (通常用于下拉列表搜索) */
 export interface DictItemQueryReqDTO extends PageQuery {
-  /** 🌟 核心过滤：所属字典类型编码 */
+  /** 所属字典类型编码 */
   dictTypeCode?: string;
   /** 标签模糊匹配 */
   dictItemLabel?: string;
