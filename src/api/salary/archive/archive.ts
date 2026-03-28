@@ -1,57 +1,64 @@
 // src/api/salary/archive/archive.ts
 
-import type {
-  ArchiveAddReqDTO,
-  ArchiveAuditDTO,
-  ArchiveQueryReqDTO,
-  SalaryArchiveVO,
-} from '@/types/salary/archive/archive.ts';
-import type { PageResult } from '@/types/common.ts';
 import request from '@/utils/request';
+import type {
+  ArchiveInitReqDTO,
+  ArchiveAdjustReqDTO,
+  ArchiveAuditReqDTO,
+  SalaryArchiveVO,
+  ArchiveQueryReqDTO,
+} from '@/types/salary/archive/archive';
+import type { PageResult } from '@/types/common.ts';
 
 /**
- * 分页查询薪资档案列表
- * (支持关键字搜索员工姓名和编号，默认查询当前最新版本)
+ * 员工入职定薪 (初始化 V1 版本)
+ * @param data 定薪配置单 (包含基础金额及明细项列表)
+ * @returns 返回新建的薪资档案 ID
+ */
+export function initEmployeeArchiveApi(data: ArchiveInitReqDTO) {
+  return request.post<number | string>('/api/salary/archive/init', data);
+}
+
+/**
+ * 员工调薪申请 (生成 V(n+1) 草稿版本)
+ * @param data 调薪配置单 (需包含调薪原因及全量最新的明细项)
+ * @returns 返回调薪草稿档案的 ID
+ */
+export function adjustSalaryApi(data: ArchiveAdjustReqDTO) {
+  return request.post<number | string>('/api/salary/archive/adjust', data, { dedupe: true });
+}
+
+/**
+ * 调薪审批处理 (拉链表截断逻辑)
+ * @param data 审批结果对象 (包含是否通过及审批意见)
+ * @returns 返回审批操作是否成功
+ */
+export function auditArchiveApi(data: ArchiveAuditReqDTO) {
+  return request.post<boolean>('/api/salary/archive/audit', data);
+}
+
+/**
+ * 获取员工当前 [已生效] 且 [最新] 的薪资档案
+ * 💡 前端在“调薪申请”页面回显老数据时，强烈依赖此接口
+ * @param employeeId 员工 ID
+ */
+export function getLatestEffectiveArchiveApi(employeeId: number | string) {
+  return request.get<SalaryArchiveVO>(`/api/salary/archive/latest/${employeeId}`);
+}
+
+/**
+ * 获取员工薪资调整历史版本记录 (按版本号倒序)
+ * @param employeeId 员工 ID
+ * @returns 返回该员工所有的薪资档案历史列表
+ */
+export function listArchiveHistoryApi(employeeId: number | string) {
+  return request.get<SalaryArchiveVO[]>(`/api/salary/archive/history/${employeeId}`);
+}
+/**
+ * 分页查询薪资档案列表 (🌟 新增)
+ * 用于后台“薪资档案管理”列表页，支持按姓名、工号、状态搜索
+ * @param data 查询条件及分页参数
  */
 export function getArchivePageApi(data: ArchiveQueryReqDTO) {
-  return request.post<PageResult<SalaryArchiveVO>>(`/salary/archive/page`, data);
-}
-
-/**
- * 提交定薪/调薪方案
- * (为员工定薪或发起调薪。系统会自动闭合旧版本并生成待审核的新版本记录)
- */
-export function saveOrAdjustArchiveApi(data: ArchiveAddReqDTO) {
-  return request.post<boolean>(`/salary/archive/save`, data);
-}
-
-/**
- * 获取员工当前生效档案
- * (常用于调薪时的初始数据回显)
- */
-export function getCurrentArchiveApi(employeeId: number | string) {
-  return request.get<SalaryArchiveVO>(`/salary/archive/current/${employeeId}`);
-}
-
-/**
- * 获取特定版本档案详情
- * (根据档案主键ID查询，包含该版本下的所有配置明细)
- */
-export function getArchiveDetailApi(archiveId: number | string) {
-  return request.get<SalaryArchiveVO>(`/salary/archive/detail/${archiveId}`);
-}
-
-/**
- * 撤销最新调薪版本
- * (仅限撤销未核算的草稿/待审版本，并恢复上一个有效版本)
- */
-export function revokeLatestVersionApi(employeeId: number | string) {
-  return request.delete<boolean>(`/salary/archive/revoke/${employeeId}`);
-}
-/**
- * 审核薪资档案
- * (由具有权限的人员对待审核版本进行通过或驳回操作)
- */
-export function auditArchiveApi(data: ArchiveAuditDTO) {
-  return request.post<boolean>(`/salary/archive/audit`, data);
+  return request.post<PageResult<SalaryArchiveVO>>('/api/salary/archive/page', data);
 }

@@ -1,9 +1,56 @@
 // src/types/salary/archive/archive.ts
 
-import type { PageQuery } from '@/types/common.ts';
-import type { ArchiveItemDTO } from '@/types/salary/archiveitem/archiveItem.ts';
+import type { PageQuery } from '@/types/common';
+import type { ArchiveItemReqDTO, SalaryArchiveItemVO } from '../archiveitem/archiveItem';
 
-/** 薪资档案返回视图对象 VO (包含版本历史及定薪明细) */
+/**
+ * 员工入职定薪请求参数 (DTO)
+ */
+export interface ArchiveInitReqDTO {
+  employeeId: number;
+  baseSalary: number;
+  /** 生效日期 (YYYY-MM-DD) */
+  effectiveDate?: string;
+  expiryDate?: string;
+  fullAttendanceBonus?: number;
+  probationBaseSalary?: number;
+  currency: string;
+  taxRuleCode: string;
+  changeReason?: string;
+  remark?: string;
+  /** 级联保存的附加薪资项列表 */
+  archiveItems: ArchiveItemReqDTO[];
+}
+
+/**
+ * 员工调薪申请请求参数 (DTO)
+ * 结构与定薪高度相似，但 changeReason 是强管控必填项
+ */
+export interface ArchiveAdjustReqDTO extends ArchiveInitReqDTO {
+  /** 调薪原因 (强管控必填) */
+  changeReason: string;
+  /** 新薪资生效日期 (强管控必填) */
+  effectiveDate: string;
+}
+
+/**
+ * 薪资档案审批请求参数 (DTO)
+ */
+export interface ArchiveAuditReqDTO {
+  /** 调薪草稿档案的ID (对应后端 id) */
+  id: number;
+  /** * 审核状态 (对应后端 auditStatus)
+   * 1 - 通过
+   * 2 - 驳回
+   */
+  auditStatus: number;
+  /** 审核意见或驳回原因 (驳回时建议必填) */
+  remark?: string;
+}
+
+/**
+ * 薪资档案详情视图对象 (VO)
+ */
 export interface SalaryArchiveVO {
   /** 档案ID */
   id: number;
@@ -15,34 +62,30 @@ export interface SalaryArchiveVO {
   employeeCode: string;
   /** 版本号 (每次调薪递增) */
   version: number;
+  /** 审核状态: 0-草稿/待审, 1-已生效, 2-驳回 */
+  auditStatus: number;
   /** 是否当前最新版本: 0-历史, 1-最新 */
-  isLatest: number;
+  latestFlag: number;
+  /** 基本工资/转正底薪 */
+  baseSalary: number;
+  /** 试用期底薪 (选填) */
+  probationBaseSalary?: number;
+  /** 全勤奖 */
+  fullAttendanceBonus?: number;
+  /** 默认结算币种 (如: CNY, USD) */
+  currency: string;
+  currencyLabel?: string;
   /** 生效起始日期 (YYYY-MM-DD) */
   effectiveDate: string;
   /** 失效日期 (YYYY-MM-DD) */
-  expiryDate?: string;
-  /** 审核状态: 0-草稿/待审, 1-已生效, 2-驳回 */
-  auditStatus: number;
-  /** 基本工资/转正底薪 */
-  baseSalary: number;
-  /** 全勤奖 */
-  fullAttendanceBonus: number;
-  /** 试用期底薪 (选填) */
-  probationBaseSalary?: number;
-  /** 默认结算币种 (如: CNY, USD) */
-  currency: string;
+  expiryDate: string;
+  taxRuleCode: string;
   /** 调薪原因 (如: 年度普调、晋升) */
-  changeReason?: string;
-  /** 计税方案: 0-不计税, 1-居民个人所得税, 2-劳务报酬税" */
-  taxScheme?: number;
+  changeReason: string;
   /** 档案备注 */
-  remark?: string;
-  /** 创建时间 */
-  createTime?: string;
-  /** 更新时间 */
-  updateTime?: string;
-  /** 关联的薪资配置明细项列表 */
-  items: ArchiveItemDTO[];
+  remark: string;
+  /** 聚合的明细项列表 */
+  archiveItems: SalaryArchiveItemVO[];
 }
 
 /** 分页查询薪资档案请求参数 */
@@ -50,45 +93,9 @@ export interface ArchiveQueryReqDTO extends PageQuery {
   /** 员工姓名/编号模糊搜索 */
   keyword?: string;
   /** 是否仅查询当前最新版本 (1-是, 0-否) */
-  isLatest?: number;
+  latestFlag?: number;
   /** 🌟 新增：审核状态: 0-待审核, 1-已生效, 2-被驳回 */
   auditStatus?: number;
   /** 部门名称筛选 */
   department?: string;
-}
-
-/** 新增定薪/调薪请求参数 (发起版本更迭) */
-export interface ArchiveAddReqDTO {
-  /** 员工ID - 必填项 */
-  employeeId: number | string;
-  /** 基本工资/转正底薪 - 必填项 */
-  baseSalary: number;
-  /** 全勤奖 */
-  fullAttendanceBonus: number;
-  /** 试用期底薪 */
-  probationBaseSalary?: number;
-  /** 生效起始日期 - 必填项 (YYYY-MM-DD) */
-  effectiveDate: string;
-  /** 默认结算币种 */
-  currency?: string;
-  /** 调薪原因 */
-  changeReason?: string;
-  /** 计税方案: 0-不计税, 1-居民个人所得税, 2-劳务报酬税" */
-  taxScheme?: number;
-  /** 档案版本 */
-  version: number;
-  /** 档案备注 */
-  remark?: string;
-  /** 薪资项明细列表 - 包含新增的收入与扣款配置 */
-  items: ArchiveItemDTO[];
-}
-
-/**  薪资档案审核请求参数 (处理版本生效/驳回) */
-export interface ArchiveAuditDTO {
-  /** 薪资档案主键ID - 必填项 */
-  id: number;
-  /** 审核状态结果: 1-审核通过(生效), 2-审核驳回 - 必填项 */
-  auditStatus: number;
-  /** 审核意见或驳回原因 (驳回时建议必填) */
-  remark?: string;
 }
