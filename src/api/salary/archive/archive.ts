@@ -1,4 +1,4 @@
-// src/api/salary/archive/archive.ts
+// src/salary/archive/archive.ts
 
 import request from '@/utils/request';
 import type {
@@ -16,7 +16,7 @@ import type { PageResult } from '@/types/common.ts';
  * @returns 返回新建的薪资档案 ID
  */
 export function initEmployeeArchiveApi(data: ArchiveInitReqDTO) {
-  return request.post<number | string>('/api/salary/archive/init', data);
+  return request.post<number | string>('/salary/archive/init', data);
 }
 
 /**
@@ -25,7 +25,7 @@ export function initEmployeeArchiveApi(data: ArchiveInitReqDTO) {
  * @returns 返回调薪草稿档案的 ID
  */
 export function adjustSalaryApi(data: ArchiveAdjustReqDTO) {
-  return request.post<number | string>('/api/salary/archive/adjust', data, { dedupe: true });
+  return request.post<number | string>('/salary/archive/adjust', data, { dedupe: true });
 }
 
 /**
@@ -34,7 +34,7 @@ export function adjustSalaryApi(data: ArchiveAdjustReqDTO) {
  * @returns 返回审批操作是否成功
  */
 export function auditArchiveApi(data: ArchiveAuditReqDTO) {
-  return request.post<boolean>('/api/salary/archive/audit', data);
+  return request.post<boolean>('/salary/archive/audit', data);
 }
 
 /**
@@ -43,7 +43,7 @@ export function auditArchiveApi(data: ArchiveAuditReqDTO) {
  * @param employeeId 员工 ID
  */
 export function getLatestEffectiveArchiveApi(employeeId: number | string) {
-  return request.get<SalaryArchiveVO>(`/api/salary/archive/latest/${employeeId}`);
+  return request.get<SalaryArchiveVO>(`/salary/archive/latest/${employeeId}`);
 }
 
 /**
@@ -52,7 +52,7 @@ export function getLatestEffectiveArchiveApi(employeeId: number | string) {
  * @returns 返回该员工所有的薪资档案历史列表
  */
 export function listArchiveHistoryApi(employeeId: number | string) {
-  return request.get<SalaryArchiveVO[]>(`/api/salary/archive/history/${employeeId}`);
+  return request.get<SalaryArchiveVO[]>(`/salary/archive/history/${employeeId}`);
 }
 /**
  * 分页查询薪资档案列表 (🌟 新增)
@@ -60,5 +60,5 @@ export function listArchiveHistoryApi(employeeId: number | string) {
  * @param data 查询条件及分页参数
  */
 export function getArchivePageApi(data: ArchiveQueryReqDTO) {
-  return request.post<PageResult<SalaryArchiveVO>>('/api/salary/archive/page', data);
+  return request.post<PageResult<SalaryArchiveVO>>('/salary/archive/page', data);
 }
