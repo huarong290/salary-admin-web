@@ -39,7 +39,7 @@ export function getEmployeePageApi(data: EmployeeQueryReqDTO) {
  * @param id 员工ID
  */
 export function getEmployeeDetailApi(id: number | string) {
-  return request.get<EmployeeVO>(`/salary/employee/${id}`);
+  return request.get<EmployeeVO>(`/salary/employee/detail/${id}`);
 }
 
 /**
@@ -59,7 +59,7 @@ export function deleteEmployeeApi(id: number | string, logicalDelete: boolean = 
  * @param logicalDelete 是否逻辑删除 (默认 true)
  */
 export function batchDeleteEmployeeApi(ids: (number | string)[], logicalDelete: boolean = true) {
-  return request.delete<boolean>(`/salary/employee/delete/batch`, {
+  return request.delete<boolean>(`/salary/employee/deleteBatch`, {
     params: { logicalDelete },
     data: ids,
   });

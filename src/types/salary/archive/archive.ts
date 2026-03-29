@@ -16,7 +16,7 @@ export interface ArchiveQueryReqDTO extends PageQuery {
 }
 
 /**
-/**
+ /**
  * 员工入职定薪请求参数 (DTO)
  */
 export interface ArchiveInitReqDTO {
@@ -26,6 +26,10 @@ export interface ArchiveInitReqDTO {
   baseSalary: number;
   /** 试用期底薪 (选填) */
   probationBaseSalary?: number;
+  /** * 新增：岗位/职级快照
+   * 调薪往往伴随职级变动，记录下调薪时的职级有助于溯源
+   */
+  jobTitle?: string;
   /** 默认结算币种 (如: CNY, USD) */
   currency: string;
   currencyLabel?: string;
@@ -101,7 +105,10 @@ export interface SalaryArchiveVO {
   effectiveDate: string;
   /** 失效日期 (YYYY-MM-DD) */
   expiryDate: string;
-
+  /** * 新增：转正日期快照
+   * 作用：前端计算“本月计薪天数”时，如果转正日期在当月中，则需要分段计算底薪
+   */
+  probationEndDate?: string;
   /** 档案备注 */
   remark: string;
   /** 聚合的明细项列表 */

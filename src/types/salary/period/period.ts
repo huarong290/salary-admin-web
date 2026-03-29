@@ -7,16 +7,14 @@ export interface PeriodVO {
   id: number;
   /** 员工ID (关联 salary_employee) */
   employeeId: number;
-  /** 🌟 员工code (动态关联填充，用于前端直观展示) */
+  /** 员工code (动态关联填充，用于前端直观展示) */
   employeeCode?: string;
-  /** 🌟 员工姓名 (动态关联填充，用于前端直观展示) */
+  /** 员工姓名 (动态关联填充，用于前端直观展示) */
   employeeName?: string;
   /** 在岗月份  */
-  workMonth?: string;
+  workMonth?: number;
   /** 结算月份 (格式：YYYYMM) */
   settlementMonth: string;
-  /** 结算币种 (如: CNY, PHP, USDT) */
-  currency: string;
   /** 周期开始日期 (YYYY-MM-DD) */
   startDate?: string;
   /** 周期结束日期 (YYYY-MM-DD) */
@@ -43,10 +41,8 @@ export interface PeriodQueryReqDTO extends PageQuery {
   keyword?: string;
   /** 结算月份 (如: 202603) */
   settlementMonth?: string;
-  /** 结算币种 (如: CNY, PHP, USDT) */
-  currency: string;
   /** 在岗月份 */
-  workMonth?: string;
+  workMonth?: number;
   /** 部门名称筛选 */
   department?: string;
 }
@@ -56,11 +52,9 @@ export interface PeriodAddReqDTO {
   /** 员工ID - 必填项 */
   employeeId: number | string;
   /** 在岗月份 */
-  workMonth?: string;
+  workMonth?: number;
   /** 结算月份- 必填项 */
   settlementMonth: string;
-  /** 结算币种 (如: CNY, PHP, USDT) */
-  currency: string;
   /** 周期开始日期 */
   startDate?: string;
   /** 周期结束日期 */
@@ -84,7 +78,7 @@ export interface PeriodOptionVO {
   /** 周期ID */
   id?: number;
   /** 在岗月份 (展示文本，如：2026-03) */
-  workMonth: string;
+  workMonth: number;
   /** 结算月份 (实际存入值，如：202603) */
   settlementMonth: string;
   /** 周期开始日期 (可选展示) */
@@ -97,29 +91,8 @@ export interface PeriodOptionVO {
 export interface PeriodBatchInitReqDTO {
   /** 结算月份 (格式：YYYYMM，必填) */
   settlementMonth: string;
-  /** 结算币种 (如: CNY, PHP, USDT) */
-  currency: string;
-  /** 周期开始日期 */
-  startDate?: string;
-  /** 周期结束日期 */
-  endDate?: string;
-  /** 本月自然天数 */
-  monthDays?: number;
-  /** 实际出勤天数 */
-  attendanceDays?: number;
-  /** 是否满勤 (1:是, 0:否) */
-  fullAttendanceFlag?: number;
-  /** 备注 */
-  remark?: string;
-}
 
-/** 批量初始化薪资周期请求参数 */
-export interface PeriodBatchInitReqDTO {
-  /** 结算月份 (格式：YYYYMM，必填) */
-  settlementMonth: string;
-  /** 结算币种 (如: CNY, PHP, USDT) */
-  currency: string;
-  /** 🌟 目标员工ID列表 (如果不传，后端默认全员) */
+  /** 目标员工ID列表 (如果不传，后端默认全员) */
   employeeIds?: number[];
   /** 周期开始日期 */
   startDate?: string;
@@ -135,7 +108,7 @@ export interface PeriodBatchInitReqDTO {
   remark?: string;
 }
 
-/** 🌟 批量初始化结果返回对象 (大厂标准：统计摘要) */
+/**  批量初始化结果返回对象 (大厂标准：统计摘要) */
 export interface PeriodBatchInitResultVO {
   /** 结算月份 */
   settlementMonth: string;

@@ -11,15 +11,20 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+
         <el-form-item label="在职状态" prop="employmentStatus">
           <el-select
             v-model="queryParams.employmentStatus"
-            placeholder="选择状态"
+            placeholder="选择用工状态"
             clearable
             style="width: 160px"
           >
-            <el-option label="在职" :value="1" />
-            <el-option label="离职" :value="0" />
+            <el-option
+              v-for="dict in dicts.employment_status || []"
+              :key="dict.dictItemValue"
+              :label="dict.dictItemLabel"
+              :value="Number(dict.dictItemValue)"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -68,20 +73,42 @@
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.employmentStatus === 1 ? 'success' : 'info'" class="status-tag">
-              {{ row.employmentStatus === 1 ? '在职' : '已离职' }}
+            <el-tag :type="getStatusType(row.employmentStatus)" class="status-tag">
+              {{ getDictLabel(dicts.employment_status, row.employmentStatus) }}
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="入职日期" width="120" align="center">
+          <template #default="{ row }">
+            <span class="amount-font">{{ row.entryDate }}</span>
+          </template>
+        </el-table-column>
 
+        <el-table-column label="转正日期" width="120" align="center">
+          <template #default="{ row }">
+            <span v-if="row.probationEndDate" class="amount-font text-success">
+              {{ row.probationEndDate }}
+            </span>
+            <span v-else class="text-secondary">-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="离职日期" width="120" align="center">
+          <template #default="{ row }">
+            <span v-if="row.actualLeaveDate" class="amount-font text-danger">
+              {{ row.actualLeaveDate }}
+            </span>
+            <span v-else class="text-secondary">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="转岗情况" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              :type="row.isTransferred === 1 ? 'warning' : 'info'"
+              :type="row.transferFlag === 1 ? 'warning' : 'info'"
               effect="plain"
               class="status-tag"
             >
-              {{ row.isTransferred === 1 ? '已转岗' : '未转岗' }}
+              {{ row.transferFlag === 1 ? '已转岗' : '未转岗' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -179,9 +206,52 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="转岗状态" prop="isTransferred">
+            <el-form-item label="岗位职级" prop="jobTitle">
+              <el-input v-model="form.jobTitle" placeholder="如：高级Java工程师" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="入职日期" prop="entryDate">
+              <el-date-picker
+                v-model="form.entryDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="请选择入职日期"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="预计转正" prop="probationEndDate">
+              <el-date-picker
+                v-model="form.probationEndDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="转正考核日期"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="离职日期" prop="actualLeaveDate">
+              <el-date-picker
+                v-model="form.actualLeaveDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="实际最后工作日"
+                style="width: 100%"
+                :disabled="form.employmentStatus != 0"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="转岗状态" prop="transferFlag">
               <el-switch
-                v-model="form.isTransferred"
+                v-model="form.transferFlag"
                 :active-value="1"
                 :inactive-value="0"
                 active-text="已转岗"
@@ -189,12 +259,18 @@
               />
             </el-form-item>
           </el-col>
+
           <el-col :span="12">
             <el-form-item label="在职状态" prop="employmentStatus">
-              <el-radio-group v-model="form.employmentStatus">
-                <el-radio :label="1">在职</el-radio>
-                <el-radio :label="0">离职</el-radio>
-              </el-radio-group>
+              <el-select v-model="form.employmentStatus" placeholder="选择状态" style="width: 100%">
+                <el-option
+                  v-for="dict in dicts.employment_status || []"
+                  :key="dict.dictItemValue"
+                  :label="dict.dictItemLabel"
+                  :value="Number(dict.dictItemValue)"
+                  :disabled="!form.id && dict.dictItemValue == '0'"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -209,7 +285,7 @@
               >
                 <el-option label="不住宿 (自行解决)" :value="0" />
                 <el-option label="公司宿舍 (统一安排)" :value="1" />
-                <el-option label="外宿补贴 (享受房补)" :value="2" />
+                <el-option label="外宿 (享受房补)" :value="2" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -259,13 +335,14 @@ import {
 
 // [4] TS 强类型定义约束 (DTO / VO)
 import type { EmployeeQueryReqDTO, EmployeeVO } from '@/types/salary/employee/employee.ts';
-
+import { useDict } from '@/hooks/useDict';
 /**
  * --------------------------------------------------------------------
  * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
-
+//  触发字典数据初始化加载
+const dicts = useDict('employment_status');
 // [UI 控制状态]
 const loading = ref(false); // 表格加载遮罩层状态
 const isFullscreen = ref(false); // 弹窗全屏状态切换标识
@@ -294,6 +371,7 @@ const form = ref<any>({});
 const rules = reactive<FormRules>({
   employeeCode: [{ required: true, message: '工号不能为空', trigger: 'blur' }],
   employeeName: [{ required: true, message: '姓名不能为空', trigger: 'blur' }],
+  entryDate: [{ required: true, message: '入职日期是算薪依据，必填', trigger: 'change' }],
 });
 
 /**
@@ -330,7 +408,29 @@ const cancel = () => {
   dialog.visible = false;
   formRef.value?.resetFields();
 };
+const getStatusType = (status: number | string) => {
+  const map: Record<string, string> = {
+    '1': 'success',
+    '2': 'warning',
+    '3': 'primary',
+    '4': 'info',
+    '0': 'danger',
+  };
+  return map[String(status)] || 'info';
+};
 
+//翻译函数
+const getDictLabel = (dictList: any[] | undefined | null, value: number | string) => {
+  console.log('当前字典列表:', dictList, '待匹配值:', value);
+  // 1. 如果字典还没加载完，或者没有值，先显示空，避免显示尴尬的数字
+  if (!dictList || dictList.length === 0) return '';
+
+  // 2. 强行把 value 转成字符串进行查找，确保 "1" == 1 匹配成功
+  const item = dictList.find((d) => String(d.dictItemValue) === String(value));
+
+  // 3. 如果找到了显示 Label，找不到则返回原始值
+  return item ? item.dictItemLabel : value;
+};
 /**
  * --------------------------------------------------------------------
  * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
@@ -355,8 +455,11 @@ const getList = async () => {
 const handleAdd = () => {
   form.value = {
     employmentStatus: 1, // 默认在职
-    isTransferred: 0, // 默认未转岗
+    transferFlag: 0, // 默认未转岗
     accommodationStatus: 0, // 默认不住宿
+    entryDate: new Date().toISOString().split('T')[0], // 🌟 默认今天
+    probationEndDate: undefined,
+    actualLeaveDate: undefined,
   };
   dialog.title = '新增员工档案';
   dialog.visible = true;

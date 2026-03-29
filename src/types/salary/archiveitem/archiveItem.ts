@@ -26,9 +26,23 @@ export interface SalaryArchiveItemVO {
   itemType: number;
   itemTypeLabel?: string;
   itemConfigId: number;
-  /** 项目名称快照 (如：餐补) */
+  /**
+   *  精度控制快照
+   * 来源：salary_item_config
+   */
+  decimalPlaces: number;
+  /**
+   * 舍入规则快照
+   * HALF_UP, DOWN, UP
+   */
+  roundingMode: string;
+  /**
+   * 项目名称快照 (如：餐补)
+   */
   typeName: string;
-  /** 分类字典值快照 */
+  /**
+   * 分类字典值快照
+   */
   categoryDictValue: string;
   categoryDictLabel?: string;
   /** 固定金额 */

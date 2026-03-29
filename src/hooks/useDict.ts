@@ -24,7 +24,7 @@ export function useDict(...types: string[]) {
         } else {
           const res = await getItemsByTypeApi(type);
           if (res) {
-            dicts[type] = res;
+            dicts[type] = Array.isArray(res) ? [...res] : res;
             sessionStorage.setItem(`dict:${type}`, JSON.stringify(res));
           }
         }

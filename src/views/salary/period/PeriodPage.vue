@@ -20,18 +20,6 @@
             clearable
           />
         </el-form-item>
-        <el-form-item label="结算币种" prop="currency">
-          <el-select
-            v-model="queryParams.currency"
-            placeholder="全部"
-            clearable
-            style="width: 120px"
-          >
-            <el-option label="人民币 (CNY)" value="CNY" />
-            <el-option label="比索 (PHP)" value="PHP" />
-            <el-option label="USDT" value="USDT" />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -81,18 +69,6 @@
             <el-tag type="primary" effect="plain" class="amount-font status-tag">{{
               row.settlementMonth
             }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="币种" align="center" width="90">
-          <template #default="{ row }">
-            <el-tag
-              :type="
-                row.currency === 'PHP' ? 'warning' : row.currency === 'USDT' ? 'success' : 'info'
-              "
-              effect="light"
-            >
-              {{ row.currency }}
-            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="在岗时长" align="center" width="100">
@@ -216,15 +192,6 @@
                 style="width: 100%"
                 @change="handleMonthChange"
               />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结算币种" prop="currency">
-              <el-select v-model="form.currency" placeholder="请选择" style="width: 100%">
-                <el-option label="人民币 (CNY)" value="CNY" />
-                <el-option label="比索 (PHP)" value="PHP" />
-                <el-option label="USDT" value="USDT" />
-              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -359,22 +326,6 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="默认币种" prop="currency">
-              <el-select
-                v-model="batchInitForm.currency"
-                placeholder="按档案自动匹配"
-                clearable
-                style="width: 100%"
-              >
-                <el-option label="人民币 (CNY)" value="CNY" />
-                <el-option label="比索 (PHP)" value="PHP" />
-                <el-option label="USDT" value="USDT" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
             <el-form-item label="默认出勤" prop="attendanceDays">
               <el-input-number
                 v-model="batchInitForm.attendanceDays"
@@ -490,7 +441,6 @@ const batchInitFormRef = ref<FormInstance>();
 const batchDateRange = ref<[string, string] | []>([]);
 const batchInitForm = reactive<PeriodBatchInitReqDTO>({
   settlementMonth: '',
-  currency: '', // 🌟 新增：默认不选，交给后端匹配档案
   startDate: '',
   endDate: '',
   monthDays: 0,
@@ -503,7 +453,6 @@ const batchInitForm = reactive<PeriodBatchInitReqDTO>({
 const rules = reactive<FormRules>({
   employeeId: [{ required: true, message: '请选择员工', trigger: 'change' }],
   settlementMonth: [{ required: true, message: '结算月份不能为空', trigger: 'change' }],
-  currency: [{ required: true, message: '请选择结算币种', trigger: 'change' }],
   workMonth: [{ required: true, message: '在岗月份不能为空', trigger: 'blur' }],
 });
 
@@ -618,7 +567,6 @@ const handleAdd = () => {
   form.value = {
     employeeId: undefined,
     settlementMonth: '',
-    currency: 'CNY',
     workMonth: 0,
     monthDays: 0,
     attendanceDays: 0,
@@ -657,8 +605,8 @@ const submitForm = async () => {
         id: form.value.id,
         employeeId: form.value.employeeId,
         settlementMonth: form.value.settlementMonth,
-        currency: form.value.currency,
-        workMonth: form.value.workMonth !== undefined ? String(form.value.workMonth) : '0',
+
+        workMonth: form.value.workMonth !== undefined ? Number(form.value.workMonth) : 0,
         startDate: form.value.startDate,
         endDate: form.value.endDate,
         monthDays: form.value.monthDays,
