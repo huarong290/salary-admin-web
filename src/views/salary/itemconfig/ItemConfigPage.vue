@@ -166,10 +166,10 @@
           <el-col :span="12">
             <el-form-item label="项目大类" prop="itemCategory">
               <el-select
-                v-model="queryParams.itemCategory"
+                v-model="form.itemCategory"
                 placeholder="项目分类"
                 clearable
-                style="width: 120px"
+                style="width: 100%"
               >
                 <el-option
                   v-for="item in dict.salary_item_category"
@@ -376,7 +376,13 @@ const getList = async () => {
 
 /** * 发起：新增项目 */
 const handleAdd = () => {
-  form.value = { status: 1, calcPriority: 10, taxableFlag: 0, taxDeductibleFlag: 0 };
+  form.value = {
+    status: 1,
+    calcPriority: 10,
+    taxableFlag: 0,
+    taxDeductibleFlag: 0,
+    fixedFlag: 0, // 显式设置固定项标识为 0 (非系统内置)
+  };
   dialog.title = '新增薪资项目';
   dialog.visible = true;
   isFullscreen.value = false;
