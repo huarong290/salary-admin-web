@@ -77,7 +77,9 @@
         <el-table-column label="基本工资" prop="baseSalary" min-width="120" align="right">
           <template #default="{ row }">
             <span class="amount-font text-primary">{{ row.baseSalary?.toFixed(2) }}</span>
-            <span style="margin-left: 4px; font-size: 12px; color: #999">{{ row.currency }}</span>
+            <span style="margin-left: 4px; font-size: 12px; color: #999">
+              {{ getDictLabel(dicts.settlement_currency, row.currency) || row.currency }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="生效日期" prop="effectiveDate" width="120" align="center" />
@@ -165,13 +167,13 @@
         <div class="section-title">基础金额配置</div>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="员工ID" prop="employeeId">
-              <el-input-number
+            <el-form-item label="员工姓名" prop="employeeId">
+              <EmployeeSelect
                 v-model="form.employeeId"
                 :disabled="dialog.mode === 'adjust'"
-                placeholder="员工ID"
+                :default-options="echoEmployeeOptions"
+                placeholder="输入姓名或工号搜索"
                 style="width: 100%"
-                :controls="false"
               />
             </el-form-item>
           </el-col>
@@ -205,8 +207,12 @@
           <el-col :span="12">
             <el-form-item label="结算币种" prop="currency">
               <el-select v-model="form.currency" placeholder="请选择" style="width: 100%">
-                <el-option label="人民币 (CNY)" value="CNY" />
-                <el-option label="美元 (USD)" value="USD" />
+                <el-option
+                  v-for="item in dicts.settlement_currency ?? []"
+                  :key="item.dictItemValue"
+                  :label="item.dictItemLabel"
+                  :value="item.dictItemValue"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -325,6 +331,9 @@ import type {
 } from '@/types/salary/archive/archive.ts';
 import type { DictItemVO } from '@/types/dictitem/dictitem.ts';
 import SalaryArchiveItem from '@/views/salary/archive/components/SalaryArchiveItem.vue';
+import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
+import { listItemConfigOptionsApi } from '@/api/salary/itemconfig/itemConfig.ts';
 
 /**
  * --------------------------------------------------------------------
@@ -341,7 +350,7 @@ const dataList = ref<SalaryArchiveVO[]>([]);
 const itemConfigOptions = ref<any[]>([]);
 
 /** 字典库数据源 */
-const dicts = useDict('salary_audit_status', 'salary_item_category');
+const dicts = useDict('salary_audit_status', 'salary_item_category', 'settlement_currency');
 
 /** 列表查询参数表单 */
 const queryFormRef = ref<FormInstance>();
@@ -358,7 +367,8 @@ const queryParams = reactive<ArchiveQueryReqDTO>({
 const formRef = ref<FormInstance>();
 const dialog = reactive({ visible: false, title: '', mode: 'init' });
 const form = ref<any>({});
-
+// 增加员工选择组件的回显数据源
+const echoEmployeeOptions = ref<EmployeeOptionVO[]>([]);
 /** 审批参数表单 */
 const auditDialog = reactive({ visible: false });
 const auditFormRef = ref<FormInstance>();
@@ -460,6 +470,7 @@ const handleInit = () => {
     changeReason: '',
     archiveItems: [],
   };
+  echoEmployeeOptions.value = [];
   dialog.mode = 'init';
   dialog.title = '新员工入职定薪';
   dialog.visible = true;
@@ -488,7 +499,14 @@ const handleAdjust = async (row: SalaryArchiveVO) => {
           ruleScript: item.ruleScript,
         })) || [],
     };
-
+    //构造回显选项，让处于 disabled 状态的 EmployeeSelect 能显示中文姓名
+    echoEmployeeOptions.value = [
+      {
+        id: latestArchive.employeeId,
+        employeeName: latestArchive.employeeName || row.employeeName,
+        employeeCode: latestArchive.employeeCode || row.employeeCode || '',
+      } as EmployeeOptionVO,
+    ];
     dialog.mode = 'adjust';
     dialog.title = `发起调薪申请 - ${latestArchive.employeeName}`;
     dialog.visible = true;
@@ -548,15 +566,20 @@ const submitAudit = async () => {
  * ⚡ 五、 Vue 生命周期区 (Lifecycle Hooks)
  * --------------------------------------------------------------------
  */
+// 新增获取真实薪资配置项的方法
+const loadItemConfigOptions = async () => {
+  try {
+    const res = await listItemConfigOptionsApi();
+    // 拿到真实数据后赋值给下拉框数据源
+    itemConfigOptions.value = res || [];
+  } catch (error) {
+    console.error('拉取薪资项目配置失败:', error);
+  }
+};
 onMounted(() => {
   getList();
 
-  /** 模拟拉取薪资项基础配置字典 (实际应接入后端 Config API) */
-  itemConfigOptions.value = [
-    { id: 1, name: '午餐补贴', typeName: 'INC_ALLOWANCE' },
-    { id: 2, name: '交通补贴', typeName: 'INC_ALLOWANCE' },
-    { id: 3, name: '考勤扣款', typeName: 'DED_ABSENT' },
-  ];
+  loadItemConfigOptions();
 });
 </script>
 

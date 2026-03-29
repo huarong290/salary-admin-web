@@ -1,20 +1,28 @@
+<!--src/views/salary/archive/components/SalaryArchiveItem.vue-->
+
 <template>
   <div class="salary-item-editor">
     <el-table :data="localItems" border size="small" style="width: 100%; margin-bottom: 10px">
       <el-table-column label="薪资项目" min-width="180">
-        <template #default="{ row }">
+        <template #default="{ row, $index }">
           <el-select
             v-model="row.itemConfigId"
             placeholder="请选择薪资项"
             style="width: 100%"
             filterable
+            @change="handleConfigChange($event, $index)"
           >
             <el-option
               v-for="config in configOptions"
               :key="config.id"
-              :label="config.name"
+              :label="config.itemName"
               :value="config.id"
-            />
+            >
+              <span style="float: left">{{ config.itemName }}</span>
+              <span style="float: right; color: var(--el-text-color-secondary); font-size: 13px">
+                {{ config.envVarName }}
+              </span>
+            </el-option>
           </el-select>
         </template>
       </el-table-column>
@@ -65,7 +73,11 @@
  * 📥 一、 依赖导入区 (Import Dependencies)
  * --------------------------------------------------------------------
  */
+// [1] Vue 核心钩子与原生生态
 import { ref, watch } from 'vue';
+// [2] 第三方 UI 组件库与图标
+import { ElMessage } from 'element-plus';
+
 import type { ArchiveItemReqDTO } from '@/types/salary/archiveitem/archiveItem';
 
 /**
@@ -92,8 +104,12 @@ const localItems = ref<ArchiveItemReqDTO[]>([]);
 watch(
   () => props.modelValue,
   (newVal) => {
-    // 深度拷贝以阻断引用，防止直接篡改父级状态
-    localItems.value = JSON.parse(JSON.stringify(newVal || []));
+    // 将新旧值转为字符串对比。如果一样，说明是子组件自己 emit 触发的父级更新，直接略过。
+    const newStr = JSON.stringify(newVal || []);
+    const oldStr = JSON.stringify(localItems.value);
+    if (newStr !== oldStr) {
+      localItems.value = JSON.parse(newStr);
+    }
   },
   { immediate: true, deep: true }
 );
@@ -125,6 +141,28 @@ const handleAdd = () => {
 /** 移除指定索引的记录 */
 const handleRemove = (index: number) => {
   localItems.value.splice(index, 1);
+};
+// 交互升级,监听薪资项的选择变化,做防重复处理
+const handleConfigChange = (val: number, index: number) => {
+  // 1. 防呆：检查是否重复添加了相同的薪资项目
+  const isDuplicate = localItems.value.some((item, i) => item.itemConfigId === val && i !== index);
+  if (isDuplicate) {
+    ElMessage.warning('该薪资项目已存在，请勿重复添加');
+    // 清空当前行错误选择的值
+    const currentItem = localItems.value[index];
+    if (currentItem) {
+      currentItem.itemConfigId = undefined as any;
+    }
+    return;
+  }
+
+  // 2. 智能补全：(预留) 如果 configOptions 里有默认金额或公式，可以在这里自动帮 HR 填上
+  /*
+  const targetConfig = props.configOptions.find(c => c.id === val);
+  if (targetConfig) {
+     localItems.value[index].amount = targetConfig.defaultAmount || 0;
+  }
+  */
 };
 </script>
 

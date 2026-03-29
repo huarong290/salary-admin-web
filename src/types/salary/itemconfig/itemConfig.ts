@@ -101,6 +101,10 @@ export interface ItemConfigOptionVO {
   itemName: string;
   /** 薪资项编码 */
   itemCode: string;
+  /** 项目分类 */
+  itemCategory: number;
+  /** 业务分类字典值 */
+  categoryDictValue: string;
   /** 脚本变量名 (前端配置公式时插入该变量) */
   envVarName: string;
 }

@@ -1,4 +1,4 @@
-// src/api/salary/itemconfig/itemType.ts
+// src/api/salary/itemconfig/itemConfig.ts
 
 import request from '@/utils/request';
 import type {
@@ -6,6 +6,7 @@ import type {
   ItemConfigAddReqDTO,
   ItemConfigEditReqDTO,
   ItemConfigQueryReqDTO,
+  ItemConfigOptionVO,
 } from '@/types/salary/itemconfig/itemConfig.ts';
 import type { PageResult } from '@/types/common.ts';
 
@@ -52,7 +53,13 @@ export function deleteItemConfigApi(id: number | string, logicalDelete: boolean 
     params: { logicalDelete },
   });
 }
-
+/**
+ * 获取所有启用的薪资配置项 (用于下拉选择)
+ * @returns 简易配置选项列表
+ */
+export function listItemConfigOptionsApi() {
+  return request.get<ItemConfigOptionVO[]>('/salary/item-config/listOptions');
+}
 /**
  * 手动刷新计算引擎相关缓存
  * 当在数据库直接修改脚本或参数后，调用此接口同步 Redis 缓存

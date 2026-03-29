@@ -295,7 +295,7 @@ import {
   getItemConfigDetailApi,
   getItemConfigPageApi,
   refreshItemConfigCacheApi,
-} from '@/api/salary/itemconfig/itemType.ts';
+} from '@/api/salary/itemconfig/itemConfig.ts';
 import { useDict } from '@/hooks/useDict.ts';
 
 /**
