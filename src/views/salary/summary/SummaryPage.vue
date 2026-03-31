@@ -2,12 +2,14 @@
 <template>
   <div class="app-container">
     <el-card shadow="hover" class="search-card">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
-        <el-form-item label="员工姓名" prop="employeeId">
-          <EmployeeSelect
-            v-model="queryParams.employeeId"
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="68px">
+        <el-form-item label="关键字" prop="keyword">
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="员工姓名/工号"
+            clearable
             style="width: 200px"
-            @change="handleQuery"
+            @keyup.enter="handleQuery"
           />
         </el-form-item>
         <el-form-item label="结算月份" prop="settlementMonth">
@@ -18,8 +20,31 @@
             value-format="YYYYMM"
             clearable
             style="width: 160px"
-            @change="handleQuery"
           />
+        </el-form-item>
+        <el-form-item label="计算状态" prop="calcStatus">
+          <el-select
+            v-model="queryParams.calcStatus"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="未计算" :value="0" />
+            <el-option label="计算成功" :value="1" />
+            <el-option label="计算失败" :value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="发放状态" prop="paymentStatus">
+          <el-select
+            v-model="queryParams.paymentStatus"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="未支付" :value="0" />
+            <el-option label="已支付" :value="1" />
+            <el-option label="支付失败" :value="2" />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -31,30 +56,23 @@
     <el-card shadow="hover" class="table-card">
       <div class="toolbar">
         <el-button
-          v-hasPerm="['salary:summary:init']"
-          type="primary"
-          icon="MagicStick"
-          @click="handleOpenInit"
+          v-hasPerm="['salary:summary:lock']"
+          type="warning"
+          icon="Lock"
+          :disabled="multiple"
+          @click="handleBatchLock(1)"
         >
-          初始化本月账套
+          批量锁定 (准备发薪)
         </el-button>
         <el-button
-          v-hasPerm="['salary:summary:calc']"
-          type="success"
-          icon="DataBoard"
-          @click="handleOpenCalc"
-        >
-          执行全员核算发薪
-        </el-button>
-        <el-button
-          v-hasPerm="['salary:summary:del']"
+          v-hasPerm="['salary:summary:lock']"
           type="danger"
           plain
-          icon="Delete"
+          icon="Unlock"
           :disabled="multiple"
-          @click="handleBatchDelete"
+          @click="handleBatchLock(0)"
         >
-          批量作废
+          批量解锁 (允许重算)
         </el-button>
       </div>
 
@@ -65,122 +83,94 @@
         height="100%"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" align="center" fixed="left" />
+        <el-table-column type="selection" width="50" align="center" />
 
-        <el-table-column
-          label="员工姓名"
-          align="center"
-          prop="employeeName"
-          width="120"
-          fixed="left"
-        >
-          <template #default="scope">
-            <el-link
-              type="primary"
-              :underline="false"
-              class="drill-link"
-              @click="handleQuickFilter(scope.row)"
-            >
-              {{ scope.row.employeeName }}
-            </el-link>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="结算月份" align="center" prop="settlementMonth" width="100">
-          <template #default="scope">
-            <span class="amount-font">{{ scope.row.settlementMonth }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="应发总计(本币)" align="right" prop="salarySubtotal" width="130">
+        <el-table-column label="员工信息" min-width="140" show-overflow-tooltip fixed="left">
           <template #default="{ row }">
-            <span class="amount-font text-success">
-              {{ Number(row.salarySubtotal) === 0 ? '0.00' : '+' + row.salarySubtotal }}
+            <div style="font-weight: 600; color: var(--el-text-color-primary)">
+              {{ row.employeeName }}
+            </div>
+            <div class="text-secondary amount-font" style="font-size: 12px">
+              [{{ row.employeeCode }}]
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="结算月份" align="center" width="100">
+          <template #default="{ row }">
+            <el-tag type="primary" effect="plain" class="amount-font">{{
+              row.settlementMonth
+            }}</el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="应发工资 (Gross)" align="right" min-width="130">
+          <template #default="{ row }">
+            <span class="amount-font">{{ row.grossSalary?.toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="扣除与税费" align="right" min-width="130">
+          <template #default="{ row }">
+            <span v-if="row.deductionTotal || row.taxTotal" class="amount-font text-danger">
+              -{{ ((row.deductionTotal || 0) + (row.taxTotal || 0)).toFixed(2) }}
+            </span>
+            <span v-else class="text-secondary">0.00</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="实发工资 (Net)" align="right" min-width="130" fixed="right">
+          <template #default="{ row }">
+            <span class="amount-font text-primary" style="font-weight: bold; font-size: 15px">
+              {{ row.netSalary?.toFixed(2) }}
             </span>
           </template>
         </el-table-column>
 
-        <el-table-column
-          label="应扣总计(本币)"
-          align="right"
-          prop="salaryDeductionTotal"
-          width="130"
-        >
+        <el-table-column label="计算状态" align="center" width="90">
           <template #default="{ row }">
-            <span class="amount-font text-danger">
-              {{ Number(row.salaryDeductionTotal) === 0 ? '0.00' : '-' + row.salaryDeductionTotal }}
-            </span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="本币实发金额" align="right" prop="salaryTotal" width="140">
-          <template #default="{ row }">
-            <span
-              v-if="Number(row.salaryTotal) === 0"
-              class="text-secondary"
-              style="font-size: 12px"
-            >
-              (待核算)
-            </span>
-            <span v-else class="amount-font real-pay-amount">{{ row.salaryTotal }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="结算币种" align="center" prop="currency" width="90" />
-
-        <el-table-column label="折合人民币(CNY)" align="right" prop="salaryRmb" width="140">
-          <template #default="{ row }">
-            <span class="amount-font text-secondary">{{ row.salaryRmb }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="折合泰达币(USDT)" align="right" prop="salaryUsdt" width="140">
-          <template #default="{ row }">
-            <span class="amount-font text-secondary">{{ row.salaryUsdt }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          label="发放钱包/账号"
-          align="center"
-          prop="targetAccount"
-          min-width="180"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <span class="amount-font text-secondary">{{ row.targetAccount || '未配置' }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="支付状态" align="center" width="100" fixed="right">
-          <template #default="scope">
             <el-tag
-              :type="getPayStatus(scope.row.paymentStatus).type"
-              :effect="scope.row.paymentStatus === 1 ? 'dark' : 'plain'"
-              class="status-tag"
+              :type="row.calcStatus === 1 ? 'success' : row.calcStatus === 2 ? 'danger' : 'info'"
+              size="small"
             >
-              {{ getPayStatus(scope.row.paymentStatus).text }}
+              {{ row.calcStatus === 1 ? '成功' : row.calcStatus === 2 ? '失败' : '未计算' }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" align="center" width="260" fixed="right">
-          <template #default="scope">
-            <el-button link type="success" icon="Refresh" @click="handleSingleCalc(scope.row)">
-              重新核算
-            </el-button>
-            <el-button link type="primary" icon="Document" @click="handleGoToRecord(scope.row)">
-              对账明细
-            </el-button>
-            <el-button
-              v-hasPerm="['salary:summary:del']"
-              link
-              type="danger"
-              icon="Delete"
-              @click="handleDelete(scope.row)"
+        <el-table-column label="状态控制" align="center" width="100">
+          <template #default="{ row }">
+            <el-tooltip
+              :content="row.lockFlag === 1 ? '已锁定：禁止重算' : '未锁定：允许重算'"
+              placement="top"
             >
-              作废
-            </el-button>
+              <el-tag
+                :type="row.lockFlag === 1 ? 'danger' : 'success'"
+                effect="dark"
+                size="small"
+                style="cursor: pointer"
+                @click="handleToggleLock(row)"
+              >
+                <el-icon style="vertical-align: middle; margin-right: 2px">
+                  <Lock v-if="row.lockFlag === 1" />
+                  <Unlock v-else />
+                </el-icon>
+                {{ row.lockFlag === 1 ? '已锁定' : '未锁定' }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" align="center" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-hasPerm="['salary:summary:detail']"
+              link
+              type="primary"
+              icon="Document"
+              @click="handleDetail(row)"
+              >工资条</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -189,7 +179,7 @@
         <el-pagination
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="getList"
@@ -198,144 +188,109 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="calcDialog.visible" width="480px" append-to-body>
+    <el-dialog
+      v-model="detailDialog.visible"
+      width="850px"
+      append-to-body
+      draggable
+      :fullscreen="isFullscreen"
+    >
       <template #header>
         <div class="dialog-custom-header">
-          <span class="title">系统核算控制台</span>
-        </div>
-      </template>
-
-      <el-form ref="calcFormRef" :model="calcForm" :rules="calcRules" label-width="100px">
-        <el-alert
-          title="将汇总选定月份所有员工的考勤、档案及变动明细。若该月已有核算数据将被重新覆盖。"
-          type="warning"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 25px"
-        />
-
-        <el-form-item label="核算月份" prop="settlementMonth">
-          <el-select
-            v-model="calcForm.settlementMonth"
-            placeholder="请指定要进行全员核算的月份"
-            style="width: 100%"
+          <span class="title"
+            >薪资核算单明细 - {{ currentDetail?.employeeName }} ({{
+              currentDetail?.settlementMonth
+            }})</span
           >
-            <el-option
-              v-for="item in periodOptions"
-              :key="item.id"
-              :label="item.settlementMonth"
-              :value="item.settlementMonth"
-            >
-              <span style="float: left; font-weight: bold">{{ item.settlementMonth }}</span>
-              <span style="float: right; color: var(--el-text-color-secondary); font-size: 12px">
-                {{ item.startDate ? `(${item.startDate} ~ ${item.endDate})` : '' }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="核算备注" prop="remark">
-          <el-input
-            v-model="calcForm.remark"
-            type="textarea"
-            placeholder="选填，如: 2026年3月全局第一次核算"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="calcDialog.visible = false">放弃操作</el-button>
-          <el-button type="success" :loading="calculating" @click="submitCalculate">
-            {{ calculating ? '引 擎 运 算 中...' : '确 认 并 执 行 核 算' }}
+          <el-button link class="fullscreen-btn" @click="toggleFullscreen">
+            <el-icon><FullScreen v-if="!isFullscreen" /><Minus v-else /></el-icon>
           </el-button>
         </div>
       </template>
-    </el-dialog>
 
-    <el-dialog v-model="previewDialog.visible" width="550px" append-to-body>
-      <template #header>
-        <div class="dialog-custom-header">
-          <span class="title">算薪引擎：单人核算预览</span>
-        </div>
-      </template>
-
-      <div v-loading="previewDialog.loading">
-        <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="员工姓名">
-            {{ previewDialog.data.employeeName }}
+      <div v-if="currentDetail?.details" v-loading="detailLoading" class="payslip-container">
+        <el-descriptions :column="3" border class="margin-bottom-20">
+          <el-descriptions-item label="出勤天数">
+            <span class="amount-font"
+              >{{ currentDetail.details.attendanceDays }} /
+              {{ currentDetail.details.monthDays }}</span
+            >
           </el-descriptions-item>
-          <el-descriptions-item label="核算月份">
-            {{ previewDialog.data.settlementMonth }}
+          <el-descriptions-item label="核算币种">
+            <el-tag size="small" type="info">{{
+              currentDetail.details.settlementCurrency || 'CNY'
+            }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="计薪基准 (实发)">
-            <span class="amount-font">{{ previewDialog.data.salarySubtotal }}</span>
-            {{ previewDialog.data.currency }}
-          </el-descriptions-item>
-          <el-descriptions-item label="应扣合计 (实扣)">
-            <span class="amount-font text-danger">
-              -{{ previewDialog.data.salaryDeductionTotal }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="预计实发净额">
-            <b class="amount-font real-pay-amount" style="font-size: 20px">
-              {{ previewDialog.data.salaryTotal }}
-            </b>
+          <el-descriptions-item label="档案底薪">
+            <span class="amount-font">{{ currentDetail.details.baseSalary?.toFixed(2) }}</span>
           </el-descriptions-item>
         </el-descriptions>
 
-        <el-alert
-          title="预览数据基于当前档案及考勤实时计算。点击'确认存盘'将覆写该员工本月已存在的结算单。"
-          type="warning"
-          show-icon
-          :closable="false"
-          style="margin-top: 15px"
-        />
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <div class="section-title text-success">应发收入明细</div>
+            <el-table :data="currentDetail.details.income" size="small" border>
+              <el-table-column label="项目名称" prop="itemName" />
+              <el-table-column label="金额" align="right" width="100">
+                <template #default="{ row }"
+                  ><span class="amount-font">{{ row.settlementAmount?.toFixed(2) }}</span></template
+                >
+              </el-table-column>
+              <el-table-column type="expand">
+                <template #default="{ row }">
+                  <div style="padding: 10px; color: #666; font-size: 12px">
+                    计算公式: {{ row.calcLog || '固定值录入' }}
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="subtotal amount-font text-success">
+              应发合计: {{ currentDetail.details.grossSalary?.toFixed(2) }}
+            </div>
+          </el-col>
+
+          <el-col :span="12">
+            <div class="section-title text-danger">应扣与税费明细</div>
+            <el-table
+              :data="[
+                ...(currentDetail.details.deduction || []),
+                ...(currentDetail.details.tax || []),
+              ]"
+              size="small"
+              border
+            >
+              <el-table-column label="项目名称" prop="itemName" />
+              <el-table-column label="扣减金额" align="right" width="100">
+                <template #default="{ row }"
+                  ><span class="amount-font text-danger"
+                    >-{{ row.settlementAmount?.toFixed(2) }}</span
+                  ></template
+                >
+              </el-table-column>
+            </el-table>
+            <div class="subtotal amount-font text-danger">
+              应扣合计: -{{
+                (
+                  (currentDetail.details.deductionTotal || 0) +
+                  (currentDetail.details.taxTotal || 0)
+                ).toFixed(2)
+              }}
+            </div>
+          </el-col>
+        </el-row>
+
+        <div class="final-net-box">
+          实发薪资 (Net Salary):
+          <span class="amount-font final-amount">{{
+            currentDetail.details.netSalary?.toFixed(2)
+          }}</span>
+        </div>
       </div>
+      <el-empty v-else description="暂无详细核算快照" />
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="previewDialog.visible = false">取 消</el-button>
-          <el-button type="success" :loading="previewDialog.submitting" @click="confirmSingleCalc">
-            确认存盘并更新账单
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="initDialog.visible" width="400px" append-to-body>
-      <template #header>
-        <div class="dialog-custom-header">
-          <span class="title">初始化月份账套</span>
-        </div>
-      </template>
-
-      <el-form ref="initFormRef" :model="initForm" :rules="initRules" label-width="80px">
-        <el-alert
-          title="此操作将为所有【在职员工】创建该月的薪资周期及汇总单预览。已存在的记录将自动跳过。"
-          type="info"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 20px"
-        />
-        <el-form-item label="目标月份" prop="settlementMonth">
-          <el-date-picker
-            v-model="initForm.settlementMonth"
-            type="month"
-            value-format="YYYYMM"
-            placeholder="选择月份"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="initDialog.visible = false">取 消</el-button>
-          <el-button type="primary" :loading="initializing" @click="submitInit">
-            立即生成账套
-          </el-button>
+          <el-button @click="detailDialog.visible = false">关 闭</el-button>
         </div>
       </template>
     </el-dialog>
@@ -345,42 +300,33 @@
 <script setup lang="ts">
 /** * ====================================================================
  * 📌 模块/组件说明
- * 功能描述: 薪资结算汇总大盘 (调用核心算薪引擎，生成员工最终的工资条)
- * 设计特性: 支持数据钻取、高危覆写阻断、大盘对账排版
+ * 功能描述: 薪资汇总与发薪台 (展示计算引擎结果、工资单详情、发薪锁定控制)
+ * 依赖关联: 数据由 Salary Rule Engine 生成，此处仅提供只读展示与状态流转。
  * ====================================================================
  */
 
 /**
  * --------------------------------------------------------------------
- * 📥 一、依赖导入区 (Import Dependencies)
+ * 📥 一、 依赖导入区 (Import Dependencies)
  * --------------------------------------------------------------------
  */
+// [1] Vue 核心钩子与原生生态
 import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import type { FormInstance, FormRules } from 'element-plus';
 
-import { getPeriodOptionsApi } from '@/api/salary/period/period';
+// [2] 第三方 UI 组件库与图标
+import { ElMessage, ElMessageBox } from 'element-plus';
+import type { FormInstance } from 'element-plus';
+import { FullScreen, Minus, Lock, Unlock } from '@element-plus/icons-vue';
+
+// [3] 业务 API 请求接口
 import {
   getSummaryPageApi,
-  calculateSummaryApi,
-  deleteSummaryApi,
-  batchDeleteSummaryApi,
-  calculateSummaryByPeriodsApi,
-  previewSummaryCalculateApi,
-  initSummaryBatchApi,
+  getSummaryDetailApi,
+  updateSummaryLockStatusApi,
 } from '@/api/salary/summary/summary.ts';
 
-import type { PeriodOptionVO } from '@/types/salary/period/period';
-import type {
-  SummaryCalcByPeriodReqDTO,
-  SummaryCalcReqDTO,
-  SummaryQueryReqDTO,
-  SummaryVO,
-} from '@/types/salary/summary/summary.ts';
-import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
-
-const router = useRouter();
+// [4] TS 强类型定义约束
+import type { SummaryQueryReqDTO, SalarySummaryVO } from '@/types/salary/summary/summary.ts';
 
 /**
  * --------------------------------------------------------------------
@@ -390,51 +336,29 @@ const router = useRouter();
 
 // [UI 控制状态]
 const loading = ref(false);
-const calculating = ref(false); // 独立控制核算按钮的 loading，防止误触双击
+const detailLoading = ref(false);
+const isFullscreen = ref(false);
 
 // [表格与分页状态]
 const total = ref(0);
+const dataList = ref<SalarySummaryVO[]>([]);
 const multiple = ref(true);
 const selectedIds = ref<number[]>([]);
-const dataList = ref<SummaryVO[]>([]);
 
-// [全局数据字典]
-const periodOptions = ref<PeriodOptionVO[]>([]);
-const employeeOptions = ref<any[]>([]);
-
-// [查询条件]
+// [查询条件状态]
 const queryFormRef = ref<FormInstance>();
-const queryParams = reactive<SummaryQueryReqDTO & { employeeId?: any; settlementMonth?: string }>({
+const queryParams = reactive<SummaryQueryReqDTO>({
   pageNum: 1,
   pageSize: 10,
-  employeeId: undefined,
+  keyword: undefined,
   settlementMonth: undefined,
+  calcStatus: undefined,
+  paymentStatus: undefined,
 });
 
-// [核心核算控制台表单]
-const calcDialog = reactive({ visible: false });
-const calcFormRef = ref<FormInstance>();
-const calcForm = ref<any>({ settlementMonth: '', remark: '' });
-const calcRules = reactive<FormRules>({
-  settlementMonth: [{ required: true, message: '必须指定要执行核算的结算月份', trigger: 'change' }],
-});
-
-// [单人核算预览对话框]
-const previewDialog = reactive({
-  visible: false,
-  loading: false,
-  submitting: false,
-  data: {} as any,
-});
-
-// [初始化账套控制台]
-const initDialog = reactive({ visible: false });
-const initFormRef = ref<FormInstance>();
-const initForm = ref({ settlementMonth: '' });
-const initializing = ref(false);
-const initRules = reactive<FormRules>({
-  settlementMonth: [{ required: true, message: '请选择要初始化的月份', trigger: 'change' }],
-});
+// [详情弹窗状态]
+const detailDialog = reactive({ visible: false });
+const currentDetail = ref<SalarySummaryVO>();
 
 /**
  * --------------------------------------------------------------------
@@ -442,62 +366,27 @@ const initRules = reactive<FormRules>({
  * --------------------------------------------------------------------
  */
 
-// 统一支付状态字典映射
-const PAY_STATUS: Record<number, { text: string; type: any }> = {
-  0: { text: '待支付', type: 'info' },
-  1: { text: '已支付', type: 'success' },
-  2: { text: '支付失败', type: 'danger' },
-  3: { text: '账号锁定', type: 'warning' },
+/** 切换弹窗全屏模式 */
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
 };
 
-const getPayStatus = (status: any) => {
-  return PAY_STATUS[Number(status)] || { text: '未知状态', type: 'info' };
-};
-
-const handleSelectionChange = (selection: SummaryVO[]) => {
+/** 表格复选框状态改变时触发 */
+const handleSelectionChange = (selection: SalarySummaryVO[]) => {
   selectedIds.value = selection.map((item) => item.id);
   multiple.value = !selection.length;
 };
 
+/** 触发带条件搜索 */
 const handleQuery = () => {
   queryParams.pageNum = 1;
   getList();
 };
 
+/** 重置搜索栏 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
-  queryParams.employeeId = undefined;
-  queryParams.settlementMonth = undefined;
-  employeeOptions.value = [];
   handleQuery();
-};
-
-/** 🌟 核心交互：数据钻取 (Drill-down) */
-const handleQuickFilter = (row: SummaryVO) => {
-  queryParams.employeeId = row.employeeId;
-  // 手动回填员工选项池，避免选择框展示枯燥的 ID
-  employeeOptions.value = [
-    { id: row.employeeId, employeeName: row.employeeName, employeeCode: row.employeeCode },
-  ];
-  handleQuery();
-};
-
-/** 🌟 核心打通：跳转到明细页对账 */
-const handleGoToRecord = (row: SummaryVO) => {
-  router.push({
-    path: '/salary/paymentrecord',
-    query: { summaryId: row.id }, // 携带当前批次ID进行下钻
-  });
-};
-
-const handleOpenCalc = () => {
-  calcForm.value = { settlementMonth: '', remark: '' };
-  calcDialog.visible = true;
-};
-
-const handleOpenInit = () => {
-  initForm.value = { settlementMonth: '' };
-  initDialog.visible = true;
 };
 
 /**
@@ -506,139 +395,78 @@ const handleOpenInit = () => {
  * --------------------------------------------------------------------
  */
 
-/** 页面初始化加载底层关联数据 */
-const loadPeriodOptions = async () => {
-  const res = await getPeriodOptionsApi();
-  periodOptions.value = res || [];
-};
-/** 查询结算大盘列表 */
+/** * 核心：获取分页列表数据 */
 const getList = async () => {
   loading.value = true;
   try {
     const res = await getSummaryPageApi(queryParams);
     dataList.value = res.records || [];
     total.value = res.total || 0;
+  } catch (error) {
+    console.error('加载汇总数据失败', error);
   } finally {
     loading.value = false;
   }
 };
 
-/** 🌟 核心引擎驱动：向后端发起全员核算指令 */
-const submitCalculate = async () => {
-  if (!calcFormRef.value) return;
-  await calcFormRef.value.validate(async (valid) => {
-    if (valid) {
-      calculating.value = true;
-      try {
-        const params: SummaryCalcReqDTO = {
-          settlementMonth: calcForm.value.settlementMonth,
-          remark: calcForm.value.remark,
-        };
-        await calculateSummaryApi(params);
-        ElMessage.success('核算引擎执行完毕！全员账单已生成。');
-        calcDialog.visible = false;
-        handleQuery();
-      } catch (error) {
-        console.error('薪资引擎运算触发失败:', error);
-      } finally {
-        calculating.value = false;
-      }
-    }
-  });
-};
-
-/** 执行初始化逻辑 */
-const submitInit = async () => {
-  if (!initFormRef.value) return;
-  await initFormRef.value.validate(async (valid) => {
-    if (valid) {
-      initializing.value = true;
-      try {
-        const targetMonth = initForm.value.settlementMonth;
-        await initSummaryBatchApi(targetMonth);
-
-        ElMessage.success(`${targetMonth} 月份账套初始化成功`);
-        initDialog.visible = false;
-
-        // 💡 体验优化：初始化后自动跳转到该月份查看结果
-        queryParams.settlementMonth = targetMonth;
-        handleQuery();
-      } finally {
-        initializing.value = false;
-      }
-    }
-  });
-};
-
-/** 🌟 触发单人即时核算预览 */
-const handleSingleCalc = async (row: SummaryVO) => {
-  previewDialog.visible = true;
-  previewDialog.loading = true;
-  // 占位
-  previewDialog.data = { ...row, currency: row.currency || 'CNY' };
+/** * 核心：查看工资条详情快照 */
+const handleDetail = async (row: SalarySummaryVO) => {
+  detailLoading.value = true;
+  detailDialog.visible = true;
+  isFullscreen.value = false;
 
   try {
-    const res = await previewSummaryCalculateApi(row.periodId);
-    // 合并最新精确数据
-    previewDialog.data = {
-      ...previewDialog.data,
-      salarySubtotal: res.salarySubtotal,
-      salaryDeductionTotal: res.salaryDeductionTotal,
-      salaryTotal: res.salaryTotal,
-      currency: res.currency || previewDialog.data.currency,
-    };
+    // 重新请求详情接口，获取完整的 detailJson 快照数据
+    const res = await getSummaryDetailApi(row.id);
+    currentDetail.value = res;
   } catch (error) {
-    console.error('引擎预览计算异常:', error);
-    ElMessage.error('引擎预览失败，请检查员工档案配置');
-    previewDialog.visible = false;
+    console.error('加载工资条快照失败', error);
+    detailDialog.visible = false;
   } finally {
-    previewDialog.loading = false;
+    detailLoading.value = false;
   }
 };
 
-/** 🌟 确认单人预览结果，正式存盘 */
-const confirmSingleCalc = async () => {
-  previewDialog.submitting = true;
-  try {
-    const params: SummaryCalcByPeriodReqDTO = {
-      periodIds: [previewDialog.data.periodId],
-      remark: `单人重新核算: ${previewDialog.data.employeeName}`,
-    };
-    await calculateSummaryByPeriodsApi(params);
-
-    ElMessage.success(`${previewDialog.data.employeeName} 的薪资记录已成功更新`);
-    previewDialog.visible = false;
-    handleQuery();
-  } catch (error) {
-    console.error('单人核算存盘失败:', error);
-  } finally {
-    previewDialog.submitting = false;
+/** * 执行：单条快速锁定/解锁 */
+const handleToggleLock = (row: SalarySummaryVO) => {
+  if (row.paymentStatus === 1) {
+    ElMessage.warning('已支付的工资单禁止变更锁定状态！');
+    return;
   }
-};
 
-/** 高危操作：作废结算单 */
-const handleDelete = (row: SummaryVO) => {
+  const targetStatus = row.lockFlag === 1 ? 0 : 1;
+  const actionText = targetStatus === 1 ? '锁定' : '解锁';
+
   ElMessageBox.confirm(
-    `确认作废 "${row.employeeName}" 该月的结算单吗? 这将直接影响财务最终打款对账!`,
-    '系统高危操作',
-    { type: 'error' }
+    `确认要【${actionText}】员工 ${row.employeeName} 的本月工资单吗?`,
+    '状态流转提示',
+    {
+      type: targetStatus === 1 ? 'warning' : 'info',
+    }
   )
     .then(async () => {
-      await deleteSummaryApi(row.id);
-      ElMessage.success('单据作废成功');
-      getList();
+      await updateSummaryLockStatusApi({ ids: [row.id], lockFlag: targetStatus });
+      ElMessage.success(`已${actionText}`);
+      await getList();
     })
     .catch(() => {});
 };
 
-const handleBatchDelete = () => {
-  ElMessageBox.confirm(`确认批量作废选中的 ${selectedIds.value.length} 张结算单?`, '系统高危操作', {
-    type: 'error',
-  })
+/** * 执行：批量锁定/解锁记录 */
+const handleBatchLock = (lockFlag: number) => {
+  const actionText = lockFlag === 1 ? '锁定并准备发薪' : '解锁并允许重算';
+
+  ElMessageBox.confirm(
+    `确认要对选中的 ${selectedIds.value.length} 条数据执行【${actionText}】操作吗?`,
+    '批量操作提示',
+    {
+      type: lockFlag === 1 ? 'warning' : 'error',
+    }
+  )
     .then(async () => {
-      await batchDeleteSummaryApi(selectedIds.value);
-      ElMessage.success('批量作废成功');
-      getList();
+      await updateSummaryLockStatusApi({ ids: selectedIds.value, lockFlag });
+      ElMessage.success('批量流转处理成功');
+      await getList();
     })
     .catch(() => {});
 };
@@ -649,43 +477,43 @@ const handleBatchDelete = () => {
  * --------------------------------------------------------------------
  */
 onMounted(() => {
-  loadPeriodOptions();
   getList();
 });
 </script>
 
 <style scoped lang="scss">
 /* =====================================================================
-  🎨 页面私有样式定制区
-  全局的基础字体 (如 .amount-font, .text-secondary) 已交给 _layout.scss。
-  此处仅保留强调色系和私有交互样式。
-  =====================================================================
-*/
+   🎨 页面私有样式定制区
+   ===================================================================== */
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid currentColor;
+}
 
-/* 核心结算数值的加重展示 */
-.real-pay-amount {
-  color: var(--el-color-primary);
+.subtotal {
+  text-align: right;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.final-net-box {
+  margin-top: 20px;
+  padding: 15px 20px;
+  background-color: var(--el-color-primary-light-9);
+  border-radius: 4px;
+  text-align: right;
   font-size: 16px;
   font-weight: bold;
-}
+  color: var(--el-text-color-primary);
 
-.text-success {
-  color: var(--el-color-success);
-  font-weight: bold;
-}
-
-.text-danger {
-  color: var(--el-color-danger);
-  font-weight: bold;
-}
-
-/* 数据钻取专属链接样式：强化点击暗示 */
-.drill-link {
-  font-weight: bold;
-  font-size: 14px;
-
-  &:hover {
-    text-decoration: underline;
+  .final-amount {
+    color: var(--el-color-primary);
+    font-size: 24px;
+    margin-left: 10px;
   }
 }
 </style>
