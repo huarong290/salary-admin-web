@@ -1,4 +1,4 @@
-<!--src/views/salary/calctule/CalcRulePage.vue-->
+<!--src/views/salary/calcrule/CalcRulePage.vue-->
 <template>
   <div class="app-container">
     <el-card shadow="hover" class="search-card">
@@ -19,10 +19,10 @@
             style="width: 180px"
           >
             <el-option
-              v-for="item in STAGE_OPTIONS"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="item in dicts.salary_calc_stage ?? []"
+              :key="item.dictItemValue"
+              :label="item.dictItemLabel"
+              :value="Number(item.dictItemValue)"
             />
           </el-select>
         </el-form-item>
@@ -155,12 +155,17 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="核算阶段" prop="stage">
-              <el-select v-model="form.stage" placeholder="请选择所属阶段" style="width: 100%">
+              <el-select
+                v-model="form.stage"
+                placeholder="请选择核算阶段"
+                clearable
+                style="width: 100px"
+              >
                 <el-option
-                  v-for="item in STAGE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
+                  v-for="item in dicts.salary_calc_stage ?? []"
+                  :key="item.dictItemValue"
+                  :label="item.dictItemLabel"
+                  :value="Number(item.dictItemValue)"
                 />
               </el-select>
             </el-form-item>
@@ -257,11 +262,14 @@
  * 📥 一、 依赖导入区 (Import Dependencies)
  * --------------------------------------------------------------------
  */
+// [1] Vue 核心钩子与原生生态
 import { ref, reactive, onMounted } from 'vue';
+// [2] 第三方 UI 组件库与图标
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { FullScreen, Minus } from '@element-plus/icons-vue';
-
+// [3] 业务 API 请求接口
+import { useDict } from '@/hooks/useDict';
 // 导入 API
 import {
   getCalcRulePageApi,
@@ -277,13 +285,15 @@ import type {
   CalcRuleAddReqDTO,
   CalcRuleEditReqDTO,
 } from '@/types/salary/calcrule/calcrule';
-import { STAGE_OPTIONS } from '@/types/salary/calcrule/calcrule';
 
 /**
  * --------------------------------------------------------------------
  * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
+// 声明字典
+const dicts = useDict('salary_calc_stage');
+
 const loading = ref(false);
 const isFullscreen = ref(false);
 
@@ -344,16 +354,22 @@ const cancel = () => {
   formRef.value?.resetFields();
 };
 
-// 工具方法：映射阶段颜色
-const getStageTagType = (stage: number) => {
-  const option = STAGE_OPTIONS.find((o) => o.value === stage);
-  return option ? option.color : 'info';
+// 工具方法：映射阶段颜色 保留颜色映射逻辑 (因为字典表通常不存颜色，我们在前端做美化映射)
+const getStageTagType = (stageValue: number | string) => {
+  const map: Record<string, string> = {
+    '1': 'info',
+    '2': 'success',
+    '3': 'warning',
+    '4': 'danger',
+    '5': 'primary',
+  };
+  return map[String(stageValue)] || 'info';
 };
 
-// 工具方法：映射阶段文案
-const getStageLabel = (stage: number) => {
-  const option = STAGE_OPTIONS.find((o) => o.value === stage);
-  return option ? option.label : '未知阶段';
+// 工具方法：映射阶段文案从字典读取
+const getStageLabel = (val: number | string) => {
+  const target = (dicts.salary_calc_stage ?? []).find((d) => d.dictItemValue === String(val));
+  return target ? target.dictItemLabel : '未知阶段';
 };
 const handleBatchDelete = () => {
   if (selectedIds.value.length === 0) return;

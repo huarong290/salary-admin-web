@@ -21,7 +21,7 @@
  * ====================================================================
  */
 import { ref } from 'vue';
-import CalcRulePage from '@/views/salary/calctule/CalcRulePage.vue';
+import CalcRulePage from '@/views/salary/calcrule/CalcRulePage.vue';
 import CalcPipelinePage from '@/views/salary/calcpipeline/CalcPipelinePage.vue';
 // 💡 引入刚刚优化好的两个独立页面当作子组件
 // (注意：请根据你工程的实际相对路径或别名进行调整)

@@ -265,7 +265,9 @@
                   />
                 </el-select>
                 <div v-if="element.ruleName" class="rule-snapshot-info">
-                  <el-tag size="small" type="info">阶段: {{ getStageLabel(element.stage) }}</el-tag>
+                  <el-tag size="small" :type="getStageTagType(element.stage)">
+                    {{ getStageLabel(element.stage) }}
+                  </el-tag>
                 </div>
               </div>
               <div class="col-script">
@@ -328,7 +330,7 @@ import { FullScreen, Minus, Rank, SuccessFilled, ArrowDown } from '@element-plus
 import draggable from 'vuedraggable';
 
 // [3] 业务 API 请求接口
-
+import { useDict } from '@/hooks/useDict';
 import { getCalcRulePageApi } from '@/api/salary/calcrule/calcRule';
 
 // [4] TS 强类型定义约束
@@ -355,7 +357,8 @@ import {
  * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
-
+// 声明字典
+const dicts = useDict('salary_calc_stage');
 // [UI 控制状态]
 const loading = ref(false); // 表格加载遮罩层状态
 const isFullscreen = ref(false); // 基础配置弹窗全屏状态切换标识
@@ -432,11 +435,22 @@ const cancel = () => {
   dialog.visible = false;
   formRef.value?.resetFields();
 };
-
+// 保留颜色映射逻辑 (因为字典表通常不存颜色，我们在前端做美化映射)
+const getStageTagType = (stageValue: number | string) => {
+  const map: Record<string, string> = {
+    '1': 'info',
+    '2': 'success',
+    '3': 'warning',
+    '4': 'danger',
+    '5': 'primary',
+  };
+  return map[String(stageValue)] || 'info';
+};
 /** 辅助方法：解析阶段枚举值中文 */
-const getStageLabel = (val: number) => {
-  const map: Record<number, string> = { 1: '基础', 2: '补贴', 3: '扣款', 4: '税', 5: '汇总' };
-  return map[val] || '未知';
+// 重构原来的 getStageLabel 方法，改为从字典读取
+const getStageLabel = (val: number | string) => {
+  const target = (dicts.salary_calc_stage ?? []).find((d) => d.dictItemValue === String(val));
+  return target ? target.dictItemLabel : '未知阶段';
 };
 
 /** 设计器方法：根据下拉选择，同步规则快照属性 */

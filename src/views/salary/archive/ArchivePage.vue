@@ -229,14 +229,14 @@
                 filterable
               >
                 <el-option
-                  v-for="rule in taxRuleOptions"
-                  :key="rule.ruleCode"
-                  :label="rule.ruleName"
-                  :value="rule.ruleCode"
+                  v-for="item in dicts.salary_tax_rule ?? []"
+                  :key="item.dictItemValue"
+                  :label="item.dictItemLabel"
+                  :value="item.dictItemValue"
                 >
-                  <span style="float: left">{{ rule.ruleName }}</span>
+                  <span style="float: left">{{ item.dictItemLabel }}</span>
                   <span style="float: right; color: #8492a6; font-size: 13px">{{
-                    rule.ruleCode
+                    item.dictItemValue
                   }}</span>
                 </el-option>
               </el-select>
@@ -348,7 +348,6 @@ import SalaryArchiveItem from '@/views/salary/archive/components/SalaryArchiveIt
 import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
 import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
 import { listItemConfigOptionsApi } from '@/api/salary/itemconfig/itemConfig.ts';
-import { getCalcRulePageApi } from '@/api/salary/calcrule/calcRule.ts';
 
 /**
  * --------------------------------------------------------------------
@@ -364,9 +363,14 @@ const total = ref(0);
 const dataList = ref<SalaryArchiveVO[]>([]);
 const itemConfigOptions = ref<any[]>([]);
 // 个税规则选项下拉数据源
-const taxRuleOptions = ref<any[]>([]);
+
 /** 字典库数据源 */
-const dicts = useDict('salary_audit_status', 'salary_item_category', 'settlement_currency');
+const dicts = useDict(
+  'salary_audit_status',
+  'salary_item_category',
+  'settlement_currency',
+  'salary_tax_rule'
+);
 
 /** 列表查询参数表单 */
 const queryFormRef = ref<FormInstance>();
@@ -462,20 +466,7 @@ const getDictLabel = (dictList: DictItemVO[] | undefined, value: any) => {
  * 🧠 四、 核心业务与 API 交互区 (Business & API Logic)
  * --------------------------------------------------------------------
  */
-// 👇专门拉取阶段为 4 (税务核算) 的启用规则
-const loadTaxRuleOptions = async () => {
-  try {
-    const res = await getCalcRulePageApi({
-      pageNum: 1,
-      pageSize: 50,
-      status: 1, // 只查启用的
-      stage: 4, // 🎯 核心过滤：只查归属于“税务核算阶段”的规则
-    });
-    taxRuleOptions.value = res.records || [];
-  } catch (error) {
-    console.error('拉取个税规则字典失败:', error);
-  }
-};
+
 /** 拉取分页列表接口 */
 const getList = async () => {
   loading.value = true;
@@ -610,8 +601,6 @@ onMounted(() => {
   getList();
 
   loadItemConfigOptions();
-
-  loadTaxRuleOptions();
 });
 </script>
 

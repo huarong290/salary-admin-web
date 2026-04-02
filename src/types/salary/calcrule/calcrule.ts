@@ -87,14 +87,3 @@ export interface CalcRuleEditReqDTO extends Partial<CalcRuleAddReqDTO> {
   /** 规则主键ID (修改时必传) */
   id: number;
 }
-
-/**
- * 管道阶段字典 (供前端映射显示)
- */
-export const STAGE_OPTIONS = [
-  { label: '基础薪资阶段', value: 1, color: 'info' },
-  { label: '津贴与奖金阶段', value: 2, color: 'success' },
-  { label: '扣款与社保阶段', value: 3, color: 'warning' },
-  { label: '税务核算阶段', value: 4, color: 'danger' },
-  { label: '最终汇总阶段', value: 5, color: 'primary' },
-] as const;
