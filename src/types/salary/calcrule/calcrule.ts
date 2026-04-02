@@ -65,7 +65,7 @@ export interface CalcRuleAddReqDTO {
   ruleScript: string;
   /** 返回值类型 */
   returnType: string;
-  /** 执行优先级 */
+  /** 默认显示排序(仅用于字典列表展示) */
   sortValue: number;
   /** 状态 (1:启用, 0:停用) */
   status: number;
