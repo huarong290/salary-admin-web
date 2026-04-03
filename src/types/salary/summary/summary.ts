@@ -148,3 +148,21 @@ export interface SalarySummaryOperateDTO {
   /** 操作备注 */
   remark?: string;
 }
+/**
+ * 薪资汇总初始化请求参数
+ * 用于触发特定月份的薪资计算初始数据生成
+ */
+export interface SummaryInitReqDTO {
+  /**
+   * 结算月份
+   * 格式要求：YYYYMM，例如：202604
+   */
+  settlementMonth: string;
+
+  /**
+   * 指定员工ID列表
+   * 1. 如果列表不为空，则仅初始化指定员工的数据
+   * 2. 如果列表为空或为 null，则默认初始化全员数据
+   */
+  employeeIds?: (number | string)[];
+}
