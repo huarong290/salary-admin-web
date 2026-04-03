@@ -62,3 +62,12 @@ export function listArchiveHistoryApi(employeeId: number | string) {
 export function getArchivePageApi(data: ArchiveQueryReqDTO) {
   return request.post<PageResult<SalaryArchiveVO>>('/salary/archive/page', data);
 }
+
+/**
+ * 获取单条薪资档案详情 (包含所有的明细项 archiveItems)
+ * 🌟 用于详情视图弹窗展示
+ * @param id 档案 ID (主键)
+ */
+export function getArchiveDetailApi(id: number | string) {
+  return request.get<SalaryArchiveVO>(`/salary/archive/${id}`);
+}

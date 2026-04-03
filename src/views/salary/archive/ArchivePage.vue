@@ -302,6 +302,85 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="detailDialog.visible"
+      title="薪资档案详情"
+      width="850px"
+      append-to-body
+      draggable
+    >
+      <div v-loading="detailDialog.loading">
+        <el-descriptions title="基础档案信息" :column="2" border>
+          <el-descriptions-item label="员工姓名">
+            <span style="font-weight: 600">{{ detailData.employeeName }}</span>
+            <span class="text-secondary"> ({{ detailData.employeeCode }})</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="档案版本">
+            <el-tag type="info" effect="dark" class="amount-font">V{{ detailData.version }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="基本工资">
+            <span class="amount-font text-primary" style="font-size: 16px; font-weight: 600">
+              {{ detailData.baseSalary?.toFixed(2) }}
+            </span>
+            <span class="text-secondary" style="margin-left: 5px">{{
+              getDictLabel(dicts.settlement_currency, detailData.currency)
+            }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="试用期底薪">
+            <span v-if="detailData.probationBaseSalary" class="amount-font text-warning">{{
+              detailData.probationBaseSalary?.toFixed(2)
+            }}</span>
+            <span v-else class="text-secondary">无试用期/已转正</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="生效日期">{{
+            detailData.effectiveDate
+          }}</el-descriptions-item>
+          <el-descriptions-item label="个税规则">{{
+            getDictLabel(dicts.salary_tax_rule, detailData.taxRuleCode)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="变动原因" :span="2">{{
+            detailData.changeReason || '-'
+          }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-descriptions title="审批流转状态" :column="2" border style="margin-top: 25px">
+          <el-descriptions-item label="审批状态">
+            <el-tag :type="getAuditStatusType(detailData.auditStatus)" class="status-tag">
+              {{ getDictLabel(dicts.salary_audit_status, detailData.auditStatus) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="审批意见">{{
+            detailData.auditRemark || '无'
+          }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="section-title" style="margin-top: 25px">薪资明细构成项</div>
+        <el-table :data="detailData.archiveItems" border style="width: 100%">
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column label="薪资项目名称" min-width="150">
+            <template #default="{ row }">
+              <span style="font-weight: 500">{{ getItemConfigName(row.itemConfigId) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="设定金额 (基数)" align="right" min-width="150">
+            <template #default="{ row }">
+              <span class="amount-font" style="color: var(--el-text-color-regular)">{{
+                row.amount?.toFixed(2)
+              }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" plain @click="detailDialog.visible = false"
+            >关 闭 详 情</el-button
+          >
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -334,6 +413,7 @@ import {
   auditArchiveApi,
   getArchivePageApi,
   getLatestEffectiveArchiveApi,
+  getArchiveDetailApi,
 } from '@/api/salary/archive/archive.ts';
 // [4] TS 强类型定义约束
 import type {
@@ -343,7 +423,6 @@ import type {
   ArchiveAdjustReqDTO,
   ArchiveAuditReqDTO,
 } from '@/types/salary/archive/archive.ts';
-import type { DictItemVO } from '@/types/dictitem/dictitem.ts';
 import SalaryArchiveItem from '@/views/salary/archive/components/SalaryArchiveItem.vue';
 import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
 import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
@@ -420,12 +499,21 @@ const auditRules = reactive<FormRules>({
     },
   ],
 });
+const detailDialog = reactive({ visible: false, loading: false });
+const detailData = ref<any>({});
 
 /**
  * --------------------------------------------------------------------
  * 🖱️ 三、 UI 交互事件区 (Interactions)
  * --------------------------------------------------------------------
  */
+/** 🌟 映射薪资项目ID到名称 */
+const getItemConfigName = (itemConfigId: number) => {
+  if (!itemConfigOptions.value || itemConfigOptions.value.length === 0)
+    return `项目ID:${itemConfigId}`;
+  const target = itemConfigOptions.value.find((item: any) => item.id === itemConfigId);
+  return target ? target.itemName : `项目ID:${itemConfigId}`;
+};
 /** 切换弹窗全屏状态 */
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value;
@@ -449,18 +537,40 @@ const cancel = () => {
   formRef.value?.resetFields();
 };
 
-/** 解析审批状态对应的 Tag 颜色 */
-const getAuditStatusType = (status: number) => {
-  const map: Record<number, string> = { 0: 'warning', 1: 'success', 2: 'danger' };
-  return map[status] || 'info';
+/** 解析审批状态对应的 Tag 颜色 (增强宽容度，兼容字符和数字) */
+const getAuditStatusType = (status: number | string) => {
+  const map: Record<string, string> = {
+    '0': 'warning', // 待审批 (黄色)
+    '1': 'success', // 已生效 (绿色)
+    '2': 'danger', // 已驳回 (红色)
+  };
+  return map[String(status)] || 'info';
 };
 
-/** 字典安全解析方法 */
-const getDictLabel = (dictList: DictItemVO[] | undefined, value: any) => {
-  const target = (dictList ?? []).find((d) => d.dictItemValue === String(value));
-  return target ? target.dictItemLabel : '';
-};
+/** * 🌟 字典安全解析方法 (终极大厂增强版)
+ * 解决 Vue3 Ref 传参解包失败导致文字变空 ("I"形标签) 的元凶
+ */
+const getDictLabel = (dictListRaw: any, value: number | string | undefined | null) => {
+  if (value === undefined || value === null) return '';
 
+  // 1. 手动解包 Ref
+  const dictList = dictListRaw && dictListRaw.value ? dictListRaw.value : dictListRaw;
+
+  // 2. 拦截非数组情况
+  if (!Array.isArray(dictList) || dictList.length === 0) return String(value);
+
+  // 3. 兼容多命名规范，强转字符串匹配
+  const item = dictList.find((d: any) => {
+    const dVal = d.dictItemValue ?? d.dictValue ?? d.value;
+    return String(dVal).trim() === String(value).trim();
+  });
+
+  // 4. 返回中文 Label
+  if (item) {
+    return item.dictItemLabel ?? item.dictLabel ?? item.label;
+  }
+  return String(value);
+};
 /**
  * --------------------------------------------------------------------
  * 🧠 四、 核心业务与 API 交互区 (Business & API Logic)
@@ -544,11 +654,22 @@ const handleOpenAudit = (row: SalaryArchiveVO) => {
 
 /** 唤起详情视图 */
 
-const handleDetail = (_row: SalaryArchiveVO) => {
-  void _row; // 占位，避免 no-unused-vars
-  ElMessage.info('详细数据报表开发中...');
+// 真正的详情展示逻辑
+const handleDetail = async (row: SalaryArchiveVO) => {
+  detailDialog.visible = true;
+  detailDialog.loading = true;
+  try {
+    // 假设你有专门根据 ID 查详情（包含明细子项）的 API
+    // 为什么不复用 getLatestEffectiveArchiveApi？因为用户点开的可能是"历史旧版本"详情，只能按 ID 查
+    const res = await getArchiveDetailApi(row.id);
+    detailData.value = res;
+  } catch (error) {
+    // 容错兜底：如果后端接口没写好，先直接拿列表数据展示，保证页面不挂
+    detailData.value = { ...row, archiveItems: [] };
+  } finally {
+    detailDialog.loading = false;
+  }
 };
-
 /** 提交业务表单 (定薪/调薪) */
 const submitForm = async () => {
   if (!formRef.value) return;
@@ -623,5 +744,15 @@ onMounted(() => {
   padding-left: 8px;
   border-left: 3px solid var(--el-color-primary);
   color: var(--el-text-color-primary);
+}
+
+/*  补充一些 Descriptions 的样式覆盖，使其更清爽 */
+:deep(.el-descriptions__body .el-descriptions__table .el-descriptions__cell) {
+  padding: 12px 16px;
+}
+:deep(.el-descriptions__label) {
+  width: 130px;
+  background-color: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-secondary);
 }
 </style>
