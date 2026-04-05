@@ -55,7 +55,7 @@ export function listArchiveHistoryApi(employeeId: number | string) {
   return request.get<SalaryArchiveVO[]>(`/salary/archive/history/${employeeId}`);
 }
 /**
- * 分页查询薪资档案列表 (🌟 新增)
+ * 分页查询薪资档案列表
  * 用于后台“薪资档案管理”列表页，支持按姓名、工号、状态搜索
  * @param data 查询条件及分页参数
  */
