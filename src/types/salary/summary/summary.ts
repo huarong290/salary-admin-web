@@ -2,6 +2,21 @@
 import type { PageQuery } from '@/types/common.ts';
 
 /** * ==========================================
+ * 0. 🌟 新增：薪资核算溯源快照 (底层持久化与展示)
+ * ==========================================
+ */
+export interface ArchiveSnapshot {
+  /**档案主键ID */
+  archiveId: number;
+  /**档案版本号 */
+  version: number;
+  /**在该计算周期内的有效起始日 */
+  effectiveDate: string;
+  /**在该计算周期内的有效截止日 */
+  expiryDate: string;
+}
+
+/** * ==========================================
  * 1. 薪资明细快照结构 (JSON 内部结构)
  * ==========================================
  */
@@ -25,6 +40,7 @@ export interface SalaryDetailItemDTO {
   /**排序号 */
   sort?: number;
 }
+
 /** 薪资结算全量快照 (JSON 解析后的结构) */
 export interface SalarySnapshotDTO {
   /**当月计薪总天数 */
@@ -56,6 +72,8 @@ export interface SalarySnapshotDTO {
   companyExpense: SalaryDetailItemDTO[];
   /**计算时的自动备注*/
   calcRemark?: string;
+  /** 本次核算命中的档案快照列表 (解决分段计薪和底层持久化溯源) */
+  usedArchives?: ArchiveSnapshot[];
 }
 
 /** * ==========================================
@@ -110,6 +128,8 @@ export interface SalarySummaryVO {
   remark?: string;
   createTime?: string;
   updateTime?: string;
+  /** 本次核算命中的档案快照列表 (解决分段计薪和前端溯源展示问题) */
+  usedArchives?: ArchiveSnapshot[];
 }
 
 /** * ==========================================
@@ -148,6 +168,7 @@ export interface SalarySummaryOperateDTO {
   /** 操作备注 */
   remark?: string;
 }
+
 /**
  * 薪资汇总初始化请求参数
  * 用于触发特定月份的薪资计算初始数据生成

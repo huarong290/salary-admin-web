@@ -305,41 +305,94 @@
       </template>
 
       <div v-loading="previewDialog.loading">
-        <el-descriptions :column="1" border size="small">
+        <el-descriptions :column="1" border size="small" class="preview-descriptions">
           <el-descriptions-item label="员工姓名">
-            {{ previewDialog.data.employeeName }}
+            {{ previewDialog.data?.employeeName }}
           </el-descriptions-item>
           <el-descriptions-item label="核算月份">
-            {{ previewDialog.data.settlementMonth }}
+            {{ previewDialog.data?.settlementMonth }}
           </el-descriptions-item>
+
+          <el-descriptions-item label="核算依据档案">
+            <div
+              v-if="
+                previewDialog.data?.usedArchives && previewDialog.data.usedArchives.length === 1
+              "
+            >
+              <el-tag size="small" type="success" effect="plain">
+                版本 V{{ previewDialog.data.usedArchives[0]?.version }}
+              </el-tag>
+              <span class="archive-date-hint">
+                (生效区间: {{ previewDialog.data.usedArchives[0]?.effectiveDate }} ~
+                {{ formatExpiry(previewDialog.data.usedArchives[0]?.expiryDate) }})
+              </span>
+            </div>
+
+            <div
+              v-else-if="
+                previewDialog.data?.usedArchives && previewDialog.data.usedArchives.length > 1
+              "
+            >
+              <el-tooltip placement="top" effect="light">
+                <template #content>
+                  <div class="tooltip-content">
+                    <div style="margin-bottom: 5px; font-weight: bold; color: #e6a23c">
+                      <el-icon><Warning /></el-icon> 检测到月中调薪，已开启分段计薪
+                    </div>
+                    <div
+                      v-for="arch in previewDialog.data.usedArchives"
+                      :key="arch.archiveId"
+                      class="archive-slice"
+                    >
+                      • <b>版本 V{{ arch.version }}</b
+                      >：适用 {{ arch.effectiveDate }} 至 {{ formatExpiry(arch.expiryDate) }}
+                    </div>
+                  </div>
+                </template>
+                <el-tag size="small" type="warning" effect="dark" style="cursor: help">
+                  <el-icon><Warning /></el-icon> 跨版本分段计薪 (包含
+                  {{ previewDialog.data.usedArchives.length }} 份档案)
+                </el-tag>
+              </el-tooltip>
+            </div>
+
+            <div v-else>
+              <el-tag size="small" type="danger">未匹配到生效档案</el-tag>
+            </div>
+          </el-descriptions-item>
+
           <el-descriptions-item label="计薪基准 (Gross)">
             <span class="amount-font text-success"
-              >+{{ previewDialog.data.grossSalary?.toFixed(2) }}</span
+              >+{{ previewDialog.data?.grossSalary?.toFixed(2) }}</span
             >
           </el-descriptions-item>
           <el-descriptions-item label="应扣合计 (实扣)">
             <span class="amount-font text-danger">
               -{{
                 (
-                  (previewDialog.data.deductionTotal || 0) + (previewDialog.data.taxTotal || 0)
+                  (previewDialog.data?.deductionTotal || 0) + (previewDialog.data?.taxTotal || 0)
                 ).toFixed(2)
               }}
             </span>
           </el-descriptions-item>
           <el-descriptions-item label="预计实发净额">
             <b class="amount-font text-primary" style="font-size: 20px">
-              {{ previewDialog.data.netSalary?.toFixed(2) }}
+              {{ previewDialog.data?.netSalary?.toFixed(2) }}
             </b>
           </el-descriptions-item>
         </el-descriptions>
 
         <el-alert
-          title="预览数据基于当前档案及考勤实时试算。点击'确认存盘'将覆写该员工本月已存在的结算单。"
           type="warning"
           show-icon
           :closable="false"
-          style="margin-top: 15px"
-        />
+          style="margin-top: 15px; line-height: 1.5"
+        >
+          <template #title>
+            预览数据基于当前周期的考勤快照与 <b>上述标明的生效档案</b> 实时试算。<br />
+            点击“确认存盘”后，系统将固化当前核算上下文并覆写该员工结算单。
+          </template>
+        </el-alert>
       </div>
 
       <template #footer>
@@ -372,8 +425,12 @@
         </div>
       </template>
 
-      <div v-if="currentDetail?.details" v-loading="detailLoading" class="payslip-container">
-        <el-descriptions :column="3" border class="margin-bottom-20">
+      <div
+        v-if="currentDetail && currentDetail.details"
+        v-loading="detailLoading"
+        class="payslip-container"
+      >
+        <el-descriptions :column="2" border class="margin-bottom-20">
           <el-descriptions-item label="出勤天数">
             <span class="amount-font"
               >{{ currentDetail.details.attendanceDays }} /
@@ -385,8 +442,35 @@
               currentDetail.details.settlementCurrency || 'CNY'
             }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="档案底薪">
-            <span class="amount-font">{{ currentDetail.details.baseSalary?.toFixed(2) }}</span>
+
+          <el-descriptions-item label="核算依据档案" :span="2">
+            <div v-if="currentDetail?.usedArchives && currentDetail.usedArchives.length === 1">
+              <el-tag size="small" type="success" effect="plain">
+                版本 V{{ currentDetail.usedArchives[0]?.version }}
+              </el-tag>
+              <span class="archive-date-hint">
+                (生效区间: {{ currentDetail.usedArchives[0]?.effectiveDate }} ~
+                {{ formatExpiry(currentDetail.usedArchives[0]?.expiryDate) }})
+              </span>
+            </div>
+            <div v-else-if="currentDetail?.usedArchives && currentDetail.usedArchives.length > 1">
+              <el-tag size="small" type="warning" effect="dark" style="margin-right: 8px">
+                <el-icon><Warning /></el-icon> 跨版本分段计薪 (包含
+                {{ currentDetail.usedArchives.length }} 份档案)
+              </el-tag>
+              <span
+                v-for="arch in currentDetail.usedArchives"
+                :key="arch.archiveId"
+                class="archive-date-hint"
+              >
+                [V{{ arch.version }}: {{ arch.effectiveDate }}起]
+              </span>
+            </div>
+            <div v-else>
+              <span class="text-secondary" style="font-size: 12px"
+                >无档案溯源信息 (可能是老版本数据)</span
+              >
+            </div>
           </el-descriptions-item>
         </el-descriptions>
 
@@ -409,7 +493,7 @@
               </el-table-column>
             </el-table>
             <div class="subtotal amount-font text-success">
-              应发合计: {{ currentDetail.grossSalary?.toFixed(2) }}
+              应发合计: {{ currentDetail?.grossSalary?.toFixed(2) }}
             </div>
           </el-col>
 
@@ -434,7 +518,7 @@
             </el-table>
             <div class="subtotal amount-font text-danger">
               应扣合计: -{{
-                ((currentDetail.deductionTotal || 0) + (currentDetail.taxTotal || 0)).toFixed(2)
+                ((currentDetail?.deductionTotal || 0) + (currentDetail?.taxTotal || 0)).toFixed(2)
               }}
             </div>
           </el-col>
@@ -442,7 +526,7 @@
 
         <div class="final-net-box">
           实发薪资 (Net Salary):
-          <span class="amount-font final-amount">{{ currentDetail.netSalary?.toFixed(2) }}</span>
+          <span class="amount-font final-amount">{{ currentDetail?.netSalary?.toFixed(2) }}</span>
         </div>
       </div>
       <el-empty v-else description="暂无详细核算快照" />
@@ -475,10 +559,10 @@ import { ref, reactive, onMounted } from 'vue';
 // 引入 useRouter
 import { useRouter } from 'vue-router';
 
-// [2] 第三方 UI 组件库与图标
+// [2] 第三方 UI 组件库与图标 (🌟 增加 Warning 图标)
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { FullScreen, Minus, Lock, Unlock } from '@element-plus/icons-vue';
+import { FullScreen, Minus, Lock, Unlock, Warning } from '@element-plus/icons-vue';
 
 // [3] 业务 API 请求接口
 import {
@@ -566,6 +650,12 @@ const previewDialog = reactive({
  * --------------------------------------------------------------------
  */
 
+/** 🌟 新增：格式化无限远的失效日期 */
+const formatExpiry = (dateStr?: string) => {
+  if (!dateStr) return '至今';
+  return dateStr === '9999-12-31' ? '至今' : dateStr;
+};
+
 /** 切换弹窗全屏模式 */
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value;
@@ -590,7 +680,7 @@ const resetQuery = () => {
   handleQuery();
 };
 
-/**  快捷过滤钻取 */
+/** 快捷过滤钻取 */
 const handleQuickFilter = (row: SalarySummaryVO) => {
   queryParams.employeeId = row.employeeId;
   queryParams.keyword = row.employeeName; // 顺便回填搜索框直观展示
@@ -624,8 +714,6 @@ const getList = async () => {
     loading.value = false;
   }
 };
-
-// ================== 🌟 变动标识：以下为新增的引擎调度逻辑 ==================
 
 /** 1：初始化账套 */
 const handleOpenInit = () => {
@@ -853,7 +941,6 @@ onMounted(() => {
   }
 }
 
-/* 🌟 变动标识：补充缺失的样式类 */
 .text-success {
   color: var(--el-color-success);
 }
@@ -868,5 +955,23 @@ onMounted(() => {
   &:hover {
     text-decoration: underline;
   }
+}
+
+/* 溯源档案相关样式 */
+.preview-descriptions {
+  margin-top: 10px;
+}
+.archive-date-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 8px;
+}
+.tooltip-content {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.archive-slice {
+  margin-top: 4px;
+  padding-left: 5px;
 }
 </style>
