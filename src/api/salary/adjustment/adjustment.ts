@@ -61,3 +61,13 @@ export function getAdjustmentPageApi(params: AdjustmentQueryReqDTO) {
   // GET 请求参数在 Axios 中使用 params 属性包装
   return request.get<PageResult<SalaryAdjustmentVO>>('/salary/adjustment/page', { params });
 }
+
+/**
+ * 获取专项调整详情
+ * 用于查看单条手工账的完整信息，包含所有审计字段和关联备注
+ * @param id 调整记录 ID
+ * @returns 返回 VO 详情
+ */
+export function getAdjustmentDetailApi(id: number | string) {
+  return request.get<SalaryAdjustmentVO>(`/salary/adjustment/detail/${id}`);
+}

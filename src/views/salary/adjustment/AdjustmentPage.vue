@@ -3,20 +3,19 @@
   <div class="app-container">
     <el-card shadow="hover" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="68px">
-        <el-form-item label="员工ID" prop="employeeId">
-          <el-input
+        <el-form-item label="员工" prop="employeeId">
+          <employee-select
             v-model="queryParams.employeeId"
-            placeholder="请输入员工ID"
-            clearable
-            @keyup.enter="handleQuery"
+            style="width: 200px"
+            @change="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="核算周期" prop="periodId">
-          <el-input
+        <el-form-item label="核算月份" prop="periodId">
+          <period-select
             v-model="queryParams.periodId"
-            placeholder="请输入核算周期ID"
-            clearable
-            @keyup.enter="handleQuery"
+            :employee-id="queryParams.employeeId"
+            style="width: 200px"
+            @change="handleQuery"
           />
         </el-form-item>
 
@@ -91,8 +90,17 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="周期ID" align="center" prop="periodId" width="80" />
-        <el-table-column label="员工ID" align="center" prop="employeeId" width="80" />
+        <el-table-column label="核算月份" align="center" prop="settlementMonth" width="100">
+          <template #default="{ row }">
+            <el-tag effect="plain">{{ row.settlementMonth || '未关联' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="员工信息" align="center" min-width="120">
+          <template #default="{ row }">
+            <div style="font-weight: bold">{{ row.employeeName }}</div>
+            <div class="text-secondary" style="font-size: 12px">ID: {{ row.employeeId }}</div>
+          </template>
+        </el-table-column>
         <el-table-column label="项目名称" align="center" prop="itemName" min-width="140">
           <template #default="{ row }">
             <span>{{ row.itemName }}</span>
@@ -127,6 +135,9 @@
 
         <el-table-column label="操作" align="center" width="180" fixed="right">
           <template #default="{ row }">
+            <el-button link type="info" icon="Document" @click="handleDetail(row)">
+              详情
+            </el-button>
             <el-button
               v-hasPerm="['salary:adjustment:edit']"
               link
@@ -284,6 +295,80 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 手工账变动项详情-->
+    <el-dialog v-model="detailVisible" title="手工账变动项详情" width="600px" append-to-body>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="单据编号" :span="2">
+          <span class="amount-font">{{ detailData.id }}</span>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="员工信息">
+          {{ detailData.employeeName || 'ID: ' + detailData.employeeId }}
+        </el-descriptions-item>
+        <el-descriptions-item label="核算周期">
+          {{ detailData.periodId }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="项目名称">
+          {{ detailData.itemName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="项目编码">
+          <el-tag size="small">{{ detailData.itemCode }}</el-tag>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="调账类型">
+          <el-tag :type="detailData.adjustType === 1 ? 'success' : 'danger'">
+            {{ detailData.adjustType === 1 ? '补发收入' : '扣减款项' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="单据状态">
+          <el-tag :type="detailData.status === 1 ? 'success' : 'info'" effect="dark">
+            {{ detailData.status === 1 ? '已生效' : '草稿' }}
+          </el-tag>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="原币金额">
+          <span class="amount-font">{{ detailData.originalAmount }} {{ detailData.currency }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="核算汇率">
+          <span class="amount-font">{{ detailData.exchangeRate }}</span>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="结算本币金额" :span="2">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <b
+              class="amount-font"
+              :class="detailData.adjustType === 1 ? 'text-success' : 'text-danger'"
+              style="font-size: 18px"
+            >
+              ¥ {{ detailData.settlementAmount }}
+            </b>
+            <el-tag v-if="detailData.adjustType === 2" type="danger" size="small"
+              >将从应发工资中扣除</el-tag
+            >
+            <el-tag v-else type="success" size="small">将计入应发工资</el-tag>
+          </div>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="备注说明" :span="2">
+          {{ detailData.remark || '无' }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="创建信息" :span="2">
+          <div class="text-secondary" style="font-size: 12px">
+            {{ detailData.createBy }}
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">
+          {{ detailData.createTime }}
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <template #footer>
+        <el-button @click="detailVisible = false">关 闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -302,7 +387,7 @@
  */
 
 // [1] Vue 核心钩子与原生生态
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 
 // [2] 第三方 UI 组件库与图标
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -316,6 +401,7 @@ import {
   editAdjustmentApi,
   deleteAdjustmentsApi,
   auditAdjustmentsApi,
+  getAdjustmentDetailApi,
 } from '@/api/salary/adjustment/adjustment';
 
 // [4] TS 强类型定义约束
@@ -369,7 +455,9 @@ const rules = reactive<FormRules>({
   originalAmount: [{ required: true, message: '原币金额不能为空', trigger: 'blur' }],
   exchangeRate: [{ required: true, message: '汇率不能为空', trigger: 'blur' }],
 });
-
+// [详情弹窗状态]
+const detailVisible = ref(false);
+const detailData = ref<any>({});
 /**
  * --------------------------------------------------------------------
  * 🖱️ 三、UI 交互事件区 (UI Interactions)
@@ -417,6 +505,21 @@ const handleItemChange = (item: any) => {
     form.value.itemName = '';
   }
 };
+
+/** 发起：查看详情 */
+const handleDetail = async (row: SalaryAdjustmentVO) => {
+  try {
+    loading.value = true; // 开启全局加载
+    // 🌟 调用新增加的 API 接口
+    const res = await getAdjustmentDetailApi(row.id);
+    detailData.value = res;
+    detailVisible.value = true;
+  } catch (error) {
+    // 异常由拦截器处理
+  } finally {
+    loading.value = false;
+  }
+};
 /**
  * --------------------------------------------------------------------
  * 🧠 四、核心业务与 API 交互区 (Business & API Logic)
@@ -450,12 +553,21 @@ const handleAdd = () => {
   isFullscreen.value = false;
 };
 
-/** * 发起：修改数据 */
-const handleUpdate = (row: SalaryAdjustmentVO) => {
-  form.value = { ...row };
-  dialog.title = '修改财务数据';
-  dialog.visible = true;
-  isFullscreen.value = false;
+/** 发起：修改数据 */
+const handleUpdate = async (row: SalaryAdjustmentVO) => {
+  // 1. 先查最新的详情，防止编辑旧数据
+  try {
+    loading.value = true;
+    const res = await getAdjustmentDetailApi(row.id);
+
+    // 2. 赋值表单
+    form.value = { ...res };
+    dialog.title = '修改财务数据';
+    dialog.visible = true;
+    isFullscreen.value = false;
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** * 核心：校验并提交表单 (融合新增与修改) */
@@ -529,6 +641,18 @@ const handleBatchAudit = (status: number) => {
 onMounted(() => {
   getList();
 });
+
+/** 监听币种变化，自动给默认汇率 */
+watch(
+  () => form.value.currency,
+  (newVal) => {
+    if (newVal === 'CNY') {
+      form.value.exchangeRate = 1.0;
+    } else if (newVal === 'USD') {
+      form.value.exchangeRate = 7.2345; // 实际开发建议调 API 获取实时汇率
+    }
+  }
+);
 </script>
 
 <style scoped lang="scss">

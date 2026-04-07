@@ -14,6 +14,10 @@ export interface AdjustmentQueryReqDTO extends PageQuery {
   itemCode?: string;
   /** 数据状态: 0-草稿, 1-已生效 */
   status?: number;
+  /**
+   * 如果前端搜索栏改成了选月份，可以增加此字段
+   */
+  settlementMonth?: string;
 }
 
 /**
@@ -58,8 +62,12 @@ export interface SalaryAdjustmentVO {
   id: number;
   /** 员工ID */
   employeeId: number;
+  /** 员工姓名 (用于表格和详情展示) */
+  employeeName?: string;
   /** 关联核算周期ID */
   periodId: number;
+  /** 结算月份 */
+  settlementMonth?: string;
   /** 薪资项编码 */
   itemCode: string;
   /** 薪资项名称 */
@@ -84,8 +92,12 @@ export interface SalaryAdjustmentVO {
   status: number;
   /** 调账原因及备注 */
   remark: string;
+  /** 创建人 审计字段：详情页展示需要 */
+  createBy?: string;
   /** 创建时间 */
   createTime: string;
+  /** 更新人 审计字段：详情页展示需要 */
+  updateBy?: string;
   /** 更新时间 */
   updateTime: string;
 }

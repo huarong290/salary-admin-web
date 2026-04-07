@@ -296,7 +296,6 @@
         </div>
       </template>
     </el-dialog>
-
     <el-dialog v-model="previewDialog.visible" width="550px" append-to-body>
       <template #header>
         <div class="dialog-custom-header">
@@ -327,7 +326,6 @@
                 {{ formatExpiry(previewDialog.data.usedArchives[0]?.expiryDate) }})
               </span>
             </div>
-
             <div
               v-else-if="
                 previewDialog.data?.usedArchives && previewDialog.data.usedArchives.length > 1
@@ -355,7 +353,6 @@
                 </el-tag>
               </el-tooltip>
             </div>
-
             <div v-else>
               <el-tag size="small" type="danger">未匹配到生效档案</el-tag>
             </div>
@@ -382,6 +379,50 @@
           </el-descriptions-item>
         </el-descriptions>
 
+        <div v-if="previewDialog.data?.details" style="margin-top: 15px">
+          <el-row :gutter="10">
+            <el-col :span="12">
+              <div style="font-size: 12px; margin-bottom: 5px; color: #67c23a; font-weight: bold">
+                <el-icon><Plus /></el-icon> 应发项明细
+              </div>
+              <el-table :data="previewDialog.data.details.income" size="small" border stripe>
+                <el-table-column label="项目" prop="itemName" show-overflow-tooltip />
+                <el-table-column label="金额" align="right" width="90">
+                  <template #default="{ row }">
+                    <span class="amount-font text-success"
+                      >+{{ row.settlementAmount?.toFixed(2) }}</span
+                    >
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-col>
+
+            <el-col :span="12">
+              <div style="font-size: 12px; margin-bottom: 5px; color: #f56c6c; font-weight: bold">
+                <el-icon><Minus /></el-icon> 扣除项明细
+              </div>
+              <el-table
+                :data="[
+                  ...(previewDialog.data.details.deduction || []),
+                  ...(previewDialog.data.details.tax || []),
+                ]"
+                size="small"
+                border
+                stripe
+              >
+                <el-table-column label="项目" prop="itemName" show-overflow-tooltip />
+                <el-table-column label="金额" align="right" width="90">
+                  <template #default="{ row }">
+                    <span v-if="row.settlementAmount > 0" class="amount-font text-danger">
+                      -{{ row.settlementAmount?.toFixed(2) }}
+                    </span>
+                    <span v-else class="text-secondary">0.00</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-col>
+          </el-row>
+        </div>
         <el-alert
           type="warning"
           show-icon
@@ -404,7 +445,6 @@
         </div>
       </template>
     </el-dialog>
-
     <el-dialog
       v-model="detailDialog.visible"
       width="850px"
@@ -430,102 +470,82 @@
         v-loading="detailLoading"
         class="payslip-container"
       >
-        <el-descriptions :column="2" border class="margin-bottom-20">
+        <el-descriptions :column="3" border class="margin-bottom-20">
           <el-descriptions-item label="出勤天数">
             <span class="amount-font"
               >{{ currentDetail.details.attendanceDays }} /
               {{ currentDetail.details.monthDays }}</span
             >
           </el-descriptions-item>
-          <el-descriptions-item label="核算币种">
-            <el-tag size="small" type="info">{{
-              currentDetail.details.settlementCurrency || 'CNY'
-            }}</el-tag>
+          <el-descriptions-item label="计薪基准 (Gross)">
+            <span class="amount-font text-success">{{
+              currentDetail.grossSalary?.toFixed(2)
+            }}</span>
           </el-descriptions-item>
-
-          <el-descriptions-item label="核算依据档案" :span="2">
-            <div v-if="currentDetail?.usedArchives && currentDetail.usedArchives.length === 1">
-              <el-tag size="small" type="success" effect="plain">
-                版本 V{{ currentDetail.usedArchives[0]?.version }}
-              </el-tag>
-              <span class="archive-date-hint">
-                (生效区间: {{ currentDetail.usedArchives[0]?.effectiveDate }} ~
-                {{ formatExpiry(currentDetail.usedArchives[0]?.expiryDate) }})
-              </span>
-            </div>
-            <div v-else-if="currentDetail?.usedArchives && currentDetail.usedArchives.length > 1">
-              <el-tag size="small" type="warning" effect="dark" style="margin-right: 8px">
-                <el-icon><Warning /></el-icon> 跨版本分段计薪 (包含
-                {{ currentDetail.usedArchives.length }} 份档案)
-              </el-tag>
-              <span
-                v-for="arch in currentDetail.usedArchives"
-                :key="arch.archiveId"
-                class="archive-date-hint"
-              >
-                [V{{ arch.version }}: {{ arch.effectiveDate }}起]
-              </span>
-            </div>
-            <div v-else>
-              <span class="text-secondary" style="font-size: 12px"
-                >无档案溯源信息 (可能是老版本数据)</span
-              >
-            </div>
+          <el-descriptions-item label="实发净额 (Net)">
+            <span class="amount-font text-primary" style="font-weight: bold">{{
+              currentDetail.netSalary?.toFixed(2)
+            }}</span>
           </el-descriptions-item>
         </el-descriptions>
 
-        <el-row :gutter="20">
+        <el-row :gutter="20" style="margin-top: 20px">
           <el-col :span="12">
-            <div class="section-title text-success">应发收入明细</div>
-            <el-table :data="currentDetail.details.income" size="small" border>
-              <el-table-column label="项目名称" prop="itemName" />
-              <el-table-column label="金额" align="right" width="100">
-                <template #default="{ row }"
-                  ><span class="amount-font">{{ row.settlementAmount?.toFixed(2) }}</span></template
-                >
+            <div class="section-title text-success">应发收入明细 (Earnings)</div>
+            <el-table :data="allIncomeItems" size="small" border stripe>
+              <el-table-column label="项目名称" min-width="120">
+                <template #default="{ row }">
+                  <span style="font-weight: 500">{{ row.itemName }}</span>
+                  <div v-if="row.itemCode" class="text-secondary" style="font-size: 10px">
+                    {{ row.itemCode }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="金额" align="right" width="110">
+                <template #default="{ row }">
+                  <span class="amount-font text-success"
+                    >+{{ row.settlementAmount?.toFixed(2) }}</span
+                  >
+                </template>
               </el-table-column>
               <el-table-column type="expand">
                 <template #default="{ row }">
-                  <div style="padding: 10px; color: #666; font-size: 12px">
-                    计算公式: {{ row.calcLog || '固定值录入' }}
+                  <div class="calc-debug-info">
+                    <p>
+                      <b>数据来源：</b><el-tag size="small">{{ row.source || '系统核算' }}</el-tag>
+                    </p>
+                    <p><b>计算公式/过程：</b></p>
+                    <code class="code-block">{{ row.calcLog || '无计算过程 (固定值)' }}</code>
                   </div>
                 </template>
               </el-table-column>
             </el-table>
             <div class="subtotal amount-font text-success">
-              应发合计: {{ currentDetail?.grossSalary?.toFixed(2) }}
+              应发合计 (Gross): {{ currentDetail?.grossSalary?.toFixed(2) }}
             </div>
           </el-col>
 
           <el-col :span="12">
-            <div class="section-title text-danger">应扣与税费明细</div>
-            <el-table
-              :data="[
-                ...(currentDetail.details.deduction || []),
-                ...(currentDetail.details.tax || []),
-              ]"
-              size="small"
-              border
-            >
+            <div class="section-title text-danger">应扣与税费明细 (Deductions)</div>
+            <el-table :data="allDeductionItems" size="small" border stripe>
               <el-table-column label="项目名称" prop="itemName" />
-              <el-table-column label="扣减金额" align="right" width="100">
-                <template #default="{ row }"
-                  ><span class="amount-font text-danger"
-                    >-{{ row.settlementAmount?.toFixed(2) }}</span
-                  ></template
-                >
+              <el-table-column label="扣减金额" align="right" width="110">
+                <template #default="{ row }">
+                  <span class="amount-font text-danger"
+                    >-{{ Math.abs(row.settlementAmount || 0).toFixed(2) }}</span
+                  >
+                </template>
               </el-table-column>
             </el-table>
             <div class="subtotal amount-font text-danger">
-              应扣合计: -{{
+              扣/税合计: -{{
                 ((currentDetail?.deductionTotal || 0) + (currentDetail?.taxTotal || 0)).toFixed(2)
               }}
             </div>
           </el-col>
         </el-row>
-
         <div class="final-net-box">
-          实发薪资 (Net Salary):
+          本月实发 (Net Pay):
           <span class="amount-font final-amount">{{ currentDetail?.netSalary?.toFixed(2) }}</span>
         </div>
       </div>
@@ -554,7 +574,7 @@
  * --------------------------------------------------------------------
  */
 // [1] Vue 核心钩子与原生生态
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 
 // 引入 useRouter
 import { useRouter } from 'vue-router';
@@ -894,7 +914,33 @@ const handleBatchLock = (lockFlag: number) => {
     })
     .catch(() => {});
 };
+// 🌟 万能收入项提取：汇总所有属于“收入”性质的明细
+const allIncomeItems = computed(() => {
+  const d = currentDetail.value?.details;
+  if (!d) return [];
 
+  // 1. 聚合所有可能的收入来源桶
+  // 注意：这里包含了你定义的 income，以及可能存在的遗留/扩展字段
+  const rawItems = [
+    ...(d.income || []),
+    // 如果后端把全勤奖放错了地方，或者放在了某些自定义扩展字段里，可以在此追加
+  ];
+
+  // 2. 这里的“万能”体现在：如果后端没有按分类放，我们根据业务逻辑过滤
+  // 只要金额 > 0，且不属于税费和已知扣款的，都视为收入
+  return rawItems.filter((item) => item.settlementAmount > 0);
+});
+
+// 🌟 万能扣项提取：汇总所有扣款与税费
+const allDeductionItems = computed(() => {
+  const d = currentDetail.value?.details;
+  if (!d) return [];
+
+  const rawItems = [...(d.deduction || []), ...(d.tax || [])];
+
+  // 过滤出所有金额 > 0 的扣项（前端展示取反即可）
+  return rawItems.filter((item) => item.settlementAmount !== 0);
+});
 /**
  * --------------------------------------------------------------------
  * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)
@@ -909,6 +955,26 @@ onMounted(() => {
 /* =====================================================================
    🎨 页面私有样式定制区
    ===================================================================== */
+
+.calc-debug-info {
+  padding: 15px;
+  background-color: #fcfcfc;
+  font-size: 12px;
+  line-height: 1.6;
+
+  .code-block {
+    display: block;
+    padding: 8px;
+    background: #f4f4f5;
+    border-radius: 4px;
+    color: #409eff;
+    margin-top: 5px;
+    word-break: break-all;
+  }
+}
+.text-secondary {
+  color: #909399;
+}
 .section-title {
   font-size: 14px;
   font-weight: bold;
@@ -917,11 +983,13 @@ onMounted(() => {
   border-left: 3px solid currentColor;
 }
 
+/* 让总计行更醒目 */
 .subtotal {
-  text-align: right;
-  padding: 10px 0;
-  font-size: 13px;
-  font-weight: 500;
+  margin-top: 10px;
+  padding: 8px;
+  background: #fdfdfd;
+  border-radius: 4px;
+  border: 1px solid #f0f0f0;
 }
 
 .final-net-box {
