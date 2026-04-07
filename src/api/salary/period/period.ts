@@ -7,6 +7,7 @@ import type {
   PeriodEditReqDTO,
   PeriodOptionVO,
   PeriodQueryReqDTO,
+  PeriodSelectQueryReqDTO,
   PeriodVO,
 } from '@/types/salary/period/period.ts';
 import type { PageResult } from '@/types/common.ts';
@@ -75,10 +76,10 @@ export function batchInitPeriodApi(data: PeriodBatchInitReqDTO) {
 }
 /**
  * 获取指定员工的结算月份列表 (无分页，级联下拉框专用)
- * @param employeeId 员工ID
+ * @param params 包含可选的 employeeId
  */
-export function listPeriodOptionsByEmployeeApi(employeeId: number | string) {
+export function listPeriodOptionsByEmployeeApi(params?: PeriodSelectQueryReqDTO) {
   return request.get<PeriodOptionVO[]>(`/salary/period/listOptionByEmployee`, {
-    params: { employeeId },
+    params,
   });
 }

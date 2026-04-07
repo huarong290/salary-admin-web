@@ -3,14 +3,6 @@
   <div class="app-container">
     <el-card shadow="hover" class="search-card">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="68px">
-        <el-form-item label="核算周期" prop="periodId">
-          <el-input
-            v-model="queryParams.periodId"
-            placeholder="请输入核算周期ID"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
         <el-form-item label="员工ID" prop="employeeId">
           <el-input
             v-model="queryParams.employeeId"
@@ -19,6 +11,15 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="核算周期" prop="periodId">
+          <el-input
+            v-model="queryParams.periodId"
+            placeholder="请输入核算周期ID"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+
         <el-form-item label="状态" prop="status">
           <el-select
             v-model="queryParams.status"
@@ -184,33 +185,31 @@
         <div class="section-title">基础人员信息</div>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="核算周期" prop="periodId">
-              <el-input-number
-                v-model="form.periodId"
-                :min="1"
-                placeholder="周期ID"
-                class="w-full"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="员工ID" prop="employeeId">
-              <el-input-number
+            <el-form-item label="选择员工" prop="employeeId">
+              <employee-select
                 v-model="form.employeeId"
-                :min="1"
-                placeholder="员工ID"
-                class="w-full"
+                :disabled="!!form.id"
+                @change="form.periodId = undefined"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="项目编码" prop="itemCode">
-              <el-input v-model="form.itemCode" placeholder="如: LATE_DEDUCTION" />
+            <el-form-item label="核算月份" prop="periodId">
+              <period-select
+                v-model="form.periodId"
+                :employee-id="form.employeeId"
+                :disabled="!!form.id"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="薪资项目" prop="itemCode">
+              <item-config-select v-model="form.itemCode" @change="handleItemChange" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="项目名称" prop="itemName">
-              <el-input v-model="form.itemName" placeholder="如: 迟到扣款" />
+            <el-form-item label="项目名称">
+              <el-input v-model="form.itemName" disabled placeholder="选择项目后自动填充" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -324,6 +323,9 @@ import type {
   AdjustmentQueryReqDTO,
   SalaryAdjustmentVO,
 } from '@/types/salary/adjustment/adjustment';
+import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
+import PeriodSelect from '@/views/salary/period/components/PeriodSelect.vue';
+import ItemConfigSelect from '@/views/salary/itemconfig/components/ItemConfigSelect.vue';
 
 /**
  * --------------------------------------------------------------------
@@ -402,7 +404,19 @@ const cancel = () => {
   dialog.visible = false;
   formRef.value?.resetFields();
 };
-
+/** 选择项目后的自动填充逻辑 */
+const handleItemChange = (item: any) => {
+  if (item) {
+    form.value.itemName = item.itemName;
+    // 假设后端 OptionVO 包含 itemCategory (1-收入, 2-扣减)
+    // 自动切换调账类型单选框，防止用户选错
+    if (item.itemCategory) {
+      form.value.adjustType = item.itemCategory;
+    }
+  } else {
+    form.value.itemName = '';
+  }
+};
 /**
  * --------------------------------------------------------------------
  * 🧠 四、核心业务与 API 交互区 (Business & API Logic)

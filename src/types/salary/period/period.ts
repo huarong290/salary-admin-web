@@ -119,3 +119,8 @@ export interface PeriodBatchInitResultVO {
   /** 幂等跳过人数 */
   skipCount: number;
 }
+/** 查询薪资周期下拉列表请求 DTO */
+export interface PeriodSelectQueryReqDTO {
+  /** 员工ID (传值则查个人周期，不传则查全局月份) */
+  employeeId?: number | string;
+}
