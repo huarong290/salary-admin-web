@@ -237,10 +237,18 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="原币种" prop="currency">
-              <el-select v-model="form.currency" placeholder="币种" class="w-full">
-                <el-option label="CNY" value="CNY" />
-                <el-option label="USD" value="USD" />
-                <el-option label="HKD" value="HKD" />
+              <el-select v-model="form.currency" placeholder="选择币种" class="w-full" clearable>
+                <el-option
+                  v-for="item in dict.settlement_currency"
+                  :key="item.dictItemValue"
+                  :label="item.dictItemLabel"
+                  :value="item.dictItemValue"
+                >
+                  <span style="float: left">{{ item.dictItemLabel }}</span>
+                  <span style="float: right; color: #8492a6; font-size: 13px">{{
+                    item.dictItemValue
+                  }}</span>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -412,13 +420,15 @@ import type {
 import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
 import PeriodSelect from '@/views/salary/period/components/PeriodSelect.vue';
 import ItemConfigSelect from '@/views/salary/itemconfig/components/ItemConfigSelect.vue';
+import { useDict } from '@/hooks/useDict.ts';
 
 /**
  * --------------------------------------------------------------------
  * 📦 二、响应式状态区 (State Management)
  * --------------------------------------------------------------------
  */
-
+//  初始化字典对象
+const dict = useDict('settlement_currency');
 // [UI 控制状态]
 const loading = ref(false);
 const isFullscreen = ref(false);
@@ -642,14 +652,20 @@ onMounted(() => {
   getList();
 });
 
-/** 监听币种变化，自动给默认汇率 */
+/** 🌟 2. 整合后的币种监听逻辑 (二合一) */
 watch(
   () => form.value.currency,
   (newVal) => {
+    if (!newVal) return;
+
     if (newVal === 'CNY') {
       form.value.exchangeRate = 1.0;
-    } else if (newVal === 'USD') {
-      form.value.exchangeRate = 7.2345; // 实际开发建议调 API 获取实时汇率
+    } else {
+      // 切换到外币时，如果是新增模式则清空汇率强制手动输入，确保准确性
+      if (!form.value.id) {
+        form.value.exchangeRate = undefined;
+      }
+      console.log(`[财务预警] 当前切换至外币: ${newVal}，请核实当日汇率。`);
     }
   }
 );
