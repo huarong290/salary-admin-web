@@ -57,13 +57,12 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
-        <el-table-column
-          label="员工姓名"
-          align="center"
-          prop="employeeName"
-          width="120"
-          fixed="left"
-        />
+        <el-table-column label="编号(ID)" align="center" prop="id" width="90">
+          <template #default="{ row }">
+            <span class="text-secondary">{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="员工姓名" align="center" prop="employeeName" width="120" />
         <el-table-column label="结算月份" align="center" width="100">
           <template #default="{ row }">
             <el-tag type="primary" effect="plain" class="amount-font status-tag">{{
