@@ -102,6 +102,13 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="非带薪假" align="right" prop="unpaidLeaveDays" width="90">
+          <template #default="scope">
+            <span class="amount-font" :class="scope.row.unpaidLeaveDays > 0 ? 'text-warning' : ''">
+              {{ scope.row.unpaidLeaveDays || 0 }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column label="满勤状态" align="center" width="100">
           <template #default="{ row }">
             <el-tag
@@ -243,6 +250,19 @@
                 v-model="form.attendanceDays"
                 :min="0"
                 :max="form.monthDays"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="非带薪假" prop="unpaidLeaveDays">
+              <el-input-number
+                v-model="form.unpaidLeaveDays"
+                :min="0"
+                :max="form.monthDays"
+                :precision="1"
+                :step="0.5"
                 controls-position="right"
                 style="width: 100%"
               />
@@ -396,7 +416,7 @@ import {
   deletePeriodApi,
   editPeriodApi,
   getPeriodPageApi,
-} from '@/api/salary/period/period.ts';
+} from '@/api/salary/period/period';
 
 // [4] TS 强类型定义约束
 import type {
@@ -444,6 +464,7 @@ const batchInitForm = reactive<PeriodBatchInitReqDTO>({
   endDate: '',
   monthDays: 0,
   attendanceDays: 0,
+  unpaidLeaveDays: 0,
   fullAttendanceFlag: 1, // 批量建账通常建议默认全员满勤，特殊情况HR再去单条修改
   remark: '',
 });
@@ -569,6 +590,7 @@ const handleAdd = () => {
     workMonth: 0,
     monthDays: 0,
     attendanceDays: 0,
+    unpaidLeaveDays: 0,
     fullAttendanceFlag: 0,
   };
   dateRange.value = [];
@@ -610,6 +632,8 @@ const submitForm = async () => {
         endDate: form.value.endDate,
         monthDays: form.value.monthDays,
         attendanceDays: form.value.attendanceDays,
+        unpaidLeaveDays:
+          form.value.unpaidLeaveDays !== undefined ? Number(form.value.unpaidLeaveDays) : 0,
         fullAttendanceFlag: form.value.fullAttendanceFlag,
       };
       if (payload.id) {

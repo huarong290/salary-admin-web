@@ -23,6 +23,8 @@ export interface PeriodVO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 非带薪假/欠勤天数 */
+  unpaidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
   /** 创建时间 */
@@ -63,6 +65,8 @@ export interface PeriodAddReqDTO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 非带薪假/欠勤天数 */
+  unpaidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
 }
@@ -102,6 +106,8 @@ export interface PeriodBatchInitReqDTO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 非带薪假/欠勤天数 */
+  unpaidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
   /** 备注 */
@@ -119,6 +125,7 @@ export interface PeriodBatchInitResultVO {
   /** 幂等跳过人数 */
   skipCount: number;
 }
+
 /** 查询薪资周期下拉列表请求 DTO */
 export interface PeriodSelectQueryReqDTO {
   /** 员工ID (传值则查个人周期，不传则查全局月份) */
