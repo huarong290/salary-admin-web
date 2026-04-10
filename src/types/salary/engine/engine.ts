@@ -37,6 +37,9 @@ export interface SalaryCalcSingleReqDTO {
    * 用于无视数据当前的锁定状态 (lock_flag) 强行跑批，仅限拥有特权的角色使用
    */
   isForceRetry?: boolean;
+
+  /** 薪资档案ID */
+  archiveId?: number | string;
 }
 
 /** * 引擎-批量薪资核算指令参数

@@ -304,6 +304,46 @@
       </template>
 
       <div v-loading="previewDialog.loading">
+        <div
+          style="
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: #f8f8f9;
+            border-radius: 4px;
+            border-left: 4px solid var(--el-color-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          "
+        >
+          <div>
+            <span style="font-size: 14px; font-weight: bold; margin-right: 15px">
+              <el-icon style="vertical-align: middle"><Clock /></el-icon> 算薪依据档案:
+            </span>
+            <el-select
+              v-model="previewDialog.selectedArchiveId"
+              placeholder="默认使用该员工最新生效档案"
+              clearable
+              style="width: 320px"
+              @change="handleArchiveChange"
+            >
+              <el-option
+                v-for="arch in previewDialog.archives"
+                :key="arch.id"
+                :label="`V${arch.version} - ${arch.effectiveDate}生效 (底薪: ${arch.baseSalary})`"
+                :value="arch.id"
+              />
+            </el-select>
+          </div>
+          <el-button
+            type="primary"
+            plain
+            icon="Refresh"
+            :loading="previewDialog.loading"
+            @click="handleArchiveChange"
+            >刷新预览数据</el-button
+          >
+        </div>
         <el-descriptions :column="1" border size="small" class="preview-descriptions">
           <el-descriptions-item label="员工姓名">
             {{ previewDialog.data?.employeeName }}
@@ -604,6 +644,7 @@ import type {
   SalaryCalcSingleReqDTO,
   SalaryCalcBatchReqDTO,
 } from '@/types/salary/engine/engine.ts';
+import { listArchiveHistoryApi } from '@/api/salary/archive/archive.ts';
 
 const router = useRouter();
 
@@ -662,6 +703,10 @@ const previewDialog = reactive({
   loading: false,
   submitting: false,
   data: {} as any,
+  // 🌟 新增：用于时间旅行的字段
+  summaryId: 0,
+  archives: [] as any[], // 存放下拉框的档案历史列表
+  selectedArchiveId: undefined as number | undefined, // 选中的历史档案ID
 });
 
 /**
@@ -821,13 +866,21 @@ const handleSingleCalc = async (row: SalarySummaryVO) => {
     ElMessage.warning('该单据已被锁定，禁止重算！');
     return;
   }
+  // 初始化弹窗状态
+  previewDialog.summaryId = row.id;
+  previewDialog.selectedArchiveId = undefined; // 每次打开默认置空(取最新)
   previewDialog.visible = true;
   previewDialog.loading = true;
   previewDialog.data = { ...row };
 
   try {
-    const res = await previewSingleSalaryApi({ summaryId: row.id } as SalaryCalcSingleReqDTO);
-    previewDialog.data = { ...previewDialog.data, ...res };
+    // 异步 1: 获取下拉框的档案历史列表
+    // 注意：请确保你的 API 返回的是个数组，且包含 version, effectiveDate, baseSalary 等字段
+    const archRes = await listArchiveHistoryApi(row.employeeId);
+    previewDialog.archives = archRes || [];
+
+    // 异步 2: 加载默认的预览数据
+    await loadPreviewData();
   } catch (error) {
     ElMessage.error('引擎预览失败，请检查员工档案与公式配置');
     previewDialog.visible = false;
@@ -835,12 +888,36 @@ const handleSingleCalc = async (row: SalarySummaryVO) => {
     previewDialog.loading = false;
   }
 };
-
+/** 🌟 新增：切换档案后重新拉取预览数据 */
+const handleArchiveChange = async () => {
+  previewDialog.loading = true;
+  try {
+    await loadPreviewData();
+    ElMessage.success('时间旅行成功，预览数据已更新为所选档案版本！');
+  } catch (error) {
+    console.error('刷新预览失败', error);
+  } finally {
+    previewDialog.loading = false;
+  }
+};
+/** ：提取公共的向引擎请求预览的方法 */
+const loadPreviewData = async () => {
+  const payload: SalaryCalcSingleReqDTO = {
+    summaryId: previewDialog.summaryId,
+    archiveId: previewDialog.selectedArchiveId, // 透传用户选中的版本
+  };
+  const res = await previewSingleSalaryApi(payload);
+  previewDialog.data = { ...previewDialog.data, ...res };
+};
 /** 4：确认单人预览落盘 */
 const confirmSingleCalc = async () => {
   previewDialog.submitting = true;
   try {
-    await calculateSingleSalaryApi({ summaryId: previewDialog.data.id } as SalaryCalcSingleReqDTO);
+    const payload: SalaryCalcSingleReqDTO = {
+      summaryId: previewDialog.summaryId,
+      archiveId: previewDialog.selectedArchiveId, // 落盘时告诉引擎用这个版本
+    };
+    await calculateSingleSalaryApi(payload);
     ElMessage.success(`${previewDialog.data.employeeName} 的薪资记录已成功更新`);
     previewDialog.visible = false;
     handleQuery();
