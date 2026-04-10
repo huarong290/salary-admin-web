@@ -25,6 +25,8 @@ export interface PeriodVO {
   attendanceDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
+  /** 带薪假天数(如年假、调休) */
+  paidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
   /** 创建时间 */
@@ -67,6 +69,8 @@ export interface PeriodAddReqDTO {
   attendanceDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
+  /** 带薪假天数(如年假、调休) */
+  paidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
 }
@@ -108,6 +112,8 @@ export interface PeriodBatchInitReqDTO {
   attendanceDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
+  /** 带薪假天数(如年假、调休) */
+  paidLeaveDays?: number;
   /** 是否满勤 (1:是, 0:否) */
   fullAttendanceFlag?: number;
   /** 备注 */

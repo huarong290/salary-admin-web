@@ -102,6 +102,13 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="带薪假" align="right" prop="paidLeaveDays" width="90">
+          <template #default="scope">
+            <span class="amount-font" :class="scope.row.paidLeaveDays > 0 ? 'text-success' : ''">
+              {{ scope.row.paidLeaveDays || 0 }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column label="非带薪假" align="right" prop="unpaidLeaveDays" width="90">
           <template #default="scope">
             <span class="amount-font" :class="scope.row.unpaidLeaveDays > 0 ? 'text-warning' : ''">
@@ -255,6 +262,22 @@
               />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="带薪假" prop="paidLeaveDays">
+              <el-input-number
+                v-model="form.paidLeaveDays"
+                :min="0"
+                :max="form.monthDays"
+                :precision="1"
+                :step="0.5"
+                controls-position="right"
+                style="width: 100%"
+                placeholder="如: 年假"
+              />
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="非带薪假" prop="unpaidLeaveDays">
               <el-input-number
@@ -265,11 +288,11 @@
                 :step="0.5"
                 controls-position="right"
                 style="width: 100%"
+                placeholder="如: 事假"
               />
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-form-item label="满勤状态" prop="fullAttendanceFlag">
           <el-radio-group v-model="form.fullAttendanceFlag">
             <el-radio :label="1">确认满勤 (发放全勤奖)</el-radio>
@@ -465,6 +488,7 @@ const batchInitForm = reactive<PeriodBatchInitReqDTO>({
   monthDays: 0,
   attendanceDays: 0,
   unpaidLeaveDays: 0,
+  paidLeaveDays: 0,
   fullAttendanceFlag: 1, // 批量建账通常建议默认全员满勤，特殊情况HR再去单条修改
   remark: '',
 });
@@ -591,6 +615,7 @@ const handleAdd = () => {
     monthDays: 0,
     attendanceDays: 0,
     unpaidLeaveDays: 0,
+    paidLeaveDays: 0,
     fullAttendanceFlag: 0,
   };
   dateRange.value = [];
@@ -634,6 +659,8 @@ const submitForm = async () => {
         attendanceDays: form.value.attendanceDays,
         unpaidLeaveDays:
           form.value.unpaidLeaveDays !== undefined ? Number(form.value.unpaidLeaveDays) : 0,
+        paidLeaveDays:
+          form.value.paidLeaveDays !== undefined ? Number(form.value.paidLeaveDays) : 0,
         fullAttendanceFlag: form.value.fullAttendanceFlag,
       };
       if (payload.id) {
