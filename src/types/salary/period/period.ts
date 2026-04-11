@@ -23,6 +23,10 @@ export interface PeriodVO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 现场出勤天数 */
+  officeDays?: number;
+  /** 居家出勤天数 */
+  wfhDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
   /** 带薪假天数(如年假、调休) */
@@ -67,6 +71,10 @@ export interface PeriodAddReqDTO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 现场出勤天数 */
+  officeDays?: number;
+  /** 居家出勤天数 */
+  wfhDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
   /** 带薪假天数(如年假、调休) */
@@ -110,6 +118,10 @@ export interface PeriodBatchInitReqDTO {
   monthDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
+  /** 现场出勤天数 */
+  officeDays?: number;
+  /** 居家出勤天数 */
+  wfhDays?: number;
   /** 非带薪假/欠勤天数 */
   unpaidLeaveDays?: number;
   /** 带薪假天数(如年假、调休) */

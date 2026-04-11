@@ -102,6 +102,16 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="现场办公" align="right" prop="officeDays" width="90">
+          <template #default="scope">
+            <span class="amount-font text-primary">{{ scope.row.officeDays || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="居家办公" align="right" prop="wfhDays" width="90">
+          <template #default="scope">
+            <span class="amount-font text-warning">{{ scope.row.wfhDays || 0 }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="带薪假" align="right" prop="paidLeaveDays" width="90">
           <template #default="scope">
             <span class="amount-font" :class="scope.row.paidLeaveDays > 0 ? 'text-success' : ''">
@@ -251,12 +261,37 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="出勤天数" prop="attendanceDays">
+          <el-col :span="8">
+            <el-form-item label="现场办公" prop="officeDays">
               <el-input-number
-                v-model="form.attendanceDays"
+                v-model="form.officeDays"
                 :min="0"
                 :max="form.monthDays"
+                :precision="1"
+                :step="0.5"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="居家办公" prop="wfhDays">
+              <el-input-number
+                v-model="form.wfhDays"
+                :min="0"
+                :max="form.monthDays"
+                :precision="1"
+                :step="0.5"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="总出勤" prop="attendanceDays">
+              <el-input-number
+                v-model="form.attendanceDays"
+                disabled
                 controls-position="right"
                 style="width: 100%"
               />
@@ -368,9 +403,32 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="默认出勤" prop="attendanceDays">
+            <el-form-item label="默认现场" prop="officeDays">
+              <el-input-number
+                v-model="batchInitForm.officeDays"
+                :min="0"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="默认居家" prop="wfhDays">
+              <el-input-number
+                v-model="batchInitForm.wfhDays"
+                :min="0"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="总出勤" prop="attendanceDays">
               <el-input-number
                 v-model="batchInitForm.attendanceDays"
+                disabled
                 controls-position="right"
                 style="width: 100%"
               />
@@ -423,7 +481,7 @@
  */
 
 // [1] Vue 核心钩子与原生生态
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import dayjs from 'dayjs';
 
 // [2] 第三方 UI 组件库与图标
@@ -542,8 +600,9 @@ const calcDaysByRange = (val: [string, string] | null, target: any) => {
     // 顺便连自然天数、出勤天数都自动算好了！ 包含首尾天数所以 + 1
     const days = dayjs(val[1]).diff(dayjs(val[0]), 'day') + 1;
     target.monthDays = days > 0 ? days : 0;
-    // 默认出勤天数拉满，HR 视情况往下扣减
-    target.attendanceDays = target.monthDays;
+    // 默认全部在现场办公，居家为 0。(Watch 会自动算出 attendanceDays)
+    target.officeDays = target.monthDays;
+    target.wfhDays = 0;
   } else {
     target.startDate = target.endDate = undefined;
     target.monthDays = target.attendanceDays = 0;
@@ -657,6 +716,8 @@ const submitForm = async () => {
         endDate: form.value.endDate,
         monthDays: form.value.monthDays,
         attendanceDays: form.value.attendanceDays,
+        officeDays: form.value.officeDays !== undefined ? Number(form.value.officeDays) : 0,
+        wfhDays: form.value.wfhDays !== undefined ? Number(form.value.wfhDays) : 0,
         unpaidLeaveDays:
           form.value.unpaidLeaveDays !== undefined ? Number(form.value.unpaidLeaveDays) : 0,
         paidLeaveDays:
@@ -741,6 +802,17 @@ const handleBatchDelete = () => {
  */
 onMounted(() => {
   getList();
+});
+//  智能联动：监听单人表单，总出勤 = 现场 + 居家
+watch([() => form.value.officeDays, () => form.value.wfhDays], ([office, wfh]) => {
+  if (office !== undefined || wfh !== undefined) {
+    form.value.attendanceDays = (Number(office) || 0) + (Number(wfh) || 0);
+  }
+});
+
+//  智能联动：监听批量建账表单，总出勤 = 现场 + 居家
+watch([() => batchInitForm.officeDays, () => batchInitForm.wfhDays], ([office, wfh]) => {
+  batchInitForm.attendanceDays = (Number(office) || 0) + (Number(wfh) || 0);
 });
 </script>
 
