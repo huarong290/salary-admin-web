@@ -159,7 +159,23 @@
             </span>
           </template>
         </el-table-column>
-
+        <el-table-column label="手工调整" align="right" min-width="110" fixed="right">
+          <template #default="{ row }">
+            <span
+              v-if="!row.manualPaymentAmount || row.manualPaymentAmount === 0"
+              class="text-secondary"
+            >
+              0.00
+            </span>
+            <span
+              v-else
+              class="amount-font"
+              :class="row.manualPaymentAmount > 0 ? 'text-success' : 'text-danger'"
+            >
+              {{ row.manualPaymentAmount > 0 ? '+' : '' }}{{ row.manualPaymentAmount.toFixed(2) }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column label="计算状态" align="center" width="90">
           <template #default="{ row }">
             <el-tag
@@ -198,6 +214,15 @@
           <template #default="{ row }">
             <el-button link type="success" icon="Refresh" @click="handleSingleCalc(row)">
               重算
+            </el-button>
+            <el-button
+              v-hasPerm="['salary:summary:adjust']"
+              link
+              type="warning"
+              icon="EditPen"
+              @click="handleOpenAdjust(row)"
+            >
+              手工账
             </el-button>
             <el-button
               v-hasPerm="['salary:summary:detail']"
@@ -510,7 +535,7 @@
         v-loading="detailLoading"
         class="payslip-container"
       >
-        <el-descriptions :column="3" border class="margin-bottom-20">
+        <el-descriptions :column="4" border class="margin-bottom-20">
           <el-descriptions-item label="出勤天数">
             <span class="amount-font"
               >{{ currentDetail.details.attendanceDays }} /
@@ -526,6 +551,23 @@
             <span class="amount-font text-primary" style="font-weight: bold">{{
               currentDetail.netSalary?.toFixed(2)
             }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="手工调整">
+            <span
+              v-if="!currentDetail.manualPaymentAmount || currentDetail.manualPaymentAmount === 0"
+              class="text-secondary"
+            >
+              无
+            </span>
+            <span
+              v-else
+              class="amount-font"
+              :class="currentDetail.manualPaymentAmount > 0 ? 'text-success' : 'text-danger'"
+              style="font-weight: bold"
+            >
+              {{ currentDetail.manualPaymentAmount > 0 ? '+' : ''
+              }}{{ currentDetail.manualPaymentAmount.toFixed(2) }}
+            </span>
           </el-descriptions-item>
         </el-descriptions>
 
@@ -597,6 +639,51 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="adjustDialog.visible" width="450px" append-to-body>
+      <template #header>
+        <div class="dialog-custom-header">
+          <span class="title">录入线下手工账 - {{ adjustForm.employeeName }}</span>
+        </div>
+      </template>
+
+      <el-form ref="adjustFormRef" :model="adjustForm" :rules="adjustRules" label-width="85px">
+        <el-alert
+          title="手工账独立于系统算薪引擎！输入正数代表额外补发，负数代表线下扣回。"
+          type="warning"
+          show-icon
+          :closable="false"
+          style="margin-bottom: 20px"
+        />
+        <el-form-item label="调整金额" prop="manualPaymentAmount">
+          <el-input-number
+            v-model="adjustForm.manualPaymentAmount"
+            :precision="2"
+            :step="100"
+            controls-position="right"
+            style="width: 100%"
+            placeholder="正数增加，负数扣除"
+          />
+        </el-form-item>
+        <el-form-item label="调整备注" prop="remark">
+          <el-input
+            v-model="adjustForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="请务必填写调整原因 (如: 报销合并发放 / 上月错扣补偿)"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="adjustDialog.visible = false">取 消</el-button>
+          <el-button type="primary" :loading="adjusting" @click="submitAdjust"
+            >确认并留痕</el-button
+          >
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -629,6 +716,7 @@ import {
   getSummaryPageApi,
   getSummaryDetailApi,
   updateSummaryLockStatusApi,
+  adjustSummaryAmountApi,
 } from '@/api/salary/summary/summary.ts';
 
 import {
@@ -639,7 +727,11 @@ import {
 } from '@/api/salary/engine/engine.ts';
 
 // [4] TS 强类型定义约束
-import type { SummaryQueryReqDTO, SalarySummaryVO } from '@/types/salary/summary/summary.ts';
+import type {
+  SummaryQueryReqDTO,
+  SalarySummaryVO,
+  SummaryAdjustReqDTO,
+} from '@/types/salary/summary/summary.ts';
 import type {
   SalaryCalcSingleReqDTO,
   SalaryCalcBatchReqDTO,
@@ -708,7 +800,22 @@ const previewDialog = reactive({
   archives: [] as any[], // 存放下拉框的档案历史列表
   selectedArchiveId: undefined as number | undefined, // 选中的历史档案ID
 });
-
+// [手工调整弹窗状态]
+const adjustDialog = reactive({ visible: false });
+const adjustFormRef = ref<FormInstance>();
+const adjusting = ref(false);
+// 扩展一下表单，带上姓名方便展示
+const adjustForm = ref<SummaryAdjustReqDTO & { employeeName?: string }>({
+  id: 0,
+  manualPaymentAmount: 0,
+  remark: '手工账',
+});
+const adjustRules = reactive<FormRules>({
+  manualPaymentAmount: [
+    { required: true, message: '必须填写调整金额，若清空请填 0', trigger: 'blur' },
+  ],
+  remark: [{ required: true, message: '请务必填写备注，用于财务审计留痕', trigger: 'blur' }],
+});
 /**
  * --------------------------------------------------------------------
  * 🖱️ 三、UI 交互事件区 (UI Interactions)
@@ -1018,6 +1125,59 @@ const allDeductionItems = computed(() => {
   // 过滤出所有金额 > 0 的扣项（前端展示取反即可）
   return rawItems.filter((item) => item.settlementAmount !== 0);
 });
+
+/** 打开手工调整弹窗 */
+const handleOpenAdjust = (row: SalarySummaryVO) => {
+  // 被锁定的账单绝对不允许改钱
+  if (row.lockFlag === 1) {
+    ElMessage.warning('该员工账单已被财务锁定准备发薪，请先解除锁定！');
+    return;
+  }
+  if (row.paymentStatus === 1) {
+    ElMessage.error('该账单已支付完毕，严禁篡改金额！');
+    return;
+  }
+
+  // 抹平数据并回显
+  adjustForm.value = {
+    id: row.id,
+    employeeName: row.employeeName,
+    manualPaymentAmount: row.manualPaymentAmount || 0,
+    remark: row.remark || '手工账',
+  };
+
+  if (adjustFormRef.value) {
+    adjustFormRef.value.clearValidate();
+  }
+  adjustDialog.visible = true;
+};
+
+/** 提交手工调整请求 */
+const submitAdjust = async () => {
+  if (!adjustFormRef.value) return;
+  await adjustFormRef.value.validate(async (valid) => {
+    if (valid) {
+      adjusting.value = true;
+      try {
+        const payload: SummaryAdjustReqDTO = {
+          id: adjustForm.value.id,
+          manualPaymentAmount: adjustForm.value.manualPaymentAmount,
+          remark: adjustForm.value.remark,
+        };
+        await adjustSummaryAmountApi(payload);
+        ElMessage.success('手工账调整成功，已计入总额！');
+        adjustDialog.visible = false;
+        // 刷新列表，你能立刻看到列表上的数字和黄色 [手] 标签的变化
+        getList();
+      } catch (error) {
+        console.error('手工调账失败:', error);
+      } finally {
+        adjusting.value = false;
+      }
+    }
+  });
+};
+
 /**
  * --------------------------------------------------------------------
  * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)

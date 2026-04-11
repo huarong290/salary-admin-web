@@ -5,6 +5,7 @@ import type {
   SalarySummaryVO,
   SummaryQueryReqDTO,
   SalarySummaryOperateDTO,
+  SummaryAdjustReqDTO,
 } from '@/types/salary/summary/summary.ts';
 
 /**
@@ -30,4 +31,11 @@ export function getSummaryDetailApi(id: number | string) {
 export function updateSummaryLockStatusApi(data: SalarySummaryOperateDTO) {
   // 对应后端的 @PostMapping("/batch-lock-status")
   return request.post<boolean>('/salary/summary/batch-lock-status', data);
+}
+/**
+ * 录入/修改手工发放补偿金额
+ * @param data 包含 id, manualPaymentAmount, remark 的 DTO
+ */
+export function adjustSummaryAmountApi(data: SummaryAdjustReqDTO) {
+  return request.post<boolean>('/salary/summary/adjust-manual-amount', data);
 }

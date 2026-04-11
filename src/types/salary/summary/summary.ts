@@ -61,6 +61,8 @@ export interface SalarySnapshotDTO {
   taxTotal?: number;
   /**实发合计 (Net)*/
   netSalary?: number;
+  /** 手动发放总额 (用于记录线下手工调整) */
+  manualPaymentAmount?: number;
   // 核心：三大分组明细
   /**收入明细*/
   income: SalaryDetailItemDTO[];
@@ -108,7 +110,8 @@ export interface SalarySummaryVO {
   grossSalary: number;
   /**实发工资 (税后/最终)*/
   netSalary: number;
-
+  /**手动发放总额 (用于记录线下手工调整) */
+  manualPaymentAmount?: number;
   /* ================== 🏧 状态控制 ================== */
   /**计算状态: 0-未计算, 1-成功, 2-失败*/
   calcStatus: number;
@@ -186,4 +189,14 @@ export interface SummaryInitReqDTO {
    * 2. 如果列表为空或为 null，则默认初始化全员数据
    */
   employeeIds?: (number | string)[];
+}
+
+/** 提交手工发薪补偿/扣减请求 DTO */
+export interface SummaryAdjustReqDTO {
+  /** 汇总单 ID */
+  id: number;
+  /** 手动发放总额 (正数补偿，负数扣回) */
+  manualPaymentAmount: number;
+  /** 调整备注 (审计留痕必须填) */
+  remark?: string;
 }
