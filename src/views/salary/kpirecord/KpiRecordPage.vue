@@ -12,6 +12,17 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="结算年份" prop="year">
+          <el-date-picker
+            v-model="queryParams.year"
+            type="year"
+            placeholder="选择年份"
+            value-format="YYYY"
+            clearable
+            style="width: 140px"
+            @change="handleYearChange"
+          />
+        </el-form-item>
         <el-form-item label="结算月份" prop="settlementMonth">
           <el-date-picker
             v-model="queryParams.settlementMonth"
@@ -19,6 +30,8 @@
             placeholder="选择考核月份"
             value-format="YYYYMM"
             clearable
+            style="width: 140px"
+            @change="handleMonthChange"
           />
         </el-form-item>
         <el-form-item label="单据状态" prop="auditStatus">
@@ -365,7 +378,22 @@ const toggleFullscreen = () => (isFullscreen.value = !isFullscreen.value);
 
 /** 只有未确认状态的才能被勾选用于批量定稿 */
 const canSelect = (row: SalaryKpiRecordVO) => row.auditStatus === 0;
+// 🌟 新增：年份与月份互斥联动逻辑
+const handleYearChange = (val: string | null) => {
+  if (val) {
+    // 选了年份，清空月份
+    queryParams.settlementMonth = undefined;
+  }
+  handleQuery(); // 自动触发搜索
+};
 
+const handleMonthChange = (val: string | null) => {
+  if (val) {
+    // 选了月份，清空年份
+    queryParams.year = undefined;
+  }
+  handleQuery(); // 自动触发搜索
+};
 const handleSelectionChange = (selection: SalaryKpiRecordVO[]) => {
   selectedIds.value = selection.map((item) => item.id);
   multiple.value = !selection.length;

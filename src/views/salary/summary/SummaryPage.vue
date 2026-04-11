@@ -437,6 +437,26 @@
               }}
             </span>
           </el-descriptions-item>
+          <el-descriptions-item label="手工调整 (线下)">
+            <span
+              v-if="
+                !previewDialog.data?.manualPaymentAmount ||
+                previewDialog.data.manualPaymentAmount === 0
+              "
+              class="text-secondary"
+            >
+              无
+            </span>
+            <span
+              v-else
+              class="amount-font"
+              :class="previewDialog.data.manualPaymentAmount > 0 ? 'text-success' : 'text-danger'"
+              style="font-weight: bold"
+            >
+              {{ previewDialog.data.manualPaymentAmount > 0 ? '+' : ''
+              }}{{ previewDialog.data.manualPaymentAmount.toFixed(2) }}
+            </span>
+          </el-descriptions-item>
           <el-descriptions-item label="预计实发净额">
             <b class="amount-font text-primary" style="font-size: 20px">
               {{ previewDialog.data?.netSalary?.toFixed(2) }}

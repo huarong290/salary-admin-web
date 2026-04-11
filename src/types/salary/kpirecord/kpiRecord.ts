@@ -40,6 +40,8 @@ export interface SalaryKpiRecordVO {
 export interface KpiRecordQueryReqDTO extends PageQuery {
   /** 搜索关键词 (员工姓名/工号) */
   keyword?: string;
+  /** 年份查询 */
+  year?: string;
   /** 结算月份 (如: 202604) */
   settlementMonth?: string;
   /** 审核流转状态 */
