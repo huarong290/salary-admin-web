@@ -1,5 +1,105 @@
 <template>
   <div class="dashboard-container">
+    <el-row class="welcome-row">
+      <el-col :span="24">
+        <el-card shadow="hover" class="welcome-card" body-class="welcome-card-body">
+          <div class="welcome-content">
+            <div class="greeting-area">
+              <el-avatar
+                :size="52"
+                src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
+              />
+              <div class="greeting-text">
+                <h3>早安，Harvey，今天也是火力全开的一天！</h3>
+                <span class="sub-text"
+                  >Hi, Commander. 愿你今天的代码永不报错，薪资核算分毫不差。</span
+                >
+              </div>
+            </div>
+
+            <div class="status-widgets">
+              <div class="widget-item">
+                <div class="widget-icon-box bg-warning-light">
+                  <el-icon class="text-warning"><Sunny /></el-icon>
+                </div>
+                <div class="widget-info">
+                  <span class="value">{{ weatherInfo.location }} · {{ weatherInfo.temp }}</span>
+                  <span class="label"
+                    >{{ weatherInfo.desc }} | 湿度 {{ weatherInfo.humidity }}</span
+                  >
+                </div>
+              </div>
+
+              <div class="widget-item">
+                <div class="widget-icon-box bg-purple-light">
+                  <el-icon class="text-purple" style="color: #8a2be2"><Star /></el-icon>
+                </div>
+                <div class="widget-info">
+                  <span class="value">{{ currentZodiac }} · 每日一言</span>
+
+                  <div class="hitokoto-display" :title="quote">
+                    <span class="quote-text">{{ quote }}</span>
+                    <span class="quote-from">—— 「{{ from }}」</span>
+                  </div>
+                </div>
+              </div>
+
+              <el-divider direction="vertical" class="widget-divider" />
+              <el-popover
+                placement="bottom-end"
+                :width="320"
+                trigger="click"
+                popper-style="border-radius: 12px; padding: 0;"
+              >
+                <template #reference>
+                  <div class="widget-item clickable-widget">
+                    <div class="widget-icon-box bg-success-light">
+                      <el-icon class="text-success" style="color: #67c23a"><Money /></el-icon>
+                    </div>
+                    <div class="widget-info">
+                      <span class="value"
+                        >1 {{ exchangeForm.from }} =
+                        {{ calcExchange(1, exchangeForm.from, exchangeForm.to) }}
+                        {{ exchangeForm.to }}</span
+                      >
+                      <span class="label">点此展开计算器 | 更新于 {{ updateTime || '--:--' }}</span>
+                    </div>
+                  </div>
+                </template>
+
+                <div class="exchange-calculator">
+                  <div class="ex-header">实时汇率计算器</div>
+                  <div class="ex-body">
+                    <el-input-number
+                      v-model="exchangeForm.amount"
+                      :min="0"
+                      :controls="false"
+                      style="width: 100%; margin-bottom: 12px"
+                      placeholder="输入金额"
+                    />
+                    <div class="currency-selectors">
+                      <el-select v-model="exchangeForm.from" style="width: 42%">
+                        <el-option v-for="c in currencyOptions" :key="c" :label="c" :value="c" />
+                      </el-select>
+                      <el-button circle plain type="info" @click="swapCurrency">
+                        <el-icon><Switch /></el-icon>
+                      </el-button>
+                      <el-select v-model="exchangeForm.to" style="width: 42%">
+                        <el-option v-for="c in currencyOptions" :key="c" :label="c" :value="c" />
+                      </el-select>
+                    </div>
+                    <div class="ex-result">
+                      <span class="symbol">{{ exchangeForm.to }}</span>
+                      <span class="amount">{{ exchangeResult }}</span>
+                    </div>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
     <el-row :gutter="20" class="full-height-row">
       <el-col :xs="24" :md="14" class="left-col">
         <el-card shadow="hover" class="calendar-card" body-class="calendar-card-body">
@@ -226,15 +326,19 @@
  */
 
 // 1. Vue 内置与核心依赖库
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, reactive } from 'vue';
 
 // 2. 第三方工具库与图标
 import { Solar, HolidayUtil } from 'lunar-javascript';
 import { Calendar, Operation, DocumentAdd, EditPen, Notebook } from '@element-plus/icons-vue';
+// 引入天气 Hook
+import { useWeather } from '@/hooks/useWeather';
+import { useHitokoto } from '@/hooks/useHitokoto';
 
 // 3. 架构级强化依赖
 import { evaluate, format } from 'mathjs';
 import { debounce } from 'lodash-es';
+import { useExchangeRate } from '@/hooks/useExchangeRate.ts';
 /**
  * --------------------------------------------------------------------
  * 📦 一、响应式状态区 (State Management)
@@ -405,7 +509,35 @@ const getLunarInfo = (dateStr: string) => {
   lunarCache.set(dateStr, r);
   return r;
 };
+// 计算当前选中日期的星座
+const currentZodiac = computed(() => {
+  return selectedDate.value ? getLunarInfo(selectedDate.value).xingZuo : '';
+});
 
+// 根据星座和日期动态生成专属运势
+//调用一言 Hook 提取变量
+const { quote, from, fetchQuote } = useHitokoto();
+
+//  调用自定义 Hook
+const { weatherInfo, fetchWeather } = useWeather();
+// 汇率相关逻辑
+const { rates, updateTime, currencyOptions, fetchRate, calcExchange } = useExchangeRate();
+
+const exchangeForm = reactive({
+  amount: 1,
+  from: 'USDT',
+  to: 'CNY',
+});
+
+const exchangeResult = computed(() => {
+  return calcExchange(exchangeForm.amount, exchangeForm.from, exchangeForm.to);
+});
+
+const swapCurrency = () => {
+  const temp = exchangeForm.from;
+  exchangeForm.from = exchangeForm.to;
+  exchangeForm.to = temp;
+};
 /** * 存储：加载本地备忘录数据 */
 const loadMemo = () => {
   const data = localStorage.getItem('salaryMemoMap');
@@ -462,6 +594,14 @@ onMounted(() => {
   loadMemo();
   selectDate(selectedDate.value);
   loadNotes();
+
+  // 挂载时获取宿务的实时天气
+  fetchWeather();
+  // 挂载时获取每日一言
+  fetchQuote();
+
+  // 挂载时获取基准汇率
+  fetchRate('CNY');
 });
 </script>
 
@@ -885,7 +1025,221 @@ onMounted(() => {
     }
   }
 }
+/* ========================
+    欢迎看板 (Welcome Header)
+======================== */
+.welcome-row {
+  margin-bottom: 16px;
+}
 
+:deep(.welcome-card-body) {
+  padding: 16px 24px;
+}
+
+.welcome-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.greeting-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  h3 {
+    margin: 0 0 4px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+  .sub-text {
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.status-widgets {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.widget-divider {
+  height: 36px;
+  margin: 0;
+}
+
+.widget-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .widget-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+
+    &.bg-warning-light {
+      background: var(--el-color-warning-light-9);
+      html.dark & {
+        background: rgba(230, 162, 60, 0.15);
+      }
+    }
+    &.bg-purple-light {
+      background: #f3e8ff;
+      html.dark & {
+        background: rgba(138, 43, 226, 0.15);
+      }
+    }
+  }
+
+  .widget-info {
+    display: flex;
+    flex-direction: column;
+
+    .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      margin-bottom: 2px;
+    }
+    .label {
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+/* 适配新增头部后的高度 */
+.dashboard-container {
+  /* 减去头部卡片大约的高度 */
+  height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+}
+.full-height-row {
+  flex: 1;
+  min-height: 0; /* 防止内容撑破 flex 容器 */
+}
+/* ========================
+   🌟 一言 (Hitokoto) 专属样式
+======================== */
+.hitokoto-display {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 13px;
+  max-width: 420px; /* 防止句子过长撑破布局 */
+
+  .quote-text {
+    color: var(--el-text-color-regular);
+    font-style: italic; /* 增加一点文学气息的斜体 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .quote-from {
+    color: var(--el-text-color-secondary);
+    margin-left: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ========================
+   🌟 汇率模块专属样式
+======================== */
+.bg-success-light {
+  background: var(--el-color-success-light-9);
+  html.dark & {
+    background: rgba(103, 194, 58, 0.15);
+  }
+}
+
+.clickable-widget {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-left: -8px;
+
+  &:hover {
+    background: var(--el-fill-color-light);
+    transform: translateY(-1px);
+    html.dark & {
+      background: #1a1a1a;
+    }
+  }
+  &:active {
+    transform: translateY(1px);
+    opacity: 0.8;
+  }
+}
+
+.exchange-calculator {
+  .ex-header {
+    background: var(--el-fill-color-light);
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--el-text-color-primary);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    html.dark & {
+      background: #1a1a1a;
+      border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  .ex-body {
+    padding: 16px;
+
+    .currency-selectors {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .ex-result {
+      background: var(--el-color-primary-light-9);
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      color: var(--el-color-primary);
+
+      html.dark & {
+        background: rgba(64, 158, 255, 0.1);
+      }
+
+      .symbol {
+        font-size: 14px;
+        margin-right: 8px;
+        opacity: 0.8;
+      }
+      .amount {
+        font-size: 24px;
+        font-weight: bold;
+        font-variant-numeric: tabular-nums;
+        font-family: 'Inter', 'SF Mono', monospace;
+      }
+    }
+  }
+}
 /* =====================================================================
    🚀 风格联动：精准响应全局 MenuStyle 切换 (Brilliant vs Breeze)
    ===================================================================== */
