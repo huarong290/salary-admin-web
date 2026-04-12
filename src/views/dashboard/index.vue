@@ -1368,53 +1368,27 @@ onMounted(() => {
 }
 
 /* =====================================================================
-   🚀 风格联动：精准响应全局 MenuStyle 切换 (Brilliant vs Breeze)
+   🌟 日历高亮统一样式 (自适应明暗主题与全局品牌色)
    ===================================================================== */
+.date-cell-inner.is-selected {
+  /* 使用全局主色调作为背景，并带有 10% 的透明度 */
+  background-color: var(--el-color-primary-light-9) !important;
+  /* 边框使用主色调 */
+  border: 1px solid var(--el-color-primary) !important;
 
-/* --- 风格 A：实心高亮风 (Brilliant) --- */
-html[data-menu-style='brilliant'] {
-  .el-card {
-    border-radius: 8px;
+  html.dark & {
+    /* 暗黑模式下背景透明度降低，防止刺眼 */
+    background-color: rgba(var(--el-color-primary-rgb), 0.15) !important;
+    border: 1px solid var(--el-color-primary) !important;
   }
 
-  /* 万年历高亮选中态：实心粗暴方块 */
-  .date-cell-inner.is-selected {
-    background-color: var(--el-color-primary) !important;
-    border: none !important;
-
-    .solar-day,
-    .lunar-day {
-      color: #ffffff !important;
-    }
-
-    .memo-dot {
-      background: #ffffff !important;
-    }
+  .solar-day {
+    color: var(--el-color-primary) !important;
+    font-weight: bold;
   }
 
-  /* 计算器硬朗按键 */
-  .calc-keyboard .key-btn {
-    border-radius: 4px;
-    box-shadow: none;
-  }
-}
-
-/* --- 风格 B：柔和呼吸风 (Breeze) --- */
-html[data-menu-style='breeze'] {
-  .el-card {
-    border-color: var(--el-border-color-extra-light);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
-  }
-
-  /* 万年历呼吸选中态：复古金框暖底 */
-  .date-cell-inner.is-selected {
-    background-color: #fff9f0 !important;
-    border: 2px solid #f59e0b !important;
-
-    html.dark & {
-      background-color: rgba(245, 158, 11, 0.1) !important;
-      border-color: #d97706 !important;
-    }
+  .lunar-day {
+    color: var(--el-color-primary) !important;
   }
 }
 </style>

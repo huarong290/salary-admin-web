@@ -48,9 +48,15 @@ const WEATHER_CODE_MAP: Record<number, string> = {
  * @param locationName 默认展示的城市名
  */
 export function useWeather(
-  initialLat = 17.6132,
-  initialLon = 121.727,
-  locationName = '卡加延省/土格加劳 (Tuguegarao)'
+  // initialLat = 18.4727
+  // initialLon = 122.1458
+  //locationName = 圣安那 (Santa Ana, Cagayan)
+  //initialLat = 17.6132
+  //initialLon = 121.7270
+  //locationName =卡加延省/土格加劳 (Tuguegarao)
+  initialLat = 6.9214,
+  initialLon = 122.079,
+  locationName = '三宝颜 (Zamboanga)'
 ) {
   // 响应式状态
   const loading = ref(false);
