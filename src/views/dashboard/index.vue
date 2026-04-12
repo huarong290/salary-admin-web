@@ -13,13 +13,45 @@
                 <div class="calendar-toolbar">
                   <el-button-group size="small" class="nav-group">
                     <el-button @click="changeYear(-1)">«</el-button>
-                    <el-button plain class="ym-label">{{ year }}年</el-button>
+                    <el-dropdown trigger="click" @command="handleYearSelect">
+                      <el-button plain class="ym-label">
+                        {{ year }}年 <el-icon style="margin-left: 4px"><ArrowDown /></el-icon>
+                      </el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu class="custom-scroll-menu">
+                          <el-dropdown-item
+                            v-for="y in yearOptions"
+                            :key="y"
+                            :command="y"
+                            :class="{ 'is-active': y === year }"
+                          >
+                            {{ y }}年
+                          </el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
                     <el-button @click="changeYear(1)">»</el-button>
                   </el-button-group>
 
                   <el-button-group size="small" class="nav-group" style="margin: 0 10px">
                     <el-button @click="changeMonth(-1)">‹</el-button>
-                    <el-button plain class="ym-label">{{ month }}月</el-button>
+                    <el-dropdown trigger="click" @command="handleMonthSelect">
+                      <el-button plain class="ym-label">
+                        {{ month }}月 <el-icon style="margin-left: 4px"><ArrowDown /></el-icon>
+                      </el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu class="custom-scroll-menu">
+                          <el-dropdown-item
+                            v-for="m in 12"
+                            :key="m"
+                            :command="m"
+                            :class="{ 'is-active': m === month }"
+                          >
+                            {{ m }}月
+                          </el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
                     <el-button @click="changeMonth(1)">›</el-button>
                   </el-button-group>
 
@@ -64,6 +96,16 @@
             <div class="card-header">
               <span class="title">
                 <el-icon><Notebook /></el-icon> {{ selectedDate }} 备忘录
+                <el-tag
+                  v-if="selectedDate"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                  round
+                  style="margin-left: 10px; font-weight: normal"
+                >
+                  {{ getLunarInfo(selectedDate).xingZuo }}
+                </el-tag>
               </span>
             </div>
           </template>
@@ -184,12 +226,15 @@
  */
 
 // 1. Vue 内置与核心依赖库
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 // 2. 第三方工具库与图标
 import { Solar, HolidayUtil } from 'lunar-javascript';
 import { Calendar, Operation, DocumentAdd, EditPen, Notebook } from '@element-plus/icons-vue';
 
+// 3. 架构级强化依赖
+import { evaluate, format } from 'mathjs';
+import { debounce } from 'lodash-es';
 /**
  * --------------------------------------------------------------------
  * 📦 一、响应式状态区 (State Management)
@@ -235,7 +280,30 @@ const changeMonth = (n: number) => {
   currentDate.value = d;
   syncYM();
 };
+/** 生成年份下拉列表 (当前年份前后10年) */
+const yearOptions = computed(() => {
+  const current = new Date().getFullYear();
+  const options = [];
+  for (let i = current - 10; i <= current + 10; i++) {
+    options.push(i);
+  }
+  return options;
+});
+/** 下拉精准选择年份 */
+const handleYearSelect = (targetYear: number) => {
+  const d = new Date(currentDate.value);
+  d.setFullYear(targetYear);
+  currentDate.value = d;
+  syncYM();
+};
 
+/** 下拉精准选择月份 */
+const handleMonthSelect = (targetMonth: number) => {
+  const d = new Date(currentDate.value);
+  d.setMonth(targetMonth - 1); // JS 中月份是 0 索引 (0-11)
+  currentDate.value = d;
+  syncYM();
+};
 /** 日历返回今天 */
 const goToday = () => {
   const d = new Date();
@@ -265,12 +333,17 @@ const clear = () => {
 /** 计算器：退格删除 */
 const del = () => (display.value = display.value.slice(0, -1));
 
-/** 计算器：执行计算 */
+/** *  计算器：执行计算 (企业级重构版)
+ * 采用 mathjs 替代 Function/eval，杜绝 JS 浮点数黑洞 (如 0.1+0.2=0.30000004) 及 XSS 注入风险
+ */
 const calc = () => {
+  if (!display.value) return; // 为空不计算
+
   try {
     history.value = display.value + ' =';
-    // 注意：生产环境复杂计算建议使用 mathjs，此处为轻量级实现
-    display.value = String(Function('return ' + display.value)());
+    // evaluate 解析公式，format 限制最高 14 位精度并自动抹平尾数误差
+    const result = evaluate(display.value);
+    display.value = String(format(result, { precision: 14 }));
   } catch {
     display.value = '错误';
   }
@@ -294,6 +367,8 @@ function formatDate(d: Date) {
 
 /** * 核心：获取指定日期的农历、节假日及班休标志 */
 const getLunarInfo = (dateStr: string) => {
+  // 如果输入为空，直接返回默认值防报错
+  if (!dateStr) return { text: '', isRedHoliday: false, badge: '', xingZuo: '' };
   if (lunarCache.has(dateStr)) return lunarCache.get(dateStr);
 
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -303,7 +378,8 @@ const getLunarInfo = (dateStr: string) => {
   let text: string;
   let isRedHoliday = false;
   let badge = '';
-
+  // 获取星座并拼接“座”字
+  const xingZuo = solar.getXingZuo() + '座';
   const h = HolidayUtil.getHoliday(y, m, d);
   if (h) badge = h.isWork() ? '班' : '休';
 
@@ -325,7 +401,7 @@ const getLunarInfo = (dateStr: string) => {
   }
   if (badge === '休') isRedHoliday = true;
 
-  const r = { text, isRedHoliday, badge };
+  const r = { text, isRedHoliday, badge, xingZuo };
   lunarCache.set(dateStr, r);
   return r;
 };
@@ -336,11 +412,13 @@ const loadMemo = () => {
   if (data) memoMap.value = JSON.parse(data);
 };
 
-/** * 存储：保存当前日期备忘录到本地 */
-const saveMemo = () => {
+/** * 保存当前日期备忘录到本地 (防抖保护版)
+ * 用户连续输入时不触发，停下键盘 500ms 后静默存盘
+ */
+const saveMemo = debounce(() => {
   memoMap.value[selectedDate.value] = currentMemo.value;
   localStorage.setItem('salaryMemoMap', JSON.stringify(memoMap.value));
-};
+}, 500);
 
 /** * 存储：加载本地计算器暂存记录 */
 const loadNotes = () => {
@@ -348,10 +426,11 @@ const loadNotes = () => {
   if (saved) calcNotes.value = saved;
 };
 
-/** * 存储：保存计算器暂存记录到本地 */
-const saveNotesToLocal = () => {
+/** * 保存计算器暂存记录到本地 (防抖保护版)
+ */
+const saveNotesToLocal = debounce(() => {
   localStorage.setItem('salaryCalcNotes', calcNotes.value);
-};
+}, 500);
 
 /** * 业务：将计算器当前结果追加至暂存区 */
 const recordToNote = () => {
@@ -544,7 +623,29 @@ onMounted(() => {
     border-color: rgba(255, 255, 255, 0.05);
   }
 }
+/* 融合 Dropdown 与 ButtonGroup */
+.nav-group {
+  display: inline-flex;
+  :deep(.el-dropdown) {
+    display: inline-flex;
+    .el-button {
+      border-radius: 0; /* 抹平中间按钮的圆角 */
+      margin-left: -1px; /* 解决边框重叠变粗 */
+    }
+  }
+}
 
+/* 下拉菜单滚动与选中高亮 */
+.custom-scroll-menu {
+  max-height: 250px;
+  overflow-y: auto;
+
+  .is-active {
+    color: var(--el-color-primary);
+    font-weight: bold;
+    background-color: var(--el-color-primary-light-9);
+  }
+}
 /* 单元格核心交互设计 */
 .date-cell-inner {
   position: relative;
