@@ -19,8 +19,10 @@
 
             <div class="status-widgets">
               <div class="widget-item">
-                <div class="widget-icon-box bg-warning-light">
-                  <el-icon class="text-warning"><Sunny /></el-icon>
+                <div class="widget-icon-box" :class="weatherTheme.bgClass">
+                  <el-icon :class="weatherTheme.colorClass">
+                    <component :is="weatherTheme.icon" />
+                  </el-icon>
                 </div>
                 <div class="widget-info">
                   <span class="value">{{ weatherInfo.location }} · {{ weatherInfo.temp }}</span>
@@ -32,7 +34,9 @@
 
               <div class="widget-item">
                 <div class="widget-icon-box bg-purple-light">
-                  <el-icon class="text-purple" style="color: #8a2be2"><Star /></el-icon>
+                  <el-icon class="text-purple" style="color: #8a2be2">
+                    <Star />
+                  </el-icon>
                 </div>
                 <div class="widget-info">
                   <span class="value">{{ currentZodiac }} · 每日一言</span>
@@ -54,7 +58,9 @@
                 <template #reference>
                   <div class="widget-item clickable-widget">
                     <div class="widget-icon-box bg-success-light">
-                      <el-icon class="text-success" style="color: #67c23a"><Money /></el-icon>
+                      <el-icon class="text-success" style="color: #67c23a">
+                        <Money />
+                      </el-icon>
                     </div>
                     <div class="widget-info">
                       <span class="value"
@@ -82,7 +88,9 @@
                         <el-option v-for="c in currencyOptions" :key="c" :label="c" :value="c" />
                       </el-select>
                       <el-button circle plain type="info" @click="swapCurrency">
-                        <el-icon><Switch /></el-icon>
+                        <el-icon>
+                          <Switch />
+                        </el-icon>
                       </el-button>
                       <el-select v-model="exchangeForm.to" style="width: 42%">
                         <el-option v-for="c in currencyOptions" :key="c" :label="c" :value="c" />
@@ -107,7 +115,9 @@
             <template #header>
               <div class="custom-calendar-header">
                 <div class="title">
-                  <el-icon class="header-icon"><Calendar /></el-icon>
+                  <el-icon class="header-icon">
+                    <Calendar />
+                  </el-icon>
                   财务万年历日程
                 </div>
                 <div class="calendar-toolbar">
@@ -115,7 +125,10 @@
                     <el-button @click="changeYear(-1)">«</el-button>
                     <el-dropdown trigger="click" @command="handleYearSelect">
                       <el-button plain class="ym-label">
-                        {{ year }}年 <el-icon style="margin-left: 4px"><ArrowDown /></el-icon>
+                        {{ year }}年
+                        <el-icon style="margin-left: 4px">
+                          <ArrowDown />
+                        </el-icon>
                       </el-button>
                       <template #dropdown>
                         <el-dropdown-menu class="custom-scroll-menu">
@@ -137,7 +150,10 @@
                     <el-button @click="changeMonth(-1)">‹</el-button>
                     <el-dropdown trigger="click" @command="handleMonthSelect">
                       <el-button plain class="ym-label">
-                        {{ month }}月 <el-icon style="margin-left: 4px"><ArrowDown /></el-icon>
+                        {{ month }}月
+                        <el-icon style="margin-left: 4px">
+                          <ArrowDown />
+                        </el-icon>
                       </el-button>
                       <template #dropdown>
                         <el-dropdown-menu class="custom-scroll-menu">
@@ -155,7 +171,7 @@
                     <el-button @click="changeMonth(1)">›</el-button>
                   </el-button-group>
 
-                  <el-button size="small" type="primary" @click="goToday"> 回到今天 </el-button>
+                  <el-button size="small" type="primary" @click="goToday"> 回到今天</el-button>
                 </div>
               </div>
             </template>
@@ -243,7 +259,9 @@
                     :disabled="!display"
                     @click="recordToNote"
                   >
-                    <el-icon><DocumentAdd /></el-icon>
+                    <el-icon>
+                      <DocumentAdd />
+                    </el-icon>
                   </el-button>
                 </el-tooltip>
               </div>
@@ -330,7 +348,24 @@ import { ref, onMounted, computed, reactive } from 'vue';
 
 // 2. 第三方工具库与图标
 import { Solar, HolidayUtil } from 'lunar-javascript';
-import { Calendar, Operation, DocumentAdd, EditPen, Notebook } from '@element-plus/icons-vue';
+//增加 PartlyCloudy, Cloudy, Pouring, Lightning, Snowy
+import {
+  Calendar,
+  Operation,
+  DocumentAdd,
+  EditPen,
+  Notebook,
+  Sunny,
+  PartlyCloudy,
+  Cloudy,
+  Pouring,
+  Lightning,
+  Star,
+  ArrowDown,
+  Money,
+  Switch,
+  Drizzling,
+} from '@element-plus/icons-vue';
 // 引入天气 Hook
 import { useWeather } from '@/hooks/useWeather';
 import { useHitokoto } from '@/hooks/useHitokoto';
@@ -339,6 +374,7 @@ import { useHitokoto } from '@/hooks/useHitokoto';
 import { evaluate, format } from 'mathjs';
 import { debounce } from 'lodash-es';
 import { useExchangeRate } from '@/hooks/useExchangeRate.ts';
+
 /**
  * --------------------------------------------------------------------
  * 📦 一、响应式状态区 (State Management)
@@ -520,6 +556,32 @@ const { quote, from, fetchQuote } = useHitokoto();
 
 //  调用自定义 Hook
 const { weatherInfo, fetchWeather } = useWeather();
+// 动态计算天气图标与颜色主题
+const weatherTheme = computed(() => {
+  const desc = weatherInfo.value.desc || '';
+  if (desc.includes('晴'))
+    return { icon: Sunny, colorClass: 'text-warning', bgClass: 'bg-warning-light' };
+  if (desc.includes('多云'))
+    return { icon: PartlyCloudy, colorClass: 'text-warning', bgClass: 'bg-warning-light' };
+  if (desc.includes('阴') || desc.includes('雾'))
+    return {
+      icon: Cloudy,
+      colorClass: 'text-info',
+      bgClass: 'bg-info-light',
+    };
+  if (desc.includes('雷'))
+    return { icon: Lightning, colorClass: 'text-danger', bgClass: 'bg-danger-light' };
+  if (desc.includes('雨'))
+    return { icon: Pouring, colorClass: 'text-primary', bgClass: 'bg-primary-light' };
+  if (desc.includes('雪') || desc.includes('冰'))
+    return {
+      icon: Drizzling,
+      colorClass: 'text-primary',
+      bgClass: 'bg-primary-light',
+    };
+  // 默认兜底：晴天
+  return { icon: Sunny, colorClass: 'text-warning', bgClass: 'bg-warning-light' };
+});
 // 汇率相关逻辑
 const { updateTime, currencyOptions, fetchRate, calcExchange } = useExchangeRate();
 
@@ -656,11 +718,13 @@ onMounted(() => {
   html.dark & {
     background: #0f0f10;
     border: 1px solid rgba(255, 255, 255, 0.06);
+
     &:hover {
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
     }
   }
 }
+
 /* ===== 卡片通用头部 ===== */
 .card-header {
   display: flex;
@@ -673,6 +737,7 @@ onMounted(() => {
     font-weight: 600;
     font-size: 16px;
     color: var(--el-text-color-primary);
+
     .header-icon {
       margin-right: 8px;
       font-size: 18px;
@@ -680,6 +745,7 @@ onMounted(() => {
     }
   }
 }
+
 /*
 ========================
    3.万年历深度定制
@@ -712,6 +778,7 @@ onMounted(() => {
     font-size: 16px;
     display: flex;
     align-items: center;
+
     .header-icon {
       margin-right: 8px;
       color: var(--el-color-primary);
@@ -721,11 +788,13 @@ onMounted(() => {
   .calendar-toolbar {
     display: flex;
     align-items: center;
+
     .ym-label {
       width: 70px;
       font-weight: 600;
       color: var(--el-text-color-primary);
       cursor: default;
+
       html.dark & {
         color: #ccc;
       }
@@ -737,6 +806,7 @@ onMounted(() => {
 :deep(.el-calendar__body) {
   padding: 0 8px 12px;
 }
+
 :deep(.el-calendar-table thead th) {
   font-size: 13px;
   font-weight: 600;
@@ -757,17 +827,22 @@ onMounted(() => {
   padding: 0;
   border: none;
 }
+
 :deep(.el-calendar-table td) {
   border: 1px solid var(--el-border-color-extra-light);
+
   html.dark & {
     border-color: rgba(255, 255, 255, 0.05);
   }
 }
+
 /* 融合 Dropdown 与 ButtonGroup */
 .nav-group {
   display: inline-flex;
+
   :deep(.el-dropdown) {
     display: inline-flex;
+
     .el-button {
       border-radius: 0; /* 抹平中间按钮的圆角 */
       margin-left: -1px; /* 解决边框重叠变粗 */
@@ -786,6 +861,7 @@ onMounted(() => {
     background-color: var(--el-color-primary-light-9);
   }
 }
+
 /* 单元格核心交互设计 */
 .date-cell-inner {
   position: relative;
@@ -802,6 +878,7 @@ onMounted(() => {
 
   &:hover {
     background: var(--el-fill-color-light);
+
     html.dark & {
       background: #1a1a1a;
     }
@@ -818,6 +895,7 @@ onMounted(() => {
     font-weight: 600;
     color: var(--el-text-color-primary);
     font-variant-numeric: tabular-nums;
+
     html.dark & {
       color: #e5eaf3;
     }
@@ -832,6 +910,7 @@ onMounted(() => {
     margin-top: 2px;
     color: var(--el-text-color-secondary);
     letter-spacing: 0.5px;
+
     html.dark & {
       color: #a3a6ad;
     }
@@ -856,6 +935,7 @@ onMounted(() => {
     &.badge-rest {
       background: var(--el-color-danger);
     }
+
     &.badge-work {
       background: var(--el-color-info);
     }
@@ -889,6 +969,7 @@ onMounted(() => {
   background: var(--el-fill-color-extra-light);
   border-radius: 12px;
   padding: 14px;
+
   html.dark & {
     background: #111;
   }
@@ -956,9 +1037,11 @@ onMounted(() => {
   .key-num {
     background: var(--el-bg-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
     &:hover {
       background: var(--el-fill-color-light);
     }
+
     html.dark & {
       background: #1a1a1a;
     }
@@ -969,6 +1052,7 @@ onMounted(() => {
     color: var(--el-color-primary);
     font-size: 20px;
     box-shadow: 0 2px 6px rgba(var(--el-color-primary-rgb), 0.2);
+
     html.dark & {
       background: rgba(var(--el-color-primary-rgb), 0.15);
     }
@@ -1010,6 +1094,7 @@ onMounted(() => {
 
 .mac-textarea {
   flex: 1;
+
   :deep(textarea) {
     height: 100%;
     border-radius: 10px;
@@ -1025,6 +1110,7 @@ onMounted(() => {
     }
   }
 }
+
 /* ========================
     欢迎看板 (Welcome Header)
 ======================== */
@@ -1055,6 +1141,7 @@ onMounted(() => {
     font-weight: 600;
     color: var(--el-text-color-primary);
   }
+
   .sub-text {
     font-size: 13px;
     color: var(--el-text-color-secondary);
@@ -1085,15 +1172,46 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     font-size: 20px;
-
+    /* 晴天/多云：橙黄 */
     &.bg-warning-light {
       background: var(--el-color-warning-light-9);
+
       html.dark & {
         background: rgba(230, 162, 60, 0.15);
       }
     }
+
+    /*  新增 阴天/雾：灰色 */
+    &.bg-info-light {
+      background: var(--el-color-info-light-9);
+
+      html.dark & {
+        background: rgba(144, 147, 153, 0.15);
+      }
+    }
+
+    /*  新增 雨/雪：蓝色 */
+    &.bg-primary-light {
+      background: var(--el-color-primary-light-9);
+
+      html.dark & {
+        background: rgba(64, 158, 255, 0.15);
+      }
+    }
+
+    /*  新增 雷暴：红色 */
+    &.bg-danger-light {
+      background: var(--el-color-danger-light-9);
+
+      html.dark & {
+        background: rgba(245, 108, 108, 0.15);
+      }
+    }
+
+    /* 原有的紫色 (每日一言用) */
     &.bg-purple-light {
       background: #f3e8ff;
+
       html.dark & {
         background: rgba(138, 43, 226, 0.15);
       }
@@ -1110,6 +1228,7 @@ onMounted(() => {
       color: var(--el-text-color-primary);
       margin-bottom: 2px;
     }
+
     .label {
       font-size: 12px;
       color: var(--el-text-color-secondary);
@@ -1128,10 +1247,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
+
 .full-height-row {
   flex: 1;
   min-height: 0; /* 防止内容撑破 flex 容器 */
 }
+
 /* ========================
    🌟 一言 (Hitokoto) 专属样式
 ======================== */
@@ -1164,6 +1285,7 @@ onMounted(() => {
 ======================== */
 .bg-success-light {
   background: var(--el-color-success-light-9);
+
   html.dark & {
     background: rgba(103, 194, 58, 0.15);
   }
@@ -1181,10 +1303,12 @@ onMounted(() => {
   &:hover {
     background: var(--el-fill-color-light);
     transform: translateY(-1px);
+
     html.dark & {
       background: #1a1a1a;
     }
   }
+
   &:active {
     transform: translateY(1px);
     opacity: 0.8;
@@ -1199,6 +1323,7 @@ onMounted(() => {
     font-size: 14px;
     color: var(--el-text-color-primary);
     border-bottom: 1px solid var(--el-border-color-lighter);
+
     html.dark & {
       background: #1a1a1a;
       border-bottom-color: rgba(255, 255, 255, 0.05);
@@ -1231,6 +1356,7 @@ onMounted(() => {
         margin-right: 8px;
         opacity: 0.8;
       }
+
       .amount {
         font-size: 24px;
         font-weight: bold;
@@ -1240,6 +1366,7 @@ onMounted(() => {
     }
   }
 }
+
 /* =====================================================================
    🚀 风格联动：精准响应全局 MenuStyle 切换 (Brilliant vs Breeze)
    ===================================================================== */
@@ -1259,6 +1386,7 @@ html[data-menu-style='brilliant'] {
     .lunar-day {
       color: #ffffff !important;
     }
+
     .memo-dot {
       background: #ffffff !important;
     }
