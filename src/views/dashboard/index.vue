@@ -521,7 +521,7 @@ const { quote, from, fetchQuote } = useHitokoto();
 //  调用自定义 Hook
 const { weatherInfo, fetchWeather } = useWeather();
 // 汇率相关逻辑
-const { rates, updateTime, currencyOptions, fetchRate, calcExchange } = useExchangeRate();
+const { updateTime, currencyOptions, fetchRate, calcExchange } = useExchangeRate();
 
 const exchangeForm = reactive({
   amount: 1,
