@@ -12,6 +12,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@conventional-changelog/git-client": "^2.7.0",
     "@element-plus/icons-vue": "^2.3.2",
     "@vueuse/core": "^14.2.1",
     "axios": "^1.13.6",
