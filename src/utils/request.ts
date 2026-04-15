@@ -191,11 +191,13 @@ service.interceptors.response.use(
         config.headers!['Authorization'] = `${authStore.tokenType} ${newToken}`;
         return service(config);
       } catch (refreshError) {
-        // 6. 刷新也失败（说明 RefreshToken 也过期或被盗用）
+        // 6. 刷新也失败（说明 RefreshToken 也过期或被盗用 必须在 logout 之前释放锁！否则死锁！）
+        isRefreshing = false;
         // 刷新 Token 也过期时，必须逐个 reject 队列中的请求，否则页面将永久卡死
         requests.forEach((task) => task.reject(refreshError));
         requests = [];
-        await authStore.logout(); // 内部含跳转登录页
+        //  通知 authStore 执行纯本地登出（传入 true，跳过调用后端接口） 内部含跳转登录页
+        await authStore.logout(true);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false; // 释放锁

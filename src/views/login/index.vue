@@ -71,7 +71,7 @@
 
 // [1] Vue 核心钩子与原生生态
 import { reactive, ref, onMounted, markRaw } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 // [2] 第三方 UI 组件库与图标
 import { ElMessage } from 'element-plus';
@@ -92,7 +92,7 @@ import { getCaptchaApi } from '@/api/auth';
 const router = useRouter();
 const authStore = useAuthStore();
 const userStore = useUserStore();
-
+const route = useRoute();
 // [UI 控制状态]
 const loading = ref(false);
 const captchaImg = ref('');
@@ -177,7 +177,14 @@ const performLogin = async () => {
     userStore.clearUserInfo();
 
     ElMessage.success('欢迎回来');
-    await router.push('/');
+    //  3. 智能路由跳转逻辑 (替换原来的 await router.push('/'))
+    const redirectPath = route.query.redirect as string;
+    if (redirectPath) {
+      // 使用 replace 而不是 push，防止用户点击浏览器“后退”按钮又回到登录页
+      await router.replace(redirectPath);
+    } else {
+      await router.replace('/');
+    }
   } catch (error) {
     // 登录失败必须刷新验证码
     await fetchCaptcha();

@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { loginApi, logoutApi, refreshTokenApi } from '@/api/auth';
 import type { UserLoginReqDTO, TokenResDTO } from '@/types/auth/auth';
-
+import router from '@/router';
 /**
  * 🔐 身份认证与令牌状态管理 (Setup Store 范式)
  * 职责：管理登录、登出、无感刷新 Token 的核心生命周期，负责安全地存储和清理鉴权凭证
@@ -50,10 +50,10 @@ export const useAuthStore = defineStore(
      * 安全登出 (异步增强防御版)
      * 逻辑：先尝试通知后端销毁 Redis 中的 Token 黑名单，然后彻底清空前端所有鉴权相关的本地缓存，最后重定向。
      */
-    const logout = async () => {
+    const logout = async (isLocalOnly = false) => {
       try {
-        // 仅在持有令牌时发起登出请求，避免无效的网络消耗或引发二次 401 报错
-        if (accessToken.value) {
+        // 仅在持有令牌时发起登出请求，避免无效的网络消耗或引发二次 401 报错如果是强制本地登出，直接跳过后端接口请求，打破死锁！
+        if (accessToken.value && !isLocalOnly) {
           await logoutApi();
         }
       } catch (error) {
@@ -71,8 +71,19 @@ export const useAuthStore = defineStore(
         localStorage.removeItem('user-store');
         sessionStorage.clear(); // Session 通常只存临时会话状态，清空是安全的
 
-        // 3. 强制重定向到登录页 (跳出 SPA 路由，彻底清理 Vue 内存树，是最干净的做法)
-        window.location.href = '/login';
+        // 3. 终极防御版重定向 (绕过 Vue Router 生命周期，杜绝白屏)
+        const currentPath = router.currentRoute.value.fullPath;
+        // 确保不在登录页才跳转
+        if (window.location.pathname !== '/login') {
+          // 如果当前路由不是首页 '/'，则带上 redirect 记忆参数
+          const query =
+            currentPath && currentPath !== '/'
+              ? `?redirect=${encodeURIComponent(currentPath)}`
+              : '';
+
+          // 使用原生 window.location.href 强制刷新浏览器上下文，是最干净的退出方式
+          window.location.href = `/login${query}`;
+        }
       }
     };
 

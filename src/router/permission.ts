@@ -58,17 +58,18 @@ router.beforeEach(async (to, _from, next) => {
       dynamicRoutes.forEach((r) => router.addRoute(r));
       router.addRoute({ path: '/:pathMatch(.*)*', redirect: '/404', meta: { hidden: true } });
 
-      // 🌟 核心优化：动态添加路由后，必须中断当前导航，触发重定向重新走一遍守卫！
+      //动态添加路由后，必须中断当前导航，触发重定向重新走一遍守卫！
       // 这样就能完美复用下方的所有逻辑，彻底消灭代码冗余！
       return next({ ...to, replace: true });
     } catch (err) {
       console.error('获取用户信息失败:', err);
-      await authStore.logout();
+      //  传入 true，强制走本地登出，防止再次触发 401 网络请求死锁
+      await authStore.logout(true);
       return next('/login');
     }
   }
 
-  // 四、🌟 统一的路由降级拦截策略 (此时路由保证已完全挂载)
+  // 四、统一的路由降级拦截策略 (此时路由保证已完全挂载)
   // 注意：常驻路由 / 已经自动 redirect 到了 /dashboard，所以 to.path 此时是 /dashboard
   if (to.path === '/dashboard' || to.path === '/') {
     const hasDashboard = router.getRoutes().some((r) => r.path === '/dashboard');
