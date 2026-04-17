@@ -55,3 +55,25 @@ export interface CaptchaResDTO {
   /** 是否启用验证码动态开关 (true:需输入, false:隐藏输入框) */
   captchaEnabled: boolean;
 }
+
+/**
+ * 混合登录响应对象 (LoginResultDTO)
+ * 兼容直接下发 Token 或触发 MFA 两阶段验证
+ */
+export interface LoginResultDTO extends Partial<TokenResDTO> {
+  /** 是否需要进行两阶段验证 (MFA) */
+  requireMfa?: boolean;
+  /** MFA 临时令牌 (用于第二步换取真实 Token) */
+  mfaToken?: string;
+  /** 当前用户支持的 MFA 类型列表，例如 ['GOOGLE', 'HAIYUE'] */
+  supportedTypes?: string[];
+}
+
+/**
+ * MFA 验证请求参数
+ */
+export interface MfaVerifyReqDTO {
+  mfaToken: string;
+  mfaType: string;
+  code: string;
+}

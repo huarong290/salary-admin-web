@@ -3,7 +3,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { loginApi, logoutApi, refreshTokenApi } from '@/api/auth';
-import type { UserLoginReqDTO, TokenResDTO } from '@/types/auth/auth';
+import type { UserLoginReqDTO, TokenResDTO, LoginResultDTO } from '@/types/auth/auth';
 import router from '@/router';
 /**
  * 🔐 身份认证与令牌状态管理 (Setup Store 范式)
@@ -30,20 +30,35 @@ export const useAuthStore = defineStore(
     const expiresIn = ref<number>(0);
 
     // ==================== 2. 动作 (Actions) ====================
-
     /**
-     *  用户登录
+     * 独立出设置 Token 的动作，方便多场景(常规登录、MFA验证后)复用
+     */
+    /**
+     * 放宽入参类型限制为 Partial<TokenResDTO>，兼容 LoginResultDTO
+     * 增加 || '' 兜底，完美解决 TypeScript 类型不匹配报错
+     */
+    const setTokens = (res: Partial<TokenResDTO>) => {
+      // 这里的 || '' 可以确保即使是 undefined，也会被安全转换为 string
+      accessToken.value = res.accessToken ?? '';
+      refreshToken.value = res.refreshToken ?? '';
+      tokenType.value = res.tokenType ?? 'Bearer';
+      deviceId.value = res.deviceId ?? '';
+      expiresIn.value = res.expiresIn ?? 0;
+    };
+    /**
+     *  用户登录 (第一阶段)
+     *  调整：支持返回 MFA 状态，若无需 MFA 则直接设置 Token
      * @param loginForm 登录表单数据 (账号、密码、验证码等)
-     * @returns 成功返回 true，失败由底层的 request.ts 拦截报错
+     * @returns 返回 LoginResultDTO (包含是否需要 MFA 的标志)
      */
     const login = async (loginForm: UserLoginReqDTO) => {
-      const res: TokenResDTO = await loginApi(loginForm);
-      accessToken.value = res.accessToken;
-      refreshToken.value = res.refreshToken;
-      tokenType.value = res.tokenType || 'Bearer';
-      deviceId.value = res.deviceId || '';
-      expiresIn.value = res.expiresIn || 0;
-      return true;
+      const res: LoginResultDTO = await loginApi(loginForm);
+      // 如果后端判定不需要 2FA 验证，直接视作登录成功并存储 Token
+      if (!res.requireMfa && res.accessToken) {
+        setTokens(res);
+      }
+      // 返回原始结果交由业务层 (login.vue) 判断并分流
+      return res;
     };
 
     /**
@@ -125,6 +140,7 @@ export const useAuthStore = defineStore(
       login,
       logout,
       doRefreshToken,
+      setTokens,
     };
   },
   {

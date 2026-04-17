@@ -6,6 +6,8 @@ import type {
   TokenRefreshReqDTO,
   TokenResDTO,
   CaptchaResDTO,
+  LoginResultDTO,
+  MfaVerifyReqDTO,
 } from '@/types/auth/auth';
 
 /**
@@ -17,10 +19,11 @@ export function getCaptchaApi() {
 
 /**
  * 用户登录
+ * 返回值类型从 TokenResDTO 更改为 LoginResultDTO，兼容 2FA 场景
  */
 export function loginApi(data: UserLoginReqDTO) {
   // 设置 noToken: true 绕过请求拦截器里的 Token 注入
-  return request.post<TokenResDTO>('/auth/login', data, { noToken: true });
+  return request.post<LoginResultDTO>('/auth/login', data, { noToken: true });
 }
 
 /**
@@ -37,4 +40,12 @@ export function refreshTokenApi(data: TokenRefreshReqDTO) {
  */
 export function logoutApi() {
   return request.post<void>('/auth/logout');
+}
+
+/**
+ *  MFA 两阶段验证接口
+ * 携带临时令牌和动态验证码换取真实的 AccessToken
+ */
+export function verifyMfaApi(data: MfaVerifyReqDTO) {
+  return request.post<TokenResDTO>('/auth/verify-mfa', data, { noToken: true });
 }

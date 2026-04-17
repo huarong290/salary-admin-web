@@ -52,6 +52,60 @@
         </el-form-item>
       </el-form>
     </el-card>
+
+    <el-dialog
+      v-model="mfaDialogVisible"
+      title="🛡️ 账号安全验证"
+      width="400px"
+      :close-on-click-modal="false"
+      append-to-body
+      class="mfa-dialog"
+    >
+      <div class="mfa-container">
+        <p class="mfa-tip">为保障财务系统安全，当前账号已被要求进行二次验证。</p>
+
+        <el-tabs v-model="activeMfaType" class="mfa-tabs">
+          <el-tab-pane v-if="mfaSupportedTypes.includes('GOOGLE')" label="谷歌验证器" name="GOOGLE">
+            <el-input
+              v-model="mfaForm.code"
+              placeholder="请输入 6 位动态密码"
+              size="large"
+              maxlength="6"
+              clearable
+              @keyup.enter="handleVerifyMfa"
+            >
+              <template #prefix>
+                <el-icon><KeyIcon /></el-icon>
+              </template>
+            </el-input>
+          </el-tab-pane>
+
+          <el-tab-pane v-if="mfaSupportedTypes.includes('HAIYUE')" label="海月盾盾" name="HAIYUE">
+            <el-input
+              v-model="mfaForm.code"
+              placeholder="请输入 8 位动态口令"
+              size="large"
+              maxlength="8"
+              clearable
+              @keyup.enter="handleVerifyMfa"
+            >
+              <template #prefix>
+                <el-icon><ShieldIcon /></el-icon>
+              </template>
+            </el-input>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button :disabled="mfaLoading" @click="mfaDialogVisible = false">取 消</el-button>
+          <el-button type="primary" :loading="mfaLoading" @click="handleVerifyMfa">
+            验 证 并 登 录
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -76,12 +130,12 @@ import { useRouter, useRoute } from 'vue-router';
 // [2] 第三方 UI 组件库与图标
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { User, Lock, CircleCheck } from '@element-plus/icons-vue';
+import { User, Lock, CircleCheck, Key, Cpu } from '@element-plus/icons-vue';
 
 // [3] 业务 API 与 全局 Store
 import { useAuthStore } from '@/stores/modules/auth';
 import { useUserStore } from '@/stores/modules/user';
-import { getCaptchaApi } from '@/api/auth';
+import { getCaptchaApi, verifyMfaApi } from '@/api/auth';
 
 /**
  * --------------------------------------------------------------------
@@ -102,7 +156,8 @@ const loginFormRef = ref<FormInstance>();
 const UserIcon = markRaw(User);
 const LockIcon = markRaw(Lock);
 const CheckIcon = markRaw(CircleCheck);
-
+const KeyIcon = markRaw(Key); // 🌟 谷歌验证图标
+const ShieldIcon = markRaw(Cpu); // 🌟 海月盾盾图标
 // [业务表单数据]
 const loginForm = reactive({
   username: 'admin',
@@ -117,14 +172,23 @@ const rules = reactive<FormRules>({
   password: [{ required: true, message: '密码不能为空', trigger: 'blur' }],
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
 });
+// 🌟 [MFA 二次验证专属状态]
+const mfaDialogVisible = ref(false);
+const mfaLoading = ref(false);
+const activeMfaType = ref('GOOGLE'); // 当前选中的 Tab
+const mfaSupportedTypes = ref<string[]>([]); // 后端下发的支持类型
+const mfaTempToken = ref(''); // 临时令牌
 
+const mfaForm = reactive({
+  code: '',
+});
 /**
  * --------------------------------------------------------------------
  * 🖱️ 三、UI 交互事件区 (UI Interactions)
  * --------------------------------------------------------------------
  */
 
-/** 执行登录动作 */
+/** 执行登录动作 (第一阶段) */
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
 
@@ -170,21 +234,23 @@ const performLogin = async () => {
       },
     };
 
-    // 1. 调用 Pinia 封装的登录 Action
-    await authStore.login(loginData);
+    // 1. 调用 Pinia Action 发起请求 (如果不需要MFA，里面已经自动存好Token了)
+    const res = await authStore.login(loginData);
 
-    // 2. 清理旧缓存（非常重要，防止动态路由死循环）
-    userStore.clearUserInfo();
-
-    ElMessage.success('欢迎回来');
-    //  3. 智能路由跳转逻辑 (替换原来的 await router.push('/'))
-    const redirectPath = route.query.redirect as string;
-    if (redirectPath) {
-      // 使用 replace 而不是 push，防止用户点击浏览器“后退”按钮又回到登录页
-      await router.replace(redirectPath);
-    } else {
-      await router.replace('/');
+    // 2. 分流：如果命中 MFA 二次验证
+    if (res.requireMfa && res.mfaToken) {
+      mfaTempToken.value = res.mfaToken ?? '';
+      mfaSupportedTypes.value =
+        res.supportedTypes && res.supportedTypes.length > 0 ? res.supportedTypes : ['GOOGLE'];
+      // 这里也顺手加个兜底，更加严谨
+      activeMfaType.value = mfaSupportedTypes.value[0] ?? 'GOOGLE';
+      mfaForm.code = '';
+      mfaDialogVisible.value = true;
+      return;
     }
+
+    // 3. 无需 MFA，直接处理后续成功逻辑
+    await processLoginSuccess();
   } catch (error) {
     // 登录失败必须刷新验证码
     await fetchCaptcha();
@@ -194,6 +260,56 @@ const performLogin = async () => {
   }
 };
 
+/**
+ * 🌟 新增业务：执行 MFA 两步验证提交
+ */
+const handleVerifyMfa = async () => {
+  if (!mfaForm.code) {
+    ElMessage.warning('请输入动态验证码');
+    return;
+  }
+
+  mfaLoading.value = true;
+  try {
+    // 请求后端验证接口
+    const res = await verifyMfaApi({
+      mfaToken: mfaTempToken.value,
+      mfaType: activeMfaType.value,
+      code: mfaForm.code,
+    });
+
+    // 验证通过，将真正的 Token 塞入本地 Store
+    authStore.setTokens(res);
+
+    // 关闭弹窗，走成功分支
+    mfaDialogVisible.value = false;
+    await processLoginSuccess();
+  } catch (error) {
+    // 验证码可能输错，不清空图形验证码，只需重新输入动态口令即可
+    mfaForm.code = '';
+    console.error('MFA安全验证失败', error);
+  } finally {
+    mfaLoading.value = false;
+  }
+};
+
+/**
+ * 🌟 抽离：公共的登录成功与路由跳转收尾工作
+ */
+const processLoginSuccess = async () => {
+  // 清理旧缓存（防止动态路由死循环）
+  userStore.clearUserInfo();
+
+  ElMessage.success('登录成功，欢迎回来');
+
+  // 智能路由跳转逻辑
+  const redirectPath = route.query.redirect as string;
+  if (redirectPath) {
+    await router.replace(redirectPath);
+  } else {
+    await router.replace('/');
+  }
+};
 /**
  * --------------------------------------------------------------------
  * ⚡ 五、Vue 生命周期区 (Lifecycle Hooks)
@@ -309,7 +425,19 @@ onMounted(() => {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(var(--el-color-primary-rgb), 0.3);
 }
-
+/* MFA 弹窗内部样式 */
+.mfa-container {
+  padding: 0 10px;
+  .mfa-tip {
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .mfa-tabs {
+    margin-top: 10px;
+  }
+}
 /* =====================================================================
    🚀 风格联动：响应全局 MenuStyle 切换 (Brilliant vs Breeze)
    ===================================================================== */
