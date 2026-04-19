@@ -206,11 +206,37 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="核算月份" prop="periodId">
-              <period-select
-                v-model="form.periodId"
-                :employee-id="form.employeeId"
-                :disabled="!!form.id"
-              />
+              <div style="display: flex; gap: 8px; width: 100%">
+                <period-select
+                  v-model="form.periodId"
+                  :employee-id="form.employeeId"
+                  :disabled="isPeriodLocked"
+                  style="flex: 1"
+                />
+                <el-tooltip
+                  v-if="form.id && isPeriodLocked"
+                  content="点击解锁并更换周期"
+                  placement="top"
+                >
+                  <el-button
+                    type="warning"
+                    icon="Unlock"
+                    circle
+                    plain
+                    size="small"
+                    @click="isPeriodLocked = false"
+                  />
+                </el-tooltip>
+                <el-button
+                  v-if="form.id && !isPeriodLocked"
+                  type="info"
+                  icon="Lock"
+                  circle
+                  plain
+                  size="small"
+                  @click="isPeriodLocked = true"
+                />
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -432,6 +458,7 @@ const dict = useDict('settlement_currency');
 // [UI 控制状态]
 const loading = ref(false);
 const isFullscreen = ref(false);
+const isPeriodLocked = ref(true); // 默认锁定周期编辑
 
 // [表格与分页状态]
 const total = ref(0);
@@ -552,6 +579,8 @@ const getList = async () => {
 
 /** * 发起：新增数据 */
 const handleAdd = () => {
+  //  新增模式下不锁定
+  isPeriodLocked.value = false;
   form.value = {
     adjustType: 1,
     currency: 'CNY',
@@ -572,6 +601,7 @@ const handleUpdate = async (row: SalaryAdjustmentVO) => {
 
     // 2. 赋值表单
     form.value = { ...res };
+    isPeriodLocked.value = true; //  编辑模式下默认锁定，待手动开启
     dialog.title = '修改财务数据';
     dialog.visible = true;
     isFullscreen.value = false;

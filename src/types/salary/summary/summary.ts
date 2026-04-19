@@ -144,6 +144,8 @@ export interface SalarySummaryVO {
 export interface SummaryQueryReqDTO extends PageQuery {
   /**员工姓名/工号*/
   keyword?: string;
+  /**结算月份 (如: 2026)*/
+  settlementYear?: string;
   /**结算月份 (如: 202603)*/
   settlementMonth?: string;
   /**计算状态*/

@@ -12,6 +12,17 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="核算年份" prop="settlementYear">
+          <el-date-picker
+            v-model="queryParams.settlementYear"
+            type="year"
+            placeholder="选择年份"
+            value-format="YYYY"
+            clearable
+            style="width: 120px"
+            @change="handleYearChange"
+          />
+        </el-form-item>
         <el-form-item label="结算月份" prop="settlementMonth">
           <el-date-picker
             v-model="queryParams.settlementMonth"
@@ -20,6 +31,7 @@
             value-format="YYYYMM"
             clearable
             style="width: 160px"
+            @change="handleMonthChange"
           />
         </el-form-item>
         <el-form-item label="计算状态" prop="calcStatus">
@@ -783,6 +795,7 @@ const queryParams = reactive<SummaryQueryReqDTO & { employeeId?: any }>({
   pageNum: 1,
   pageSize: 10,
   keyword: undefined,
+  settlementYear: undefined,
   settlementMonth: undefined,
   calcStatus: undefined,
   paymentStatus: undefined,
@@ -841,7 +854,21 @@ const adjustRules = reactive<FormRules>({
  * 🖱️ 三、UI 交互事件区 (UI Interactions)
  * --------------------------------------------------------------------
  */
+/** 🌟 监听年份变化：选年则清空月 */
+const handleYearChange = (val: string) => {
+  if (val) {
+    queryParams.settlementMonth = undefined;
+  }
+  handleQuery();
+};
 
+/** 🌟 监听月份变化：选月则清空年 */
+const handleMonthChange = (val: string) => {
+  if (val) {
+    queryParams.settlementYear = undefined;
+  }
+  handleQuery();
+};
 /** 🌟 新增：格式化无限远的失效日期 */
 const formatExpiry = (dateStr?: string) => {
   if (!dateStr) return '至今';
@@ -1157,13 +1184,19 @@ const handleOpenAdjust = (row: SalarySummaryVO) => {
     ElMessage.error('该账单已支付完毕，严禁篡改金额！');
     return;
   }
-
+  // 动态生成备注 解析 settlementMonth (例如 "202503")
+  let dynamicRemark = '手工账';
+  if (row.settlementMonth && row.settlementMonth.length === 6) {
+    const year = row.settlementMonth.substring(0, 4);
+    const month = parseInt(row.settlementMonth.substring(4, 6), 10); // 去掉前导0
+    dynamicRemark = `${year}年${month}月手工账`;
+  }
   // 抹平数据并回显
   adjustForm.value = {
     id: row.id,
     employeeName: row.employeeName,
     manualPaymentAmount: row.manualPaymentAmount || 0,
-    remark: row.remark || '手工账',
+    remark: row.remark || dynamicRemark,
   };
 
   if (adjustFormRef.value) {
