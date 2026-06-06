@@ -391,6 +391,10 @@ const handleAdd = () => {
 /** * 发起：修改项目 (获取详情) */
 const handleUpdate = async (row: SalaryItemConfigVO) => {
   const res = await getItemConfigDetailApi(row.id);
+  // 💡 核心修复：在这里加一行，把数字 1 变成字符串 "1"
+  if (res && res.itemCategory !== undefined && res.itemCategory !== null) {
+    res.itemCategory = String(res.itemCategory);
+  }
   form.value = { ...res };
   dialog.title = '修改薪资项目';
   dialog.visible = true;
@@ -402,11 +406,16 @@ const submitForm = async () => {
   if (!formRef.value) return;
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      if (form.value.id) {
-        await editItemConfigApi(form.value);
+      // 💡 修改点 2：深拷贝一份 form 数据，并把 itemCategory 转回数字再提交
+      const postData = { ...form.value };
+      if (postData.itemCategory) {
+        postData.itemCategory = Number(postData.itemCategory);
+      }
+      if (postData.id) {
+        await editItemConfigApi(postData);
         ElMessage.success('配置已更新');
       } else {
-        await addItemConfigApi(form.value);
+        await addItemConfigApi(postData);
         ElMessage.success('项目已创建');
       }
       dialog.visible = false;

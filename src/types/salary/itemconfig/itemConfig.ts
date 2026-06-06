@@ -10,7 +10,7 @@ export interface SalaryItemConfigVO {
   /** 项名称 (界面展示名称) */
   itemName: string;
   /** 项目大类: 1-收入, 2-扣款, 3-税费, 4-公司支出/补贴 */
-  itemCategory: number;
+  itemCategory: number | string;
   /** 项目大类显示名称 (由后端关联字典表获取，如: 收入) */
   categoryLabel?: string;
   /** 引擎上下文变量名 (Groovy 脚本中引用的变量名) */
@@ -64,7 +64,7 @@ export interface ItemConfigAddReqDTO {
   /** 项名称 - 必填 */
   itemName: string;
   /** 项目分类: 1-收入, 2-扣款, 3-税费, 4-公司支出 - 必填 */
-  itemCategory: number;
+  itemCategory: number | string;
   /** 引擎上下文变量名 (需符合小驼峰命名规范) - 必填 */
   envVarName: string;
   /** 默认表达式脚本模板 */
@@ -102,7 +102,7 @@ export interface ItemConfigOptionVO {
   /** 薪资项编码 */
   itemCode: string;
   /** 项目分类 */
-  itemCategory: number;
+  itemCategory: number | string;
   /** 业务分类字典值 */
   categoryDictValue: string;
   /** 脚本变量名 (前端配置公式时插入该变量) */
