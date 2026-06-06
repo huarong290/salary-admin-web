@@ -7,9 +7,18 @@
 export interface ArchiveItemReqDTO {
   /** 项目配置ID (对应 salary_item_config.id) */
   itemConfigId: number;
-  /** 固定金额 */
+  /** *
+   * 计算模式
+   * 1: 按月固定, 2: 按出勤天数, 3: 按现场出勤, 4: 按居家出勤
+   */
+  calcMode: number;
+  /**
+   * 若按月固定(1)则代表月总额（如2000）；若按天计算(2,3,4)则代表日单价（如30）
+   */
   amount: number;
-  /** 个性化表达式脚本 (可选) */
+  /**
+   * 个性化表达式脚本 (可选)
+   */
   ruleScript?: string;
 }
 
@@ -26,6 +35,12 @@ export interface SalaryArchiveItemVO {
   itemType: number;
   itemTypeLabel?: string;
   itemConfigId: number;
+  /**
+   * 计算模式快照：(1:按月固定, 2:按出勤天数, 3:按现场出勤, 4:按居家出勤)
+   */
+  calcMode: number;
+  /** 计算模式文本 (字典翻译: 如 "按现场出勤计算") */
+  calcModeLabel?: string;
   /**
    *  精度控制快照
    * 来源：salary_item_config
@@ -45,7 +60,9 @@ export interface SalaryArchiveItemVO {
    */
   categoryDictValue: string;
   categoryDictLabel?: string;
-  /** 固定金额 */
+  /** * 基准标准金额
+   * 页面展示时，若 calcMode 为 1 显示“元/月”，若为 2,3,4 显示“元/天”
+   */
   amount: number;
   ruleScript?: string;
   sort?: number;

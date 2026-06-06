@@ -26,8 +26,19 @@
           </el-select>
         </template>
       </el-table-column>
-
-      <el-table-column label="设定金额 (固定值)" width="160">
+      <el-table-column label="计算模式" width="160">
+        <template #default="{ row }">
+          <el-select v-model="row.calcMode" placeholder="请选择" style="width: 100%">
+            <el-option
+              v-for="item in dicts.salary_calc_mode ?? []"
+              :key="item.dictItemValue"
+              :label="item.dictItemLabel"
+              :value="Number(item.dictItemValue)"
+            />
+          </el-select>
+        </template>
+      </el-table-column>
+      <el-table-column label="设定金额 (基准标准)" width="160">
         <template #default="{ row }">
           <el-input-number
             v-model="row.amount"
@@ -35,7 +46,11 @@
             :controls="false"
             style="width: 100%"
             placeholder="0.00"
-          />
+          >
+            <template #append>
+              {{ row.calcMode === 1 ? '元/月' : '元/天' }}
+            </template>
+          </el-input-number>
         </template>
       </el-table-column>
 
@@ -79,7 +94,8 @@ import { ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 
 import type { ArchiveItemReqDTO } from '@/types/salary/archiveitem/archiveItem';
-
+// [3] 业务 API 请求接口
+import { useDict } from '@/hooks/useDict';
 /**
  * --------------------------------------------------------------------
  * 📦 二、 Props 与 Emits 定义 (Component Interface)
@@ -91,7 +107,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['update:modelValue']);
-
+/** 字典库数据源 */
+const dicts = useDict('salary_calc_mode');
 /**
  * --------------------------------------------------------------------
  * 🧠 三、 核心响应逻辑区 (Component Logic)
@@ -122,7 +139,30 @@ watch(
   },
   { deep: true }
 );
-
+/** * 🌟 字典安全解析方法 (终极大厂增强版)
+ * 解决 Vue3 Ref 传参解包失败导致文字变空 ("I"形标签) 的元凶
+ */
+// const getDictLabel = (dictListRaw: any, value: number | string | undefined | null) => {
+//   if (value === undefined || value === null) return '';
+//
+//   // 1. 手动解包 Ref
+//   const dictList = dictListRaw && dictListRaw.value ? dictListRaw.value : dictListRaw;
+//
+//   // 2. 拦截非数组情况
+//   if (!Array.isArray(dictList) || dictList.length === 0) return String(value);
+//
+//   // 3. 兼容多命名规范，强转字符串匹配
+//   const item = dictList.find((d: any) => {
+//     const dVal = d.dictItemValue ?? d.dictValue ?? d.value;
+//     return String(dVal).trim() === String(value).trim();
+//   });
+//
+//   // 4. 返回中文 Label
+//   if (item) {
+//     return item.dictItemLabel ?? item.dictLabel ?? item.label;
+//   }
+//   return String(value);
+// };
 /**
  * --------------------------------------------------------------------
  * 🖱️ 四、 UI 交互事件区 (Interactions)
@@ -133,6 +173,7 @@ watch(
 const handleAdd = () => {
   localItems.value.push({
     itemConfigId: undefined as any,
+    calcMode: 1, // 🌟 默认设为传统的“按月固定金额”
     amount: 0,
     ruleScript: '',
   });
