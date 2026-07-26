@@ -21,6 +21,8 @@ export interface PeriodVO {
   endDate?: string;
   /** 本月自然天数 */
   monthDays?: number;
+  /** 标准/制度月休天数 (如4.00, 6.00, 8.00) */
+  standardRestDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
   /** 现场出勤天数 */
@@ -69,6 +71,8 @@ export interface PeriodAddReqDTO {
   endDate?: string;
   /** 本月自然天数 */
   monthDays?: number;
+  /** 标准/制度月休天数 (如4.00, 6.00, 8.00) */
+  standardRestDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
   /** 现场出勤天数 */
@@ -116,6 +120,8 @@ export interface PeriodBatchInitReqDTO {
   endDate?: string;
   /** 本月自然天数 */
   monthDays?: number;
+  /** 标准/制度月休天数 (如4.00, 6.00, 8.00) */
+  standardRestDays?: number;
   /** 实际出勤天数 */
   attendanceDays?: number;
   /** 现场出勤天数 */

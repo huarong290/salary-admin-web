@@ -510,12 +510,8 @@ import { ref, reactive, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { WarningFilled, FullScreen, Minus } from '@element-plus/icons-vue';
-import type {
-  PeriodBatchInitReqDTO,
-  PeriodQueryReqDTO,
-  PeriodVO,
-} from '@/types/salary/period/period';
-import type { EmployeeOptionVO } from '@/types/salary/employee/employee';
+import { PeriodBatchInitReqDTO, PeriodQueryReqDTO, PeriodVO } from '@/types/salary/period/period';
+import { EmployeeOptionVO } from '@/types/salary/employee/employee';
 import dayjs from 'dayjs';
 import {
   addPeriodApi,
@@ -525,7 +521,6 @@ import {
   editPeriodApi,
   getPeriodPageApi,
 } from '@/api/salary/period/period';
-import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
 
 /** --------------------------------------------------------------------
  * 📦 二、响应式状态区 (State Management)

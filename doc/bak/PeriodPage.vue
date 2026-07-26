@@ -506,17 +506,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue';
-
+import dayjs from 'dayjs';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { WarningFilled, FullScreen, Minus } from '@element-plus/icons-vue';
-import type {
-  PeriodBatchInitReqDTO,
-  PeriodQueryReqDTO,
-  PeriodVO,
-} from '@/types/salary/period/period';
-import type { EmployeeOptionVO } from '@/types/salary/employee/employee';
-import dayjs from 'dayjs';
+
 import {
   addPeriodApi,
   batchDeletePeriodApi,
@@ -525,6 +519,13 @@ import {
   editPeriodApi,
   getPeriodPageApi,
 } from '@/api/salary/period/period';
+
+import type {
+  PeriodBatchInitReqDTO,
+  PeriodQueryReqDTO,
+  PeriodVO,
+} from '@/types/salary/period/period.ts';
+import type { EmployeeOptionVO } from '@/types/salary/employee/employee.ts';
 import EmployeeSelect from '@/views/salary/employee/components/EmployeeSelect.vue';
 
 /** --------------------------------------------------------------------
