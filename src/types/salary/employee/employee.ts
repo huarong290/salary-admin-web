@@ -25,6 +25,8 @@ export interface EmployeeVO {
   transferFlag?: number;
   /** 住宿状态 (0:不住宿, 1:公司宿舍, 2:外宿补贴) */
   accommodationStatus?: number;
+  /** 平台账户 */
+  platformAccount?: string;
   /** 入职日期 */
   entryDate?: string;
   /** 预计转正日期 */
@@ -52,6 +54,8 @@ export interface EmployeeQueryReqDTO extends PageQuery {
   department?: string;
   /** 在职状态: 1-正式, 2-试用, 3-实习, 4-兼职/外包, 0-离职 */
   employmentStatus?: number;
+  /** 平台账户 */
+  platformAccount?: string;
 }
 
 /** 新增员工请求参数 */
@@ -72,6 +76,8 @@ export interface EmployeeAddReqDTO {
   transferFlag?: number;
   /** 住宿状态 (0:不住宿, 1:公司宿舍, 2:外宿) */
   accommodationStatus?: number;
+  /** 平台账户 */
+  platformAccount?: string;
   /** 入职日期 */
   entryDate?: string;
   /** 预计转正日期 */
@@ -94,4 +100,6 @@ export interface EmployeeOptionVO {
   employeeCode: string;
   /** 员工姓名 */
   employeeName: string;
+  /** 平台账户 */
+  platformAccount?: string;
 }

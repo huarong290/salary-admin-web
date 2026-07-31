@@ -78,6 +78,7 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="平台账号" prop="platformAccount" width="120" />
         <el-table-column label="入职日期" width="120" align="center">
           <template #default="{ row }">
             <span class="amount-font">{{ row.entryDate }}</span>
@@ -276,7 +277,12 @@
         </el-row>
 
         <el-row>
-          <el-col :span="24">
+          <el-col :span="12">
+            <el-form-item label="平台账号" prop="platformAccount">
+              <el-input v-model="form.platformAccount" placeholder="如平台账号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="住宿状态" prop="accommodationStatus">
               <el-select
                 v-model="form.accommodationStatus"
@@ -360,6 +366,7 @@ const queryParams = reactive<EmployeeQueryReqDTO>({
   pageSize: 10,
   keyword: undefined,
   employmentStatus: undefined,
+  platformAccount: undefined,
 });
 
 // [业务表单状态]
@@ -457,6 +464,7 @@ const handleAdd = () => {
     employmentStatus: 1, // 默认在职
     transferFlag: 0, // 默认未转岗
     accommodationStatus: 0, // 默认不住宿
+    platformAccount: '',
     entryDate: new Date().toISOString().split('T')[0], // 🌟 默认今天
     probationEndDate: undefined,
     actualLeaveDate: undefined,
