@@ -253,7 +253,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="薪资项目" prop="itemCode">
-              <item-config-select v-model="form.itemCode" @change="handleItemChange" />
+              <item-config-select v-model="form.itemCode" show-refresh @change="handleItemChange" />
             </el-form-item>
           </el-col>
           <el-col :span="12">

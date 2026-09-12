@@ -39,7 +39,12 @@
           >
             新增项目
           </el-button>
-          <el-button icon="Cpu" @click="handleRefreshCache">同步配置</el-button>
+          <el-tooltip
+            placement="top"
+            content="刷新缓存：直接用 SQL / 导入修改数据库配置后，同步最新薪资项目下拉与计算引擎（清 Redis 缓存）"
+          >
+            <el-button icon="Cpu" @click="handleRefreshCache">刷新缓存</el-button>
+          </el-tooltip>
         </el-form-item>
       </el-form>
     </el-card>
