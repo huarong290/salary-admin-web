@@ -386,16 +386,36 @@ const getList = async () => {
 /** 查看快照详情 */
 const handleViewSnapshot = (row: any) => {
   currentRecord.value = row;
-  // 1. 获取 JSON 内部详情
+  // 1. 优先使用后端已解析的明细快照 (snapshotItems)
+  if (Array.isArray(row.snapshotItems) && row.snapshotItems.length > 0) {
+    snapshotItems.value = row.snapshotItems;
+  }
+  // 2. 获取 JSON 内部详情 (兼容旧数据: 从 income/deduction/tax 分组聚合)
   let parsed: any = {};
-  if (row.parsedSnapshot) {
-    parsed = row.parsedSnapshot;
-  } else if (row.detailJson) {
+  if (row.detailJson) {
     try {
-      const parsed =
-        typeof row.detailJson === 'string' ? JSON.parse(row.detailJson) : row.detailJson;
-      snapshotData.value = parsed || {};
-      snapshotItems.value = parsed.items || [];
+      parsed = typeof row.detailJson === 'string' ? JSON.parse(row.detailJson) : row.detailJson;
+      // 旧数据兜底: 若后端未解析 snapshotItems，则按分组聚合
+      if (!Array.isArray(snapshotItems.value) || snapshotItems.value.length === 0) {
+        const flat: any[] = [];
+        const pushGroup = (group: any[], itemType: number) => {
+          (group || []).forEach((it: any) => {
+            if (it && Number(it.settlementAmount) !== 0) {
+              flat.push({
+                itemName: it.itemName,
+                itemType,
+                amount: Math.abs(Number(it.settlementAmount)).toFixed(2),
+                formula: it.calcLog || '',
+              });
+            }
+          });
+        };
+        pushGroup(parsed.income, 1);
+        pushGroup(parsed.deduction, 2);
+        pushGroup(parsed.tax, 3);
+        pushGroup(parsed.companyExpense, 4);
+        snapshotItems.value = flat;
+      }
     } catch {
       ElMessage.error('底层快照数据解析失败');
     }
@@ -412,7 +432,6 @@ const handleViewSnapshot = (row: any) => {
     attendanceDays: parsed.attendanceDays || row.attendanceDays,
   };
 
-  snapshotItems.value = parsed.items || [];
   snapshotDialog.visible = true;
   isFullscreen.value = false;
 };

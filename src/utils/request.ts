@@ -156,9 +156,11 @@ service.interceptors.response.use(
 
     // -------------------- 🌟 核心：401 无感刷新逻辑 --------------------
     if (error.response?.status === 401 && !config.noToken && !config._retry) {
-      // 🚫 防止 refresh 自己进入死循环
+      // 🚫 防止 refresh 自己进入死循环 (refresh 也 401 = 会话彻底失效)
       if (config.url?.includes('/auth/refresh')) {
-        authStore.logout();
+        ElMessage.warning('登录状态已过期，请重新登录');
+        // 纯本地登出：不携带过期 Token 再调后端 logout，避免二次 401 噪音，并统一跳转登录页
+        authStore.logout(true);
         return Promise.reject(error);
       }
 
@@ -196,7 +198,8 @@ service.interceptors.response.use(
         // 刷新 Token 也过期时，必须逐个 reject 队列中的请求，否则页面将永久卡死
         requests.forEach((task) => task.reject(refreshError));
         requests = [];
-        //  通知 authStore 执行纯本地登出（传入 true，跳过调用后端接口） 内部含跳转登录页
+        // 统一提示并执行纯本地登出（传入 true，跳过调用后端接口）内部含防重跳转登录页
+        ElMessage.warning('登录状态已过期，请重新登录');
         await authStore.logout(true);
         return Promise.reject(refreshError);
       } finally {

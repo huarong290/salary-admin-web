@@ -40,6 +40,10 @@ export interface AdjustmentAddReqDTO {
   originalAmount: number;
   /** 当期核算汇率 (原币兑换发薪本币的汇率) */
   exchangeRate: number;
+  /**
+   * 计税标识: 0-不计税(默认), 1-计税 (仅收入类生效, 扣减类天然不计税)
+   */
+  taxableFlag?: number;
   /** 调账原因及备注 (审计用) */
   remark?: string;
 }
@@ -90,6 +94,8 @@ export interface SalaryAdjustmentVO {
   sourceType: number;
   /** 状态: 0-草稿, 1-已生效(参与算薪) */
   status: number;
+  /** 计税标识: 0-不计税(默认), 1-计税 */
+  taxableFlag: number;
   /** 调账原因及备注 */
   remark: string;
   /** 创建人 审计字段：详情页展示需要 */

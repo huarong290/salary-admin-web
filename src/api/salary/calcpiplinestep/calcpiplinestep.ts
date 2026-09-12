@@ -1,70 +1,10 @@
 // src/api/salary/calcpiplinestep/calcpiplinestep.ts
 import request from '@/utils/request';
-import type { PageResult } from '@/types/common';
 import type {
   CalcPipelineStepAddReqDTO,
-  CalcPipelineStepEditReqDTO,
-  CalcPipelineStepQueryReqDTO,
   CalcPipelineStepVO,
 } from '@/types/salary/calcpiplinestep/calcpiplinestep.ts';
 
-/**
- * 分页查询薪资管道步骤
- * @param data 查询条件 (包含 pipelineCode, pipelineVersion, stage 等)
- */
-export function getPipelineStepPageApi(data: CalcPipelineStepQueryReqDTO) {
-  return request.post<PageResult<CalcPipelineStepVO>>(
-    '/salary/salary-calc-pipeline-step/page',
-    data
-  );
-}
-
-/**
- * 获取管道步骤详情
- * @param id 步骤主键 ID
- */
-export function getPipelineStepDetailApi(id: number | string) {
-  return request.get<CalcPipelineStepVO>(`/salary/salary-calc-pipeline-step/${id}`);
-}
-
-/**
- * 新增管道步骤
- * @param data 步骤信息
- */
-export function addPipelineStepApi(data: CalcPipelineStepAddReqDTO) {
-  return request.post<number>('/salary/salary-calc-pipeline-step/add', data);
-}
-
-/**
- * 修改管道步骤
- * @param data 修改数据 (包含 id)
- */
-export function editPipelineStepApi(data: CalcPipelineStepEditReqDTO) {
-  return request.put<boolean>('/salary/salary-calc-pipeline-step/edit', data);
-}
-
-/**
- * 删除单个管道步骤
- * @param id 步骤 ID
- * @param logical 是否逻辑删除 (默认 true)
- */
-export function deletePipelineStepApi(id: number | string, logical: boolean = true) {
-  return request.delete<boolean>(`/salary/salary-calc-pipeline-step/${id}`, {
-    params: { logical },
-  });
-}
-
-/**
- * 批量删除管道步骤
- * @param ids ID 数组
- * @param logical 是否逻辑删除
- */
-export function deletePipelineStepBatchApi(ids: (number | string)[], logical: boolean = true) {
-  return request.delete<boolean>('/salary/salary-calc-pipeline-step/batch', {
-    data: ids,
-    params: { logical },
-  });
-}
 /**
  *  获取指定管道版本下的所有执行步骤 (不分页)
  * 场景：编排设计器打开时，需要一次性加载全量步骤进行拖拽展示

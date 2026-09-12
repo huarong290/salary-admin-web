@@ -370,6 +370,22 @@
               }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="计算模式" align="center" width="130">
+            <template #default="{ row }">
+              <el-tag size="small" effect="plain">{{ getCalcModeLabel(row.calcMode) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="计税" align="center" width="120">
+            <template #default="{ row }">
+              <el-tag v-if="row.taxableFlag === 1" type="danger" size="small" effect="plain"
+                >计税</el-tag
+              >
+              <el-tag v-else-if="row.taxableFlag === 0" type="success" size="small" effect="plain"
+                >不计税</el-tag
+              >
+              <el-tag v-else type="info" size="small" effect="plain">继承全局</el-tag>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
 
@@ -448,8 +464,15 @@ const dicts = useDict(
   'salary_audit_status',
   'salary_item_category',
   'settlement_currency',
-  'salary_tax_rule'
+  'salary_tax_rule',
+  'salary_calc_mode'
 );
+
+/** 计算模式中文翻译 (1按月固定 2按出勤天数 3按现场出勤 4按居家/远程出勤) */
+const getCalcModeLabel = (mode: number | string) => {
+  const target = (dicts.salary_calc_mode ?? []).find((d) => d.dictItemValue === String(mode));
+  return target ? target.dictItemLabel : '—';
+};
 
 /** 列表查询参数表单 */
 const queryFormRef = ref<FormInstance>();
@@ -626,8 +649,10 @@ const handleAdjust = async (row: SalaryArchiveVO) => {
       archiveItems:
         latestArchive.archiveItems?.map((item) => ({
           itemConfigId: item.itemConfigId,
+          calcMode: item.calcMode,
           amount: item.amount,
           ruleScript: item.ruleScript,
+          taxableFlag: item.taxableFlag ?? null,
         })) || [],
     };
     //构造回显选项，让处于 disabled 状态的 EmployeeSelect 能显示中文姓名

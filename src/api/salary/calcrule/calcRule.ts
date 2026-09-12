@@ -44,19 +44,3 @@ export function deleteCalcRuleApi(id: number | string, logical: boolean = true) 
     params: { logical },
   });
 }
-
-/**
- * 获取所有启用状态的规则列表
- * 用于规则引擎预览或配置关联时调用
- */
-export function listActiveRulesApi() {
-  return request.get<CalcRuleVO[]>('/salary/calc-rule/listActive');
-}
-
-/**
- * 根据 ID 获取规则详情
- * @param id 规则ID
- */
-export function getCalcRuleDetailApi(id: number | string) {
-  return request.get<CalcRuleVO>(`/salary/calc-rule/${id}`);
-}

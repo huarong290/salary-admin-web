@@ -55,6 +55,8 @@ export interface SalarySnapshotDTO {
   exchangeRate?: number;
   /**应发合计 (Gross) */
   grossSalary?: number;
+  /**应税收入合计 (个税基数, 排除 taxable_flag=0 项) */
+  taxableIncomeTotal?: number;
   /**扣款合计 (Deduction)*/
   deductionTotal?: number;
   /**税费合计 (Tax)*/

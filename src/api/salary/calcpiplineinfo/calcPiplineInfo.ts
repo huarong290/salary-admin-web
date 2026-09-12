@@ -20,14 +20,6 @@ export function getPipelineInfoPageApi(data: CalcPipelineInfoQueryReqDTO) {
 }
 
 /**
- * 获取管道主表详情
- * @param id 管道主键 ID
- */
-export function getPipelineInfoDetailApi(id: number | string) {
-  return request.get<CalcPipelineInfoVO>(`/salary/salary-calc-pipeline-info/${id}`);
-}
-
-/**
  * 新增管道主表
  * @param data 管道信息
  */
@@ -49,7 +41,7 @@ export function editPipelineInfoApi(data: CalcPipelineInfoEditReqDTO) {
  * @param logical 是否逻辑删除 (默认 true)
  */
 export function deletePipelineInfoApi(id: number | string, logical: boolean = true) {
-  return request.delete<boolean>(`/salary/salary-calc-pipeline-info/${id}`, {
+  return request.delete<boolean>(`/salary/salary-calc-pipeline-info/delete/${id}`, {
     params: { logical },
   });
 }
@@ -60,7 +52,7 @@ export function deletePipelineInfoApi(id: number | string, logical: boolean = tr
  * @param logical 是否逻辑删除
  */
 export function deletePipelineInfoBatchApi(ids: (number | string)[], logical: boolean = true) {
-  return request.delete<boolean>('/salary/salary-calc-pipeline-info/batch', {
+  return request.delete<boolean>('/salary/salary-calc-pipeline-info/delete/batch', {
     data: ids,
     params: { logical },
   });
@@ -82,4 +74,14 @@ export function setDefaultPipelineApi(id: number | string) {
  */
 export function upgradePipelineVersionApi(id: number | string) {
   return request.post<number>(`/salary/salary-calc-pipeline-info/upgradeVersion/${id}`);
+}
+
+/**
+ *  获取全局默认薪资计算管道
+ * 场景：发薪台/核算入口据此确定本次核算使用的管道，避免在前端写死管道编码与版本；
+ *      后端解析优先级为：调用方指定 → 默认管道 → 唯一可用管道 → 快速失败
+ * @returns 默认管道 VO；未配置默认管道时返回 null
+ */
+export function getDefaultPipelineApi() {
+  return request.get<CalcPipelineInfoVO>('/salary/salary-calc-pipeline-info/default');
 }

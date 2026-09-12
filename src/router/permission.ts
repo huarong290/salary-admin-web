@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/modules/user';
 import { filterDynamicRoutes } from '@/router/dynamic';
 import type { MenuTreeVO } from '@/types/menu/menu';
 import NProgress from 'nprogress';
+import { ElMessage } from 'element-plus';
 
 /**
  * 🌟 核心修复：递归寻找第一个有效路由 (携带 parentPath 解决多级嵌套路径 Bug)
@@ -64,6 +65,7 @@ router.beforeEach(async (to, _from, next) => {
     } catch (err) {
       console.error('获取用户信息失败:', err);
       //  传入 true，强制走本地登出，防止再次触发 401 网络请求死锁
+      ElMessage.warning('登录状态已过期，请重新登录');
       await authStore.logout(true);
       return next('/login');
     }

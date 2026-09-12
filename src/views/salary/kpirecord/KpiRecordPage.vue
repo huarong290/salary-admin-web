@@ -139,6 +139,17 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="KPI计税" align="center" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.taxableFlag === 1" type="danger" size="small" effect="plain"
+              >计税</el-tag
+            >
+            <el-tag v-else-if="row.taxableFlag === 0" type="success" size="small" effect="plain"
+              >不计税</el-tag
+            >
+            <el-tag v-else type="info" size="small" effect="plain">继承全局</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column
           label="评语/说明"
           align="left"
@@ -157,6 +168,15 @@
             >
               {{ row.auditStatus === 1 ? '查看' : '评估绩效' }}
             </el-button>
+            <el-button
+              v-if="row.auditStatus === 1"
+              v-hasPerm="['salary:kpi_record:confirm']"
+              link
+              type="warning"
+              icon="RefreshLeft"
+              @click="handleRevoke(row)"
+              >撤回</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -285,6 +305,21 @@
             placeholder="请输入评价说明 (C级及以下建议必填)"
           />
         </el-form-item>
+
+        <el-form-item label="KPI计税" prop="taxableFlag">
+          <el-select
+            v-model="evaluateForm.taxableFlag"
+            placeholder="继承全局/档案"
+            clearable
+            style="width: 100%"
+          >
+            <el-option label="计税 (计入个税基数)" :value="1" />
+            <el-option label="不计税" :value="0" />
+          </el-select>
+          <div class="text-secondary" style="font-size: 12px; margin-top: 4px">
+            默认继承全局配置；选择后仅本员工本月 KPI 生效（月度优先于档案）
+          </div>
+        </el-form-item>
       </el-form>
 
       <template v-if="evaluateForm.auditStatus === 0" #footer>
@@ -331,6 +366,7 @@ import {
   evaluateKpiApi,
   getKpiRecordPageApi,
   initMonthlyKpiApi,
+  revokeKpiApi,
 } from '@/api/salary/kpirecord/kpiRecord.ts';
 
 /**
@@ -478,10 +514,26 @@ const handleEvaluate = (row: SalaryKpiRecordVO) => {
     kpiGrade: row.kpiGrade === 'WAITING' ? '' : row.kpiGrade,
     kpiScore: row.kpiScore,
     evaluateRemark: row.evaluateRemark,
+    taxableFlag: row.taxableFlag ?? null,
     auditStatus: row.auditStatus, // 透传状态用于控制只读
   };
   evaluateDialog.visible = true;
   isFullscreen.value = false;
+};
+
+/** 3.5 撤回已定稿绩效单 (重新打分审核) */
+const handleRevoke = (row: SalaryKpiRecordVO) => {
+  ElMessageBox.confirm(
+    `确认撤回 ${row.employeeName}（${row.settlementMonth}）的绩效定稿吗？\n撤回后该单据将不再参与算薪，可修改打分后重新定稿。`,
+    '撤回定稿提示',
+    { type: 'warning', confirmButtonText: '确认撤回', cancelButtonText: '取消' }
+  )
+    .then(async () => {
+      await revokeKpiApi([row.id]);
+      ElMessage.success('已撤回，可重新打分');
+      getList();
+    })
+    .catch(() => {});
 };
 
 const closeEvaluate = () => {
@@ -500,6 +552,7 @@ const submitEvaluate = async () => {
           kpiGrade: evaluateForm.value.kpiGrade,
           kpiScore: evaluateForm.value.kpiScore,
           evaluateRemark: evaluateForm.value.evaluateRemark,
+          taxableFlag: evaluateForm.value.taxableFlag ?? null,
         };
         await evaluateKpiApi(payload);
         ElMessage.success('评估打分提交成功！系数已自动核算');

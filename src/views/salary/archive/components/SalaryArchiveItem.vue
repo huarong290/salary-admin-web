@@ -12,17 +12,34 @@
             filterable
             @change="handleConfigChange($event, $index)"
           >
-            <el-option
-              v-for="config in configOptions"
-              :key="config.id"
-              :label="config.itemName"
-              :value="config.id"
-            >
-              <span style="float: left">{{ config.itemName }}</span>
-              <span style="float: right; color: var(--el-text-color-secondary); font-size: 13px">
-                {{ config.envVarName }}
-              </span>
-            </el-option>
+            <!-- 收入类 (1) -->
+            <el-option-group label="收入类 (可设计税)">
+              <el-option
+                v-for="config in incomeOptions"
+                :key="config.id"
+                :label="config.itemName"
+                :value="config.id"
+              >
+                <span style="float: left">{{ config.itemName }}</span>
+                <span style="float: right; color: var(--el-text-color-secondary); font-size: 13px">
+                  {{ config.envVarName }}
+                </span>
+              </el-option>
+            </el-option-group>
+            <!-- 扣款类 (2) -->
+            <el-option-group label="扣款类">
+              <el-option
+                v-for="config in deductionOptions"
+                :key="config.id"
+                :label="config.itemName"
+                :value="config.id"
+              >
+                <span style="float: left">{{ config.itemName }}</span>
+                <span style="float: right; color: var(--el-text-color-secondary); font-size: 13px">
+                  {{ config.envVarName }}
+                </span>
+              </el-option>
+            </el-option-group>
           </el-select>
         </template>
       </el-table-column>
@@ -38,9 +55,10 @@
           </el-select>
         </template>
       </el-table-column>
-      <el-table-column label="设定金额 (基准标准)" width="160">
+      <el-table-column label="设定金额 (基准标准)" width="170">
         <template #default="{ row }">
           <el-input-number
+            v-if="!isSystemCalc(row)"
             v-model="row.amount"
             :precision="2"
             :controls="false"
@@ -51,6 +69,37 @@
               {{ row.calcMode === 1 ? '元/月' : '元/天' }}
             </template>
           </el-input-number>
+          <el-tooltip
+            v-else
+            content="该薪资项由系统自动计算（绩效/规则引擎），此处仅设置计税标识即可"
+            placement="top"
+          >
+            <el-tag type="warning" size="small" effect="plain" style="width: 100%"
+              >系统自动计算</el-tag
+            >
+          </el-tooltip>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="计税" width="130" align="center">
+        <template #default="{ row }">
+          <el-select
+            v-model="row.taxableFlag"
+            placeholder="继承全局"
+            style="width: 100%"
+            clearable
+            :disabled="row.itemType === 2"
+          >
+            <el-option label="计税" :value="1" />
+            <el-option label="不计税" :value="0" />
+          </el-select>
+          <div
+            v-if="row.taxableFlag === undefined || row.taxableFlag === null"
+            class="text-secondary"
+            style="font-size: 11px; line-height: 1"
+          >
+            默认继承全局配置
+          </div>
         </template>
       </el-table-column>
 
@@ -89,7 +138,7 @@
  * --------------------------------------------------------------------
  */
 // [1] Vue 核心钩子与原生生态
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 // [2] 第三方 UI 组件库与图标
 import { ElMessage } from 'element-plus';
 
@@ -107,6 +156,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['update:modelValue']);
+
+// 下拉分组: 收入类(1) / 扣款类(2), 便于 HR 找到所有项目(含基本工资)并设置计税
+const incomeOptions = computed(() =>
+  (props.configOptions || []).filter((c) => Number(c.itemCategory) === 1)
+);
+const deductionOptions = computed(() =>
+  (props.configOptions || []).filter((c) => Number(c.itemCategory) === 2)
+);
 /** 字典库数据源 */
 const dicts = useDict('salary_calc_mode');
 /**
@@ -176,6 +233,8 @@ const handleAdd = () => {
     calcMode: 1, // 🌟 默认设为传统的“按月固定金额”
     amount: 0,
     ruleScript: '',
+    taxableFlag: null, // null-继承全局计税配置
+    itemCode: '',
   });
 };
 
@@ -183,6 +242,22 @@ const handleAdd = () => {
 const handleRemove = (index: number) => {
   localItems.value.splice(index, 1);
 };
+// 系统自动计算项: 金额由引擎/绩效/规则生成, 档案中金额字段无意义 (仅计税/继承控制有效)
+const SYSTEM_CALC_CODES = [
+  'KPI_BONUS',
+  'OVERTIME_PAY_DAY',
+  'OVERTIME_PAY_HOUR',
+  'EVENT_EURO_CUP',
+  'EVENT_WORLD_CUP',
+  'SI_PENSION_IND',
+  'SI_MED_IND',
+  'SI_HOUSING_IND',
+  'SI_REISSUE_IND',
+  'ER_PENSION_COMP',
+  'ER_VISA_COMP',
+  'AUTO_TAX_CALC',
+];
+
 // 交互升级,监听薪资项的选择变化,做防重复处理
 const handleConfigChange = (val: number, index: number) => {
   // 1. 防呆：检查是否重复添加了相同的薪资项目
@@ -197,14 +272,19 @@ const handleConfigChange = (val: number, index: number) => {
     return;
   }
 
-  // 2. 智能补全：(预留) 如果 configOptions 里有默认金额或公式，可以在这里自动帮 HR 填上
-  /*
-  const targetConfig = props.configOptions.find(c => c.id === val);
-  if (targetConfig) {
-     localItems.value[index].amount = targetConfig.defaultAmount || 0;
+  // 2. 记录 itemCode 供模板判断"系统计算项"
+  const targetConfig = props.configOptions.find((c) => c.id === val);
+  if (targetConfig && localItems.value[index]) {
+    localItems.value[index].itemCode = targetConfig.itemCode;
+    if (SYSTEM_CALC_CODES.includes(targetConfig.itemCode)) {
+      // 系统计算项: 金额自动生成, 置 0 并提示
+      localItems.value[index].amount = 0;
+    }
   }
-  */
 };
+
+// 判断是否为系统自动计算项 (金额无需手工填写)
+const isSystemCalc = (row: any) => SYSTEM_CALC_CODES.includes(row?.itemCode);
 </script>
 
 <style scoped lang="scss">

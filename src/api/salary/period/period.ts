@@ -37,7 +37,7 @@ export function getPeriodPageApi(data: PeriodQueryReqDTO) {
  * 获取周期详情
  */
 export function getPeriodDetailApi(id: number | string) {
-  return request.get<PeriodVO>(`/salary/period/${id}`);
+  return request.get<PeriodVO>(`/salary/period/detail/${id}`);
 }
 
 /**

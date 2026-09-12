@@ -66,4 +66,6 @@ export interface KpiEvaluateReqDTO {
   kpiScore?: number;
   /** 考核评语 (选填) */
   evaluateRemark?: string;
+  /** 计税标识: null-继承全局/档案, 0-不计税, 1-计税 (月度KPI计税控制) */
+  taxableFlag?: number | null;
 }

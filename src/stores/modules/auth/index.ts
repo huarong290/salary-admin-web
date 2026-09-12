@@ -5,6 +5,25 @@ import { ref } from 'vue';
 import { loginApi, logoutApi, refreshTokenApi } from '@/api/auth';
 import type { UserLoginReqDTO, TokenResDTO } from '@/types/auth/auth';
 import router from '@/router';
+
+/** 防重跳转标记：并发 401 时只执行一次跳转登录页 */
+let redirectingToLogin = false;
+
+/**
+ * 统一重定向到登录页 (带 redirect 记忆参数, 防重)
+ */
+function redirectToLogin() {
+  if (redirectingToLogin) return;
+  redirectingToLogin = true;
+  const currentPath = router.currentRoute.value.fullPath;
+  if (window.location.pathname !== '/login') {
+    const query =
+      currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
+    // 原生跳转强制刷新浏览器上下文，最干净地清空所有内存/持久化状态
+    window.location.href = `/login${query}`;
+  }
+}
+
 /**
  * 🔐 身份认证与令牌状态管理 (Setup Store 范式)
  * 职责：管理登录、登出、无感刷新 Token 的核心生命周期，负责安全地存储和清理鉴权凭证
@@ -71,19 +90,8 @@ export const useAuthStore = defineStore(
         localStorage.removeItem('user-store');
         sessionStorage.clear(); // Session 通常只存临时会话状态，清空是安全的
 
-        // 3. 终极防御版重定向 (绕过 Vue Router 生命周期，杜绝白屏)
-        const currentPath = router.currentRoute.value.fullPath;
-        // 确保不在登录页才跳转
-        if (window.location.pathname !== '/login') {
-          // 如果当前路由不是首页 '/'，则带上 redirect 记忆参数
-          const query =
-            currentPath && currentPath !== '/'
-              ? `?redirect=${encodeURIComponent(currentPath)}`
-              : '';
-
-          // 使用原生 window.location.href 强制刷新浏览器上下文，是最干净的退出方式
-          window.location.href = `/login${query}`;
-        }
+        // 3. 统一跳转登录页 (防重 + 携带 redirect 记忆参数)
+        redirectToLogin();
       }
     };
 
@@ -109,8 +117,9 @@ export const useAuthStore = defineStore(
 
         return res.accessToken;
       } catch (error) {
-        // 刷新失败 (意味着 refreshToken 也过期了，或在别处被踢下线)，必须强制彻底登出
-        await logout();
+        // 刷新失败 (意味着 refreshToken 也过期了，或在别处被踢下线)
+        // 使用纯本地登出 (isLocalOnly=true)，避免携带已过期 Token 再调后端 logout 产生二次 401 噪音
+        await logout(true);
         return Promise.reject(error);
       }
     };

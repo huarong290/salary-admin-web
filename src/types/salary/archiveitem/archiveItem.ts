@@ -20,6 +20,14 @@ export interface ArchiveItemReqDTO {
    * 个性化表达式脚本 (可选)
    */
   ruleScript?: string;
+  /**
+   * 计税标识: null-继承全局配置, 0-不计税, 1-计税 (仅收入类生效)
+   */
+  taxableFlag?: number | null;
+  /**
+   * 项目编码 (前端辅助标记, 用于识别系统计算项; 后端自动忽略)
+   */
+  itemCode?: string;
 }
 
 /**
@@ -65,5 +73,7 @@ export interface SalaryArchiveItemVO {
    */
   amount: number;
   ruleScript?: string;
+  /** 计税标识: null-继承全局配置, 0-不计税, 1-计税 */
+  taxableFlag?: number | null;
   sort?: number;
 }

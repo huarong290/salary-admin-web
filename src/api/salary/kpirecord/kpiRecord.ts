@@ -35,3 +35,10 @@ export function evaluateKpiApi(data: KpiEvaluateReqDTO) {
 export function confirmKpiApi(ids: number[]) {
   return request.post<boolean>(`/salary/kpi/confirm`, ids);
 }
+
+/**
+ * 撤回已定稿绩效单 (回到打分中, 可重新打分后再次定稿)
+ */
+export function revokeKpiApi(ids: number[]) {
+  return request.post<boolean>(`/salary/kpi/revoke`, ids);
+}

@@ -133,6 +133,18 @@
           </template>
         </el-table-column>
 
+        <el-table-column label="计税" align="center" width="90">
+          <template #default="{ row }">
+            <el-tag v-if="row.adjustType === 2" type="info" size="small" effect="plain"
+              >扣减-不计税</el-tag
+            >
+            <el-tag v-else-if="row.taxableFlag === 1" type="danger" size="small" effect="plain"
+              >计税</el-tag
+            >
+            <el-tag v-else type="success" size="small" effect="plain">不计税</el-tag>
+          </template>
+        </el-table-column>
+
         <el-table-column label="操作" align="center" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="info" icon="Document" @click="handleDetail(row)">
@@ -255,6 +267,23 @@
                 <el-radio :label="1">补发收入 (+)</el-radio>
                 <el-radio :label="2">扣减款项 (-)</el-radio>
               </el-radio-group>
+            </el-form-item>
+            <el-form-item label="计税标识" prop="taxableFlag">
+              <el-switch
+                v-model="form.taxableFlag"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="form.adjustType === 2"
+              />
+              <span class="text-secondary" style="font-size: 12px; margin-left: 8px">
+                {{
+                  form.adjustType === 2
+                    ? '扣减项天然不计税'
+                    : form.taxableFlag === 1
+                      ? '计入个税基数'
+                      : '不计入个税基数 (默认)'
+                }}
+              </span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -586,6 +615,7 @@ const handleAdd = () => {
     currency: 'CNY',
     originalAmount: 0,
     exchangeRate: 1.0,
+    taxableFlag: 0, // 默认不计税 (用户要求)
   };
   dialog.title = '新增手工账变动项';
   dialog.visible = true;

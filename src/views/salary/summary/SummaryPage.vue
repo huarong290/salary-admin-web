@@ -322,6 +322,18 @@
             <b>{{ selectedIds.length > 0 ? selectedIds.length : '当前列表未锁定' }}</b> 条单据</span
           >
         </el-form-item>
+
+        <el-form-item label="核算管道">
+          <span v-if="defaultPipeline">
+            {{ defaultPipeline.pipelineCode }} (V{{ defaultPipeline.version }})
+            <el-tag v-if="defaultPipeline.defaultFlag === 1" type="success" size="small"
+              >默认</el-tag
+            >
+          </span>
+          <el-tag v-else type="danger" size="small">
+            未配置默认管道，请先到【引擎配置 - 计算管道】设置
+          </el-tag>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -579,6 +591,24 @@
               currentDetail.grossSalary?.toFixed(2)
             }}</span>
           </el-descriptions-item>
+          <el-descriptions-item label="计税基数 (应税)">
+            <span class="amount-font">{{
+              currentDetail.details?.taxableIncomeTotal?.toFixed(2) ?? '—'
+            }}</span>
+            <el-tooltip
+              v-if="
+                currentDetail.details &&
+                Number(currentDetail.details.grossSalary || 0) !==
+                  Number(currentDetail.details.taxableIncomeTotal || 0)
+              "
+              content="已排除 taxable_flag=0 的不计税项目（如免税餐补等）"
+              placement="top"
+            >
+              <el-icon style="margin-left: 4px; vertical-align: middle; cursor: help"
+                ><Warning
+              /></el-icon>
+            </el-tooltip>
+          </el-descriptions-item>
           <el-descriptions-item label="实发净额 (Net)">
             <span class="amount-font text-primary" style="font-weight: bold">{{
               currentDetail.netSalary?.toFixed(2)
@@ -770,6 +800,10 @@ import type {
 } from '@/types/salary/engine/engine.ts';
 import { listArchiveHistoryApi } from '@/api/salary/archive/archive.ts';
 
+// [引擎配置] 默认核算管道：由后端配置决定，避免在前端写死管道编码与版本
+import { getDefaultPipelineApi } from '@/api/salary/calcpiplineinfo/calcPiplineInfo.ts';
+import type { CalcPipelineInfoVO } from '@/types/salary/calcpiplineinfo/calcpiplineinfo.ts';
+
 const router = useRouter();
 
 /**
@@ -821,6 +855,9 @@ const calcFormRef = ref<FormInstance>();
 const calcForm = ref<any>({ settlementMonth: '', remark: '' });
 const calculating = ref(false);
 const calcRules = reactive<FormRules>({});
+
+// [默认核算管道] 由后端 default_flag=1 的管道决定；未取到时提交不携带管道，交由后端解析
+const defaultPipeline = ref<CalcPipelineInfoVO | null>(null);
 
 // [单人核算预览对话框状态]
 const previewDialog = reactive({
@@ -978,7 +1015,22 @@ const handleOpenCalc = () => {
   }
 
   calcForm.value = { settlementMonth: queryParams.settlementMonth || '', remark: '' };
+  // 每次打开核算控制台都刷新一次默认管道，避免后端改过配置后前端仍用旧值
+  loadDefaultPipeline();
   calcDialog.visible = true;
+};
+
+/**
+ * 读取后端配置的默认核算管道
+ * 目的：取代原先写死的 pipelineCode / pipelineVersion，实现"新增管道版本后无需改前端"
+ */
+const loadDefaultPipeline = async () => {
+  try {
+    defaultPipeline.value = await getDefaultPipelineApi();
+  } catch (error) {
+    console.error('获取默认薪资管道失败:', error);
+    defaultPipeline.value = null;
+  }
 };
 
 /** 引擎驱动：批量核算指令 (绑定到 calcDialog 的确定按钮) */
@@ -995,11 +1047,14 @@ const submitCalculate = async () => {
                 .filter((item) => item.calcStatus === 0 || item.calcStatus === 2)
                 .map((item) => item.id);
 
+        // 管道取自后端默认配置；若未取到则不传，由后端按"默认管道 → 唯一可用管道"解析
         const params: SalaryCalcBatchReqDTO = {
           summaryIds: targetIds,
-          pipelineCode: 'OFFICIAL_STAFF_2026', // 默认管道
-          pipelineVersion: 1,
         };
+        if (defaultPipeline.value?.pipelineCode) {
+          params.pipelineCode = defaultPipeline.value.pipelineCode;
+          params.pipelineVersion = defaultPipeline.value.version;
+        }
         await calculateBatchSalaryApi(params);
 
         ElMessage.success('核算引擎执行完毕！账单已生成。');
@@ -1238,6 +1293,8 @@ const submitAdjust = async () => {
  */
 onMounted(() => {
   getList();
+  // 预加载默认核算管道，进入核算控制台时可直接展示
+  loadDefaultPipeline();
 });
 </script>
 
